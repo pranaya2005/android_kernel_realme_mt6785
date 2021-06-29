@@ -1,0 +1,8 @@
+config SAGA_MEMORY
+	bool "SAGA_MEMORY"
+	default n
+	help
+	  This option enables saga memory apk,
+	  if yes, it means this platform supports saga memory app,
+	  if no, it means this platform supports saga memory app.
+	  The option default disabled.
