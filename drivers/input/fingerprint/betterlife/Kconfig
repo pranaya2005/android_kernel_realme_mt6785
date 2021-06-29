@@ -1,5 +1,0 @@
-config BETTERLIFE_FINGERPRINT
-    bool "betterlife Fingerprint"
-	default n
-	---help---
-	betterlife fingerprint.

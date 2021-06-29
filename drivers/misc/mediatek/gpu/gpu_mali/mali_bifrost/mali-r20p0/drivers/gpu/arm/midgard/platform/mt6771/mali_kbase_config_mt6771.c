@@ -189,11 +189,6 @@ static void pm_callback_power_off_nolock(struct kbase_device *kbdev)
 
 	/* Turn off GPU MTCMOS */
 	mt_gpufreq_disable_MTCMOS();
-
-	g_bucks_state = BUCKS_OFF;
-	/* Turn off VGPU / VSRAM_GPU Buck */
-	mt_gpufreq_voltage_enable_set(0);
-	mali_pr_debug("@%s: disable VGPU / VSRAM_GPU bucks, g_bucks_state = %d\n", __func__, g_bucks_state);
 }
 
 static int pm_callback_power_on(struct kbase_device *kbdev)
@@ -216,7 +211,26 @@ static void pm_callback_power_off(struct kbase_device *kbdev)
 
 void pm_callback_power_suspend(struct kbase_device *kbdev)
 {
-    mali_pr_debug("@%s: power suspend ..., g_bucks_state = %d\n", __func__, g_bucks_state);
+	mutex_lock(&g_mfg_lock);
+
+	mali_pr_debug("@%s: power suspend ..., g_bucks_state = %d\n", __func__, g_bucks_state);
+
+#ifdef MT_GPUFREQ_SRAM_DEBUG
+	aee_rr_rec_gpu_dvfs_status(0xB | (aee_rr_curr_gpu_dvfs_status() & 0xF0));
+#endif
+
+	pm_callback_power_off_nolock(kbdev);
+
+	if (mtk_get_vgpu_power_on_flag() == MTK_VGPU_POWER_OFF
+			&& __mtk_check_LCD_state() == 0
+			&& g_bucks_state == BUCKS_ON) {
+		/* Turn off VGPU / VSRAM_GPU Buck */
+		mt_gpufreq_voltage_enable_set(0);
+		g_bucks_state = BUCKS_OFF;
+		mali_pr_debug("@%s: disable VGPU / VSRAM_GPU bucks, g_bucks_state = %d\n", __func__, g_bucks_state);
+	}
+
+	mutex_unlock(&g_mfg_lock);
 }
 
 void pm_callback_power_resume(struct kbase_device *kbdev)

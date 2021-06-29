@@ -412,7 +412,7 @@ static int alloc_buffer_from_ion(size_t size, struct test_buf_info *buf_info)
 	struct ion_mm_data mm_data;
 	struct ion_handle *handle;
 	size_t mva_size;
-	ion_phys_addr_t phy_addr = 0;
+	ion_phys_addr_t phy_addr;
 
 	client = ion_client_create(g_ion_device, "disp_test");
 	buf_info->ion_client = client;
@@ -1198,7 +1198,6 @@ static void process_dbg_opt(const char *opt)
 		set_esd_check_mode(mode);
 	} else if (strncmp(opt, "lcm0_reset", 10) == 0) {
 		DISPCHECK("lcm0_reset\n");
-		disp_helper_set_option(DISP_OPT_OVL_SBCH, 0);
 #if  0
 		primary_display_idlemgr_kick(__func__, 1);
 		DISP_CPU_REG_SET(DISP_REG_CONFIG_MMSYS_LCM_RST_B, 1);

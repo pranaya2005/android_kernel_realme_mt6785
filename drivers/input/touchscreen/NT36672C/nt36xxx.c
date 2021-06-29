@@ -1654,8 +1654,7 @@ static int32_t nvt_ts_probe(struct spi_device *client)
 
 		if (strcmp("nt36672c_fhdp_dsi_vdo_auo_cphy_90hz_jdi_lcm_drv",
 			videolfb_tag->lcmname) == 0 ||
-			strcmp(
-			"nt36672c_fhdp_dsi_vdo_auo_cphy_90hz_jdi_hfp_lcm_drv",
+			strcmp("nt36672c_fhdp_dsi_vdo_auo_cphy_90hz_jdi_hfp_lcm_drv",
 			videolfb_tag->lcmname) == 0)
 			strncpy(novatek_firmware,
 				firmware_name_jdi, sizeof(firmware_name_jdi));

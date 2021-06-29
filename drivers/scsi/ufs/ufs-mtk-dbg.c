@@ -432,33 +432,6 @@ static int ufs_help_proc_show(struct seq_file *m, void *v)
 	return 0;
 }
 
-static int ufs_life_time_proc_show(struct seq_file *m, void *v)
-{
-#ifdef CONFIG_MTK_UFS_DEBUG
-	int err = 0;
-	int buff_len = QUERY_DESC_HEALTH_MAX_SIZE;
-	u8 desc_buf[QUERY_DESC_HEALTH_MAX_SIZE];
-	int i;
-
-	pm_runtime_get_sync(ufs_mtk_hba->dev);
-	err = ufshcd_read_health_desc(ufs_mtk_hba, desc_buf, buff_len);
-	pm_runtime_put_sync(ufs_mtk_hba->dev);
-
-	if (err) {
-		seq_printf(m, "Reading Health Descriptor failed. err = %d\n",
-			err);
-		goto out;
-	}
-
-	seq_printf(m, "0x%x\n", (u8)desc_buf[3]);
-
-out:
-	return err;
-#else
-	return 0;
-#endif
-}
-
 /* ========== driver proc interface =========== */
 static int ufs_debug_proc_show(struct seq_file *m, void *v)
 {
@@ -608,18 +581,6 @@ static const struct file_operations ufs_help_fops = {
 	.release = single_release,
 };
 
-static int ufs_life_time_proc_open(struct inode *inode, struct file *file)
-{
-	return single_open(file, ufs_life_time_proc_show, inode->i_private);
-}
-
-static const struct file_operations ufs_life_time_fops = {
-	.open = ufs_life_time_proc_open,
-	.read = seq_read,
-	.llseek = seq_lseek,
-	.release = single_release,
-};
-
 static int ufs_perf_proc_open(struct inode *inode, struct file *file)
 {
 	return single_open(file, ufs_perf_proc_show, PDE_DATA(inode));
@@ -667,11 +628,6 @@ int ufs_mtk_debug_proc_init(struct ufs_hba *hba)
 
 	if (!prEntry)
 		pr_info("%s: failed to create /proc/ufs_help\n", __func__);
-
-	prEntry = proc_create("ufs_life_time", PROC_PERM, NULL, &ufs_life_time_fops);
-
-	if (!prEntry)
-		pr_info("%s: failed to create /proc/ufs_life_time\n", __func__);
 
 	/* allow write permission in all builds */
 	prEntry = proc_create_data("ufs_perf", 0660, NULL, &ufs_perf_fops,

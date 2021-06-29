@@ -32,12 +32,13 @@
 #include <linux/gameport.h>
 #include <linux/moduleparam.h>
 #include <linux/mutex.h>
-//#include <linux/wakelock.h>
+#include <linux/wakelock.h>
 #include <linux/timer.h>
 #include <linux/workqueue.h>
 #include <linux/hrtimer.h>
+#include <linux/aw87359_audio.h>
 #include <linux/module.h>
-#include "aw87359_audio.h"
+//#include "aw87359_audio.h"
 
 /*****************************************************************
 * aw87359 marco
@@ -56,16 +57,26 @@ struct aw87359_container *aw87359_dspk_cnt;
 struct aw87359_container *aw87359_drcv_cnt;
 struct aw87359_container *aw87359_abspk_cnt;
 struct aw87359_container *aw87359_abrcv_cnt;
+//sunjingtao@huaqin modify at 20200525
+struct aw87359_container *aw87359_dspk_ftm_cnt;
 
 static char *aw87359_dspk_name = "aw87359_dspk.bin";
 static char *aw87359_drcv_name = "aw87359_drcv.bin";
 static char *aw87359_abspk_name = "aw87359_abspk.bin";
 static char *aw87359_abrcv_name = "aw87359_abrcv.bin";
+//sunjingtao@huaqin modify at 20200525
+static char *aw87359_dspk_ftm_name = "aw87359_dspk_ftm.bin";
 
 unsigned int dspk_load_cont;
-unsigned int drcv_load_cont;
+unsigned int aw87359_drcv_load_cont;
 unsigned int abspk_load_cont;
-unsigned int abrcv_load_cont;
+unsigned int aw87359_abrcv_load_cont;
+//sunjingtao@huaqin modify at 20200525
+unsigned int dspk_ftm_load_cont;
+
+//sunjingtao@ODM.HQ.Multimedia.Audio 2020/04/17 added for aw87359 bringup
+static int aw87359_probed = 0;
+
 /**********************************************************
 * i2c write and read
 **********************************************************/
@@ -144,6 +155,10 @@ unsigned char aw87359_audio_dspk(void)
 	unsigned int i;
 	unsigned int length;
 
+	//sunjingtao@ODM.HQ.Multimedia.Audio 2020/04/17 added for aw87359 bringup
+	if(0 == aw87359_probed)
+		return 0;
+
 	pr_info("%s enter\n", __func__);
 
 	if (aw87359 == NULL)
@@ -211,6 +226,10 @@ unsigned char aw87359_audio_abspk(void)
 	unsigned int i;
 	unsigned int length;
 
+	//sunjingtao@ODM.HQ.Multimedia.Audio 2020/04/17 added for aw87359 bringup
+	if(0 == aw87359_probed)
+		return 0;
+
 	pr_info("%s enter\n", __func__);
 
 	if (aw87359 == NULL)
@@ -276,8 +295,52 @@ unsigned char aw87359_audio_abrcv(void)
 	return 0;
 }
 
+//sunjingtao@huaqin modify at 20200525
+unsigned char aw87359_audio_dspk_ftm(void)
+{
+	unsigned int i;
+	unsigned int length;
+
+	//sunjingtao@ODM.HQ.Multimedia.Audio 2020/04/17 added for aw87359 bringup
+	if(0 == aw87359_probed)
+		return 0;
+
+	pr_info("%s enter\n", __func__);
+
+	if (aw87359 == NULL)
+		return 2;
+
+	if (!aw87359->hwen_flag)
+		aw87359_hw_on(aw87359);
+
+	length = sizeof(aw87359_dspk_ftm_cfg_default)/sizeof(char);
+	if (aw87359->dspk_ftm_cfg_update_flag == 0) { /*update default data*/
+		for (i = 0; i < length; i = i+2) {
+			aw87359_i2c_write(aw87359,
+			aw87359_dspk_ftm_cfg_default[i],
+			aw87359_dspk_ftm_cfg_default[i+1]);
+		}
+	}
+
+	if (aw87359->dspk_ftm_cfg_update_flag == 1) {  /*update firmware data*/
+		for (i = 0; i < aw87359_dspk_cnt->len; i = i+2) {
+			aw87359_i2c_write(aw87359,
+					aw87359_dspk_ftm_cnt->data[i],
+					aw87359_dspk_ftm_cnt->data[i+1]);
+
+		}
+	}
+
+	return 0;
+}
+
+
 unsigned char aw87359_audio_off(void)
 {
+	//sunjingtao@ODM.HQ.Multimedia.Audio 2020/04/17 added for aw87359 bringup
+	if(0 == aw87359_probed)
+		return 0;
+
 	if (aw87359 == NULL)
 		return 2;
 
@@ -300,12 +363,12 @@ static void aw87359_abrcv_cfg_loaded(const struct firmware *cont,
 
 	pr_info("%s enter\n", __func__);
 
-	abrcv_load_cont++;
+	aw87359_abrcv_load_cont++;
 	if (!cont) {
 		pr_err("%s: failed to read %s\n", __func__,
 		aw87359_abrcv_name);
 		release_firmware(cont);
-		if (abrcv_load_cont <= 2) {
+		if (aw87359_abrcv_load_cont <= 2) {
 			schedule_delayed_work(&aw87359->ram_work,
 					msecs_to_jiffies(ram_timer_val));
 			pr_info("%s:restart hrtimer to load firmware\n",
@@ -413,11 +476,11 @@ static void aw87359_drcv_cfg_loaded(const struct firmware *cont, void *context)
 
 	pr_info("%s enter\n", __func__);
 
-	drcv_load_cont++;
+	aw87359_drcv_load_cont++;
 	if (!cont) {
 		pr_err("%s: failed to read %s\n", __func__, aw87359_drcv_name);
 		release_firmware(cont);
-		if (drcv_load_cont <= 2) {
+		if (aw87359_drcv_load_cont <= 2) {
 			schedule_delayed_work(&aw87359->ram_work,
 					msecs_to_jiffies(ram_timer_val));
 			pr_info("%s:restart hrtimer to load firmware\n",
@@ -525,6 +588,67 @@ static int aw87359_dspk_update(struct aw87359 *aw87359)
 					aw87359_dspk_cfg_loaded);
 }
 
+//sunjingtao@huaqin modify at 20200525
+static void aw87359_dspk_ftm_cfg_loaded(const struct firmware *cont, void *context)
+{
+	int i = 0;
+	int ram_timer_val = 2000;
+
+	pr_info("%s enter\n", __func__);
+	dspk_ftm_load_cont++;
+	if (!cont) {
+		pr_err("%s: failed to read %s\n", __func__, aw87359_dspk_ftm_name);
+		release_firmware(cont);
+		if (dspk_ftm_load_cont <= 2) {
+			schedule_delayed_work(&aw87359->ram_work,
+					msecs_to_jiffies(ram_timer_val));
+			pr_info("%s:restart hrtimer to load firmware\n",
+			__func__);
+		}
+	return;
+	}
+
+	pr_info("%s: loaded %s - size: %zu\n", __func__, aw87359_dspk_ftm_name,
+				cont ? cont->size : 0);
+
+	for (i = 0; i < cont->size; i = i+2) {
+		pr_info("%s: addr:0x%02x, data:0x%02x\n",
+				__func__, *(cont->data+i), *(cont->data+i+1));
+	}
+
+	if (aw87359_dspk_ftm_cnt != NULL)
+		aw87359_dspk_ftm_cnt = NULL;
+
+	/* aw87359 ram update */
+	aw87359_dspk_ftm_cnt = kzalloc(cont->size+sizeof(int), GFP_KERNEL);
+	if (!aw87359_dspk_ftm_cnt) {
+		release_firmware(cont);
+		pr_err("%s: Error allocating memory\n", __func__);
+		return;
+	}
+	aw87359_dspk_ftm_cnt->len = cont->size;
+	memcpy(aw87359_dspk_ftm_cnt->data, cont->data, cont->size);
+	release_firmware(cont);
+	aw87359->dspk_ftm_cfg_update_flag = 1;
+
+	pr_info("%s: fw update complete\n", __func__);
+}
+
+
+static int aw87359_dspk_ftm_update(struct aw87359 *aw87359)
+{
+	pr_info("%s enter\n", __func__);
+
+	return request_firmware_nowait(THIS_MODULE,
+					FW_ACTION_HOTPLUG,
+					aw87359_dspk_ftm_name,
+					&aw87359->i2c_client->dev,
+					GFP_KERNEL,
+					aw87359,
+					aw87359_dspk_ftm_cfg_loaded);
+}
+
+
 static void aw87359_cfg_work_routine(struct work_struct *work)
 {
 	pr_info("%s enter\n", __func__);
@@ -536,6 +660,9 @@ static void aw87359_cfg_work_routine(struct work_struct *work)
 		aw87359_abspk_update(aw87359);
 	if (aw87359->abrcv_cfg_update_flag == 0)
 		aw87359_abrcv_update(aw87359);
+	//sunjingtao@huaqin modify at 20200525
+	if (aw87359->dspk_ftm_cfg_update_flag == 0)
+		aw87359_dspk_ftm_update(aw87359);
 }
 #endif
 
@@ -654,6 +781,8 @@ static ssize_t aw87359_set_update(struct device *dev,
 		aw87359->drcv_cfg_update_flag = 1;
 		aw87359->abspk_cfg_update_flag = 1;
 		aw87359->abrcv_cfg_update_flag = 1;
+		//sunjingtao@huaqin modify at 20200525
+		aw87359->dspk_ftm_cfg_update_flag = 1;
 		schedule_delayed_work(&aw87359->ram_work,
 				msecs_to_jiffies(cfg_timer_val));
 	}
@@ -681,6 +810,8 @@ static ssize_t aw87359_get_mode(struct device *cd,
 	len += snprintf(buf+len, PAGE_SIZE-len, "2: drcv mode\n");
 	len += snprintf(buf+len, PAGE_SIZE-len, "3: abspk mode\n");
 	len += snprintf(buf+len, PAGE_SIZE-len, "4: abrcv mode\n");
+	//sunjingtao@huaqin modify at 20200525
+       len += snprintf(buf+len, PAGE_SIZE-len, "5: dspk ftm mode\n");
 
 	return len;
 }
@@ -704,6 +835,9 @@ static ssize_t aw87359_set_mode(struct device *cd,
 		aw87359_audio_abspk();
 	else if (state == 4)
 		aw87359_audio_abrcv();
+	//sunjingtao@huaqin modify at 20200525
+	else if (state == 5)
+		aw87359_audio_dspk_ftm();
 	else
 		aw87359_audio_off();
 
@@ -773,6 +907,11 @@ aw87359_i2c_probe(struct i2c_client *client, const struct i2c_device_id *id)
 
 	pr_info("%s Enter\n", __func__);
 
+       //sunjingtao@ODM.HQ.Multimedia.Audio 2020/04/17 added for aw87359 bringup
+	client->addr = 0x58;
+
+	pr_info("%s i2c addr is 0x%x\n", __func__,client->addr);
+
 	if (!i2c_check_functionality(client->adapter, I2C_FUNC_I2C)) {
 		dev_err(&client->dev, "%s: check_functionality failed\n",
 			__func__);
@@ -805,15 +944,22 @@ aw87359_i2c_probe(struct i2c_client *client, const struct i2c_device_id *id)
 			__func__);
 	}
 
+	//sunjingtao@ODM.HQ.Multimedia.Audio 2020/04/17 added for aw87359 bringup
+	aw87359_probed = 1;
+
 	/* aw87359 cfg update */
 	dspk_load_cont = 0;
-	drcv_load_cont = 0;
+	aw87359_drcv_load_cont = 0;
 	abspk_load_cont = 0;
-	abrcv_load_cont = 0;
+	aw87359_abrcv_load_cont = 0;
+	//sunjingtao@huaqin modify at 20200525
+	dspk_ftm_load_cont = 0;
 	aw87359->dspk_cfg_update_flag = 0;
 	aw87359->drcv_cfg_update_flag = 0;
 	aw87359->abspk_cfg_update_flag = 0;
 	aw87359->abrcv_cfg_update_flag = 0;
+	//sunjingtao@huaqin modify at 20200525
+	aw87359->dspk_ftm_cfg_update_flag = 0;
 	aw87359_cfg_init(aw87359);
 
 	/* aw87359 hardware off */
@@ -856,7 +1002,8 @@ static struct i2c_driver aw87359_i2c_driver = {
 	.id_table	= aw87359_i2c_id,
 };
 
-static int __init aw87359_pa_init(void) {
+static int __init aw87359_pa_init(void)
+{
 	int ret;
 
 	pr_info("%s enter\n", __func__);
@@ -871,7 +1018,8 @@ static int __init aw87359_pa_init(void) {
 	return 0;
 }
 
-static void __exit aw87359_pa_exit(void) {
+static void __exit aw87359_pa_exit(void)
+{
 	pr_info("%s enter\n", __func__);
 	i2c_del_driver(&aw87359_i2c_driver);
 }

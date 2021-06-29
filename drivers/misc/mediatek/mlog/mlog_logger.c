@@ -328,7 +328,7 @@ static void mlog_meminfo(void)
 
 #ifdef CONFIG_ZRAM
 	/* zram memory usage */
-	zram = P2K(global_zone_page_state(NR_ZSPAGES));
+	zram = zram_mlog();
 #endif
 
 	/* user pages */

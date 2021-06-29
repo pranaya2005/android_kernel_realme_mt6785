@@ -39,13 +39,14 @@
 #include <mt-plat/mtk_boot.h>
 
 #define RT_PD_MANAGER_VERSION	"1.0.5_MTK"
-/* Stoneoim:zhangqingzhan on: Wed, 25 Oct 2017 11:45:52 +0800
- * for type C headset
- */
-#ifdef CONFIG_MT6370_TYPEC_HEADSET
-extern void accdet_plug_func(int plugstate);
+
+#ifdef ODM_HQ_EDIT
+/*wangtao@ODM.HQ.BSP.CHG 2020/06/23 close mt6360 charge*/
+extern int is_sala_a_project(void);
 #endif
-// End of Stoneoim: zhangqingzhan
+#ifdef VENDOR_EDIT
+extern bool oppo_vooc_get_fastchg_allow(void);
+#endif /* VENDOR_EDIT */
 
 static DEFINE_MUTEX(param_lock);
 
@@ -208,6 +209,14 @@ static int pd_tcp_notifier_call(struct notifier_block *nb,
 			pd_sink_voltage_new, pd_sink_current_new, pd_sink_type);
 		mutex_unlock(&param_lock);
 
+		#ifdef ODM_HQ_EDIT
+		/*wangtao@ODM.HQ.BSP.CHG 2020/06/23 close mt6360 charge*/
+		if ((is_sala_a_project() == 2) && (oppo_vooc_get_fastchg_allow() == true)) {
+			printk("in fastchg,close mt6360 charge\n");
+			break;
+		}
+		#endif
+
 		if ((pd_sink_voltage_new != pd_sink_voltage_old) ||
 		    (pd_sink_current_new != pd_sink_current_old)) {
 			if (pd_sink_voltage_new) {
@@ -256,24 +265,10 @@ static int pd_tcp_notifier_call(struct notifier_block *nb,
 			/* AUDIO plug in */
 			pr_info("%s audio plug in\n", __func__);
 
-            /* Stoneoim:zhangqingzhan on: Wed, 25 Oct 2017 11:31:03 +0800
-             * for type c headset
-             */
-#ifdef CONFIG_MT6370_TYPEC_HEADSET
-            accdet_plug_func(1);
-#endif
-            // End of Stoneoim: zhangqingzhan
 		} else if (noti->typec_state.old_state == TYPEC_ATTACHED_AUDIO
 			&& noti->typec_state.new_state == TYPEC_UNATTACHED) {
 			/* AUDIO plug out */
 			pr_info("%s audio plug out\n", __func__);
-            /* Foeec:zhangqingzhan on: Thu, 12 Dec 2019 15:02:19 +0800
-             * for type c headset
-             */
-#ifdef CONFIG_MT6370_TYPEC_HEADSET
-            accdet_plug_func(0);
-#endif
-          // End of Foeec: zhangqingzhan
 		}
 		break;
 	case TCP_NOTIFY_PD_STATE:

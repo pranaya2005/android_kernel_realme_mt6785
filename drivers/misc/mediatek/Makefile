@@ -116,6 +116,10 @@ obj-$(CONFIG_MTK_XO)	+= xo/
 obj-$(CONFIG_MTK_CMDQ) += cmdq/
 obj-$(CONFIG_MTK_CMDQ) += mdp/
 obj-$(CONFIG_MTK_SMI_EXT) += smi/
+#ifdef ODM_HQ_EDIT
+#liyan@ODM.Multimedia.LCD  2019/08/27 add for LCD bias setting
+obj-$(CONFIG_SET_LCD_BIAS_ODM_HQ) += lcd_bias/
+#endif #ODM_HQ_EDIT
 obj-$(CONFIG_MTK_LCM) += lcm/
 obj-$(CONFIG_MTK_LCM) += ext_disp/
 obj-$(CONFIG_MTK_HDMI_SUPPORT) += hdmi/
@@ -127,7 +131,6 @@ obj-$(CONFIG_RT_REGMAP) += rt-regmap/
 obj-$(CONFIG_MTK_VIDEOCODEC_DRIVER) += videocodec/
 obj-$(CONFIG_MTK_JPEG) += jpeg/
 obj-$(CONFIG_MTK_CCU) += ccu/src/
-obj-$(CONFIG_SAGA_MEMORY) += saga_memory/
 
 obj-$(CONFIG_MTK_CQDMA) += cqdma/
 
@@ -148,7 +151,6 @@ obj-$(CONFIG_MTK_MTD_NAND) += nand/
 obj-y += performance/
 obj-$(CONFIG_MEDIATEK_SOLUTION) += cmo/
 obj-$(CONFIG_MTK_VOW_SUPPORT)  += vow/
-obj-$(CONFIG_NFC_CHIP_SUPPORT) += nfc/
 obj-y += io_boost/
 obj-y += mtprintk/
 ifneq ($(wildcard $(srctree)/drivers/misc/mediatek/met_drv/),)
@@ -158,14 +160,13 @@ obj-y += perf/
 obj-$(CONFIG_MTK_JPEG) += jpeg/
 obj-$(CONFIG_MTK_SPMTWAM) += twam/
 obj-$(CONFIG_MTK_LOW_POWER_MODULE) += lpm/
-ifneq ($(strip $(CUSTOM_KERNEL_HALL)),)
-obj-y += hall/
-endif
-ifeq ($(CONFIG_MTK_HAVE_EXTERNAL_VENDOR_PATH),y)
-obj-y += ../../../../$(subst $\",,$(CONFIG_MTK_EXTERNAL_VENDOR_PATH))
-endif
-ifeq ($(strip $(VANZO_FEATURE_FAKE_DUAL_CAMERA_BY_NAME)),yes)
-ifneq ($(strip $(CUSTOM_FAKE_CAMERA)),)
-subdir-ccflags-y += -DCONFIG_FAKE_DUAL_CAMERA
-endif
-endif
+
+
+obj-$(CONFIG_MTK_SMARTPA_SOUND)	+= smartpa/
+
+#Lijian@ODM.Camera.Drv 20190827 for snesor bringup
+obj-$(CONFIG_HQ_CAMERA_LDO) += camera_ldo/
+##ifdef ODM_HQ_EDIT
+## zuoqiquan@ODM.BSP.Sensor  2019/09/06 bring up nfc 
+obj-$(CONFIG_NFC_CHIP_PN553) += nfc/
+##endif

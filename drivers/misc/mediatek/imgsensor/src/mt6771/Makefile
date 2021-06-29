@@ -20,19 +20,7 @@ COMMON_VERSION := v1_1
 subdir-ccflags-y += -I$(IMGSENSOR_DRIVER_PATH)/common/$(COMMON_VERSION) \
 	-I$(IMGSENSOR_DRIVER_PATH)/$(MTK_PLATFORM)/seninf/ \
 	-I$(srctree)/drivers/i2c/busses/
-# Stoneoim:yucheng on: Sat, 15 Oct 2016 12:31:11 +0800
-# added for aosp management to import our variable
-project_name:=$(shell echo $(VANZO_INNER_PROJECT_NAME))
-ifneq ($(strip $(project_name)),)
--include $(srctree)/../zprojects/$(project_name)/$(project_name).mk
-ifneq ($(strip $(CUSTOM_KERNEL_IMGSENSOR)),)
-CONFIG_CUSTOM_KERNEL_IMGSENSOR:=$(CUSTOM_KERNEL_IMGSENSOR)
-endif
-endif
-# End of Stoneoim: yucheng
-
 obj-y				+= ../common/$(COMMON_VERSION)/imgsensor.o
-obj-$(CONFIG_IMGSENSOR_MOTO)	+= ../common/$(COMMON_VERSION)/moto_img.o
 obj-y				+= ../common/$(COMMON_VERSION)/imgsensor.o
 obj-y				+= ../common/$(COMMON_VERSION)/imgsensor_hw.o
 obj-y				+= ../common/$(COMMON_VERSION)/imgsensor_i2c.o

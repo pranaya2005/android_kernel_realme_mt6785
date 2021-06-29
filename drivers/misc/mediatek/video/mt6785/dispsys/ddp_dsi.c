@@ -46,6 +46,13 @@
 #include "ddp_clkmgr.h"
 #include "primary_display.h"
 
+#ifdef ODM_HQ_EDIT
+/* liyan@ODM.Multimedia.LCD  2019/08/27 add for LCD bias setting */
+#ifdef CONFIG_SET_LCD_BIAS_ODM_HQ
+#include "../../../lcd_bias/lcd_bias.h"
+#endif //CONFIG_SET_LCD_BIAS_ODM_HQ
+#endif //ODM_HQ_EDIT
+
 /*****************************************************************************/
 enum MIPITX_PAD_VALUE {
 	PAD_D2P_V = 0,
@@ -178,9 +185,11 @@ struct t_dsi_context {
 	//high frame rate
 	unsigned int data_phy_cycle;
 	unsigned int HS_TRAIL;
+
 	/*DynFPS*/
 	unsigned int disp_fps;
 	unsigned int dynfps_chg_index;
+
 };
 
 struct t_dsi_context _dsi_context[DSI_INTERFACE_NUM];
@@ -1010,6 +1019,7 @@ void DSI_CPHY_Calc_VDO_Timing(enum DISP_MODULE_ENUM module,
 		/*if not power on scenario
 		 * if disp_fps !=0 means dynfps happen
 		 */
+
 		DDPMSG("%s, _dsi_context[i].disp_fps=%d\n",
 		__func__, _dsi_context[i].disp_fps);
 
@@ -2872,12 +2882,13 @@ void DSI_CPHY_TIMCONFIG(enum DISP_MODULE_ENUM module, struct cmdqRecStruct *cmdq
 	unsigned int cycle_time = 0;
 	unsigned int ui = 0;
 	unsigned int hs_trail;
-	unsigned int _PLL_CLOCK = 0;
-	unsigned int _data_rate = 0;
+
 #ifdef CONFIG_MTK_HIGH_FRAME_RATE
 	unsigned int j = 0;
 	struct dfps_info *dfps_params = NULL;
 #endif
+	unsigned int _PLL_CLOCK = 0;
+	unsigned int _data_rate = 0;
 
 #ifdef CONFIG_FPGA_EARLY_PORTING
 	/* sync from cmm */
@@ -2965,7 +2976,6 @@ void DSI_CPHY_TIMCONFIG(enum DISP_MODULE_ENUM module, struct cmdqRecStruct *cmdq
 		ASSERT(0);
 	}
 
-
 #define NS_TO_CYCLE(n, c)	((n) / (c))
 
 	hs_trail = (dsi_params->HS_TRAIL == 0) ?
@@ -2973,13 +2983,14 @@ void DSI_CPHY_TIMCONFIG(enum DISP_MODULE_ENUM module, struct cmdqRecStruct *cmdq
 
 	/* +3 is recommended from designer becauase of HW latency */
 	timcon0.HS_TRAIL = hs_trail;
-	//HS_PRPR=DATA_RATE*50.5/7000+1
+	//hs_prpr = data_rate*101/7000+1
 	timcon0.HS_PRPR = (dsi_params->HS_PRPR == 0) ?
 		(NS_TO_CYCLE(_PLL_CLOCK * 101, 7000) + 1) :
 		dsi_params->HS_PRPR;
 
 	timcon0.HS_ZERO = (dsi_params->HS_ZERO == 0) ?
 		48 : dsi_params->HS_ZERO;
+
 
 	timcon0.LPX = (dsi_params->LPX == 0) ?
 		(NS_TO_CYCLE(_PLL_CLOCK * 2 * 75, 7000)
@@ -2993,7 +3004,7 @@ void DSI_CPHY_TIMCONFIG(enum DISP_MODULE_ENUM module, struct cmdqRecStruct *cmdq
 		(0x4 * timcon0.LPX) : dsi_params->TA_GO;
 	/* --------------------------------------------------------------
 	 * NT35510 need fine tune timing
-	 * Data_hs_exit = data_rate*112.5/7000+1
+	 * Data_hs_exit = data_rate*225/7000+1
 	 * Clk_post = 60 ns + 128 UI.
 	 * --------------------------------------------------------------
 	 */
@@ -3683,7 +3694,7 @@ UINT32 DSI_dcs_read_lcm_reg_v4(enum DISP_MODULE_ENUM module,
 	/* Just read 10 bytes valid each time */
 	UINT32 VALID_DATA_SIZE = 10;
 	int dsi_i, i, ret = 0;
-	UINT8 buffer[30] = {0};
+	UINT8 buffer[30];
 	struct DSI_RX_DATA_REG read_data[4];
 	UINT32 recv_data_cnt = 0;
 	UINT32 read_data_cnt = 0;
@@ -4341,6 +4352,16 @@ unsigned int DSI_dcs_read_lcm_reg_v2_wrapper_DSIDUAL(UINT8 cmd, UINT8 *buffer,
 				       buffer_size);
 }
 
+#ifdef ODM_HQ_EDIT
+/* liyan@ODM.Multimedia.LCD  2019/08/27 add for LCD bias setting */
+#ifdef CONFIG_SET_LCD_BIAS_ODM_HQ
+static void lcm_set_lcd_bias_en(unsigned int en, unsigned int seq, unsigned int value)
+{
+	lcd_bias_set_vspn(en, seq, value);
+}
+#endif //CONFIG_SET_LCD_BIAS_ODM_HQ
+#endif //ODM_HQ_EDIT
+
 long lcd_enp_bias_setting(unsigned int value)
 {
 	long ret = 0;
@@ -4454,6 +4475,12 @@ int ddp_dsi_set_lcm_utils(enum DISP_MODULE_ENUM module,
 							mt_set_gpio_pull_enable;
 #endif
 #else
+#ifdef ODM_HQ_EDIT
+	/* liyan@ODM.Multimedia.LCD  2019/08/27 add for LCD bias setting */
+#ifdef CONFIG_SET_LCD_BIAS_ODM_HQ
+	utils->set_lcd_bias_en = lcm_set_lcd_bias_en;
+#endif //CONFIG_SET_LCD_BIAS_ODM_HQ
+#endif //ODM_HQ_EDIT
 	utils->set_gpio_lcd_enp_bias = lcd_enp_bias_setting;
 #endif
 #ifdef CONFIG_MTK_HIGH_FRAME_RATE
@@ -7197,6 +7224,7 @@ void ddp_dsi_dynfps_chg_fps(
 	/*we will not change dsi_params
 	 *will use this disp_fps to choose right params
 	 */
+
 	for (i = DSI_MODULE_BEGIN(module); i <= DSI_MODULE_END(module); i++) {
 		_dsi_context[i].disp_fps = new_fps;
 		_dsi_context[i].dynfps_chg_index = chg_index;
@@ -7212,11 +7240,9 @@ void ddp_dsi_dynfps_chg_fps(
 			DSI_PHY_TIMCONFIG(module, handle, dsi);
 			DSI_Calc_VDO_Timing(module, dsi);
 			DSI_Config_VDO_Timing(module, handle, dsi);
-
 			/*pll off -> on*/
 			dsi_phy_clk_switch_gce(module, handle, false);
 			dsi_phy_clk_switch_gce(module, handle, true);
-
 		} else if (chg_index & DYNFPS_DSI_HFP) {
 			DDPMSG("%s, change HFP\n", __func__);
 			/*DynFPS ToDo whether need change PHY timing */
@@ -7230,6 +7256,7 @@ void ddp_dsi_dynfps_chg_fps(
 
 		} else if (chg_index & DYNFPS_DSI_VFP) {
 			DDPMSG("%s, change VFP\n", __func__);
+			DDPMSG("%s, mipi_clk_change_sta %d\n", __func__,mipi_clk_change_sta);
 			if (!mipi_clk_change_sta)
 				_dsi_context[i].vfp =
 				dfps_params_new->vertical_frontporch;
@@ -7240,6 +7267,9 @@ void ddp_dsi_dynfps_chg_fps(
 			ddp_dsi_porch_setting(module, handle, DSI_VFP,
 						_dsi_context[i].vfp);
 		}
+
+		_dsi_context[i].disp_fps = new_fps;
+		_dsi_context[i].dynfps_chg_index = chg_index;
 
 	}
 

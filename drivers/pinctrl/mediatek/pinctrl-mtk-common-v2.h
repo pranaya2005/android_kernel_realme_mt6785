@@ -201,7 +201,6 @@ struct mtk_pin_soc {
 	/* Specific parameters per SoC */
 	u8                              gpio_m;
 	bool                            ies_present;
-	bool                            race_free_access;
 	const char * const              *base_names;
 	unsigned int                    nbase_names;
 
@@ -257,11 +256,7 @@ int mtk_hw_get_value(struct mtk_pinctrl *hw, const struct mtk_pin_desc *desc,
 
 int mtk_build_eint(struct mtk_pinctrl *hw, struct platform_device *pdev);
 
-/* Stoneoim:zhangqingzhan on: Thu, 12 Dec 2019 09:20:27 +0800
- * disable for reboot
- */
 extern const struct dev_pm_ops mtk_eint_pm_ops_v2;
-// End of Stoneoim: zhangqingzhan
 
 int mtk_pinconf_bias_disable_set(struct mtk_pinctrl *hw,
 				 const struct mtk_pin_desc *desc);

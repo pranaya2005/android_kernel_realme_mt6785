@@ -342,7 +342,7 @@ struct disp_frame_cfg_t {
 	unsigned int hrt_idx;
 
 	/* for panel HBM (High Backlight Mode) control */
-	bool hbm_en;
+	unsigned int hbm_en;
 
 	/*DynFPS*/
 	int active_config;
@@ -545,7 +545,7 @@ struct dynamic_fps_levels {
 };
 
 /*DynFPS start*/
-#define MULTI_CONFIG_NUM 2
+#define MULTI_CONFIG_NUM 3
 struct dyn_config_info {
 	unsigned int vsyncFPS;
 	unsigned int vact_timing_fps;/*active timing fps*/

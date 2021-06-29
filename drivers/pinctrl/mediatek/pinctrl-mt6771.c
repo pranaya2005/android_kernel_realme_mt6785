@@ -528,11 +528,7 @@ static struct platform_driver mt6771_pinctrl_driver = {
 	.driver = {
 		.name = "mt6771-pinctrl",
 		.of_match_table = mt6771_pinctrl_of_match,
-/* Stoneoim:zhangqingzhan on: Thu, 12 Dec 2019 09:18:20 +0800
- * disable for reboot
- */
 		.pm = &mtk_eint_pm_ops_v2,
-// End of Stoneoim: zhangqingzhan
 	},
 	.probe = mt6771_pinctrl_probe,
 };

@@ -351,7 +351,7 @@ static void filter_by_yuv_layers(struct disp_layer_info *disp_info)
 				continue;
 			if (is_yuv(info->src_fmt)) {
 				yuv_cnt++;
-				if (yuv_cnt > 2)
+				if (yuv_cnt > 1)
 					rollback_layer_to_GPU(disp_info,
 						disp_idx, i);
 			}
@@ -631,6 +631,7 @@ unsigned long long layering_get_frame_bw(int active_cfg_id)
 	 */
 	bw_base = (unsigned long long) primary_display_get_width() *
 		primary_display_get_height() * timing_fps * 125 * 4;
+
 	bw_base /= 100 * 1024 * 1024;
 
 	return bw_base;

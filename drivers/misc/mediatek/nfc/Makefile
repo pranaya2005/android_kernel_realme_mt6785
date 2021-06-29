@@ -11,5 +11,7 @@
 # GNU General Public License for more details.
 #
 
-obj-$(CONFIG_NFC_CHIP_SUPPORT) += st21nfc/
-obj-$(CONFIG_NFC_ST54_SPI)     += st54spi.o
+##ifdef ODM_HQ_EDIT
+## zuoqiquan@ODM.BSP.Sensor  2019/09/06 bring up nfc 
+obj-$(CONFIG_NFC_CHIP_PN553) += pn553/
+##endif /*ODM_HQ_EDIT*/

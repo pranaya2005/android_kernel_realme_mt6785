@@ -165,13 +165,6 @@ extern void tpd_get_dts_info(void);
 #define GTP_INT_PORT    1
 extern void tpd_gpio_as_int(int pin);
 extern void tpd_gpio_output(int pin, int level);
-/* Stoneoim:zhangqingzhan on: Thu, 26 Sep 2019 15:15:33 +0800
- * for touchpanel power control use gpio
- */
-#ifdef CONFIG_TPD_POWER_SOURCE_VIA_GPIO
-extern void tpd_ldo_power_enable(bool en);
-#endif
-// End of Stoneoim: zhangqingzhan
 extern const struct of_device_id touch_of_match[];
 #ifdef TPD_DEBUG_CODE
 #include "tpd_debug.h"

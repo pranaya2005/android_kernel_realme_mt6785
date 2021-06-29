@@ -106,6 +106,26 @@ config CHARGER_RT9465
 	  application.
 	  It depends on config MTK_CHARGER.
 
+config CHARGER_BQ2589X
+	bool "Charger Driver for BQ2589X Charger IC"
+	default n
+	depends on MTK_CHARGER
+	help
+	  Say Yes to enable Richtek BQ2589X driver.
+	  It is mainly used as slave IC for dual charger
+	  application.
+	  It depends on config MTK_CHARGER.
+
+config CHARGER_BQ2591X
+	bool "Charger Driver for CHARGER_BQ2591X Charger IC"
+	default n
+	depends on MTK_CHARGER
+	help
+	  Say Yes to enable Richtek BQ2591X driver.
+	  It is mainly used as slave IC for dual charger
+	  application.
+	  It depends on config MTK_CHARGER.
+	  	  
 config CHARGER_RT9458
 	bool "Charger Driver for Richtek RT9458 Charger IC"
 	default n
@@ -161,18 +181,3 @@ config CHARGER_BQ25601
 	  It depends on config MTK_SMART_BATTERY
 	  and config MTK_SWCHR_SUPPORT
 	  Set to Yes if BQ25601 is used.
-	  
-config CHARGER_BQ2560X
-	bool "CHARGER_BQ2560X"
-	help
-	  This is to enable MediaTek supports to BQ2560X.
-	  It depends on config MTK_SMART_BATTERY
-	  and config MTK_SWCHR_SUPPORT
-	  Set to Yes if BQ2560X is used.
-	  
-config WPC_SY65153
-	bool "Charger Driver for sy65153 Charger IC"
-	default n
-	help
-      Say Y to enable
-      sy65153 driver.

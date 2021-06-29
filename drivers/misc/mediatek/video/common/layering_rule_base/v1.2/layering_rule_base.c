@@ -565,7 +565,7 @@ static void print_disp_info_to_log_buffer(struct disp_layer_info *disp_info)
 			i, disp_info->disp_mode[i], disp_info->layer_num[i],
 			disp_info->hrt_num, disp_info->gles_head[i],
 			disp_info->gles_tail[i], l_rule_info->primary_fps,
-			disp_info->active_config_id[0]);
+			disp_info->active_config_id);
 
 		for (j = 0; j < disp_info->layer_num[i]; j++) {
 			layer_info = &disp_info->input_config[i][j];

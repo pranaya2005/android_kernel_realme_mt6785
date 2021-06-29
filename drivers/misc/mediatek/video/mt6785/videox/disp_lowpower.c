@@ -391,7 +391,7 @@ static int primary_display_dsi_vfp_change(int state)
 		/*DynFPS*/
 		if (primary_display_is_support_DynFPS()) {
 			primary_display_dynfps_get_vfp_info(NULL, &apply_vfp);
-			DISPMSG("%s,enter idle, apply new vfp=%d\n",
+			DISPINFO("%s,enter idle, apply new vfp=%d\n",
 				__func__, apply_vfp);
 		}
 #endif
@@ -409,7 +409,7 @@ static int primary_display_dsi_vfp_change(int state)
 		/*DynFPS*/
 		if (primary_display_is_support_DynFPS()) {
 			primary_display_dynfps_get_vfp_info(&apply_vfp, NULL);
-			DISPMSG("%s,leave idle, restore vfp=%d\n",
+			DISPINFO("%s,leave idle, restore vfp=%d\n",
 				__func__, apply_vfp);
 		}
 #endif
@@ -925,7 +925,7 @@ static void _vdo_mode_enter_idle(void)
 				primary_display_dynfps_get_vfp_info(
 					NULL, &_vfp_for_lp);
 
-			DISPMSG("%s,vfp_for_lp ==0\n",
+			DISPINFO("%s,vfp_for_lp ==0\n",
 				__func__, _vfp_for_lp);
 			/*if _vfp_for_lp == 0 don't decrease fps*/
 			if (_vfp_for_lp) {
@@ -949,12 +949,12 @@ static void _vdo_mode_enter_idle(void)
 
 #ifdef MTK_FB_MMDVFS_SUPPORT
 	/* update bandwidth */
+
 	in_fps = primary_display_is_directlink_mode() ? out_fps : 0;
+
 	disp_pm_qos_set_ovl_bw(in_fps, out_fps, &bandwidth);
 	disp_pm_qos_update_bw(bandwidth);
 #endif
-	lcm_fps_ctx_reset(&lcm_fps_ctx);
-
 }
 
 static void _vdo_mode_leave_idle(void)
@@ -964,6 +964,7 @@ static void _vdo_mode_leave_idle(void)
 	unsigned int in_fps = 60;
 	unsigned int out_fps = 60;
 #endif
+
 #ifdef CONFIG_MTK_HIGH_FRAME_RATE
 	unsigned int cur_cfg_id = 0;
 	unsigned int _vsyncFPS = 6000;/*real fps * 100*/
@@ -1025,7 +1026,6 @@ static void _vdo_mode_leave_idle(void)
 	disp_pm_qos_set_ovl_bw(in_fps, out_fps, &bandwidth);
 	disp_pm_qos_update_bw(bandwidth);
 #endif
-	lcm_fps_ctx_reset(&lcm_fps_ctx);
 }
 
 static void _cmd_mode_enter_idle(void)
@@ -1055,12 +1055,11 @@ static void _cmd_mode_enter_idle(void)
 	prim_disp_request_hrt_bw(HRT_BW_UNREQ,
 			DDP_SCENARIO_PRIMARY_DISP, __func__, cfg_id);
 #endif
-	lcm_fps_ctx_reset(&lcm_fps_ctx);
 }
 
 static void _cmd_mode_leave_idle(void)
 {
-	unsigned int cfg_id = 0;
+	unsigned int cfg_id;
 #ifdef MTK_FB_MMDVFS_SUPPORT
 	unsigned long long bandwidth;
 	unsigned int in_fps = 60;
@@ -1097,7 +1096,6 @@ static void _cmd_mode_leave_idle(void)
 	disp_pm_qos_set_ovl_bw(in_fps, out_fps, &bandwidth);
 	disp_pm_qos_update_bw(bandwidth);
 #endif
-	lcm_fps_ctx_reset(&lcm_fps_ctx);
 }
 
 void primary_display_idlemgr_enter_idle_nolock(void)

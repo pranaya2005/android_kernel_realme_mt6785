@@ -548,7 +548,6 @@ update_cfg_file_failed:
 }
 #endif
 
-#ifdef CONFIG_GTP_AUTO_UPDATE_CFG
 static void gup_search_file(s32 search_type)
 {
 	s32 i = 0;
@@ -632,7 +631,6 @@ static void gup_search_file(s32 search_type)
 	}
 	searching_file = 0;
 }
-#endif
 
 static u8 gup_check_update_file(struct i2c_client *client,
 				struct st_fw_head *fw_head, u8 *path)

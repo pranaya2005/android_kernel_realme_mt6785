@@ -23,21 +23,6 @@ MTK_CUSTOM_PATH  := $(srctree)/drivers/misc/mediatek
 
 subdir-ccflags-y += -I$(MTK_CUSTOM_PATH)/lens/sub/inc
 
-#Foeec:zhangqingzhan on: Sat, 29 Feb 2020 14:04:03 +0800
-#TODO:for lens
-ifneq ($(CONFIG_MTK_LENS_USE_MODULE), y)
-#
-obj-y      += sub_lens.o
-project_name:=$(shell echo $(VANZO_INNER_PROJECT_NAME))
-
-ifneq ($(project_name),)
-LENS_LISTS := $(subst ",,$(CUSTOM_KERNEL_SUB_LENS))
-obj-y += $(foreach LEN,$(LENS_LISTS),common/$(LEN)/)
-
-LENS_CODE_DEFS := $(foreach LEN, $(LENS_LISTS),$(foreach v,$(shell echo $(LEN) | tr '[a-z]' '[A-Z]'), -DCONFIG_MTK_LENS_$(v)_SUPPORT))
-$(info LENS_CODE_DEFS $(LENS_CODE_DEFS))
-subdir-ccflags-y += $(LENS_CODE_DEFS)
-else
 ifeq ($(CONFIG_MTK_LENS_USE_MODULE), y)
 
 SUB_CFILES += sub_lens.c
@@ -67,7 +52,3 @@ obj-y  += common/wv511aaf/
 obj-y  += common/ak7371af/
 
 endif
-#
-endif
-endif
-#End of Foeec: zhangqingzhan

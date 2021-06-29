@@ -77,9 +77,9 @@ int disp_lcm_is_arr_support(struct disp_lcm_handle *plcm);
 /*-----------------------DynFPS start-----------------------------------*/
 int disp_lcm_is_dynfps_support(struct disp_lcm_handle *plcm);
 unsigned int disp_lcm_dynfps_get_def_fps(
-		struct disp_lcm_handle *plcm);
+               struct disp_lcm_handle *plcm);
 unsigned int disp_lcm_dynfps_get_dfps_num(
-		struct disp_lcm_handle *plcm);
+               struct disp_lcm_handle *plcm);
 unsigned int disp_lcm_dynfps_get_def_timing_fps(
 	struct disp_lcm_handle *plcm);
 bool disp_lcm_need_send_cmd(
@@ -91,5 +91,11 @@ void disp_lcm_dynfps_send_cmd(
 
 /*-----------------------DynFPS end-----------------------------------*/
 #endif
+
+#ifdef ODM_HQ_EDIT
+int disp_lcm_get_hbm_state(struct disp_lcm_handle *plcm);
+/* Yongpeng.Yi@PSW.MultiMedia.Display.LCD.Machine, 2018/09/10, Add for Porting cabc interface */
+int disp_lcm_oppo_set_lcm_cabc_cmd(struct disp_lcm_handle *plcm, void *handle, unsigned int level);
+#endif /* ODM_HQ_EDIT */
 
 #endif /* _DISP_LCM_H_ */

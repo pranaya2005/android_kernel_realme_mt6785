@@ -85,6 +85,11 @@ static unsigned int esd_check_enable;
 unsigned int esd_checking;
 static int te_irq;
 
+#ifdef ODM_HQ_EDIT
+/* liyan@ODM.HQ.Multimedia.LCM 2019/09/29  add backlight recovery for esd recovery */
+unsigned int esd_recovery_backlight_level = 1600;
+#endif /* ODM_HQ_EDIT */
+
 #if defined(CONFIG_MTK_DUAL_DISPLAY_SUPPORT) && \
 	(CONFIG_MTK_DUAL_DISPLAY_SUPPORT == 2)
 /***********external display dual LCM ESD check******************/
@@ -368,8 +373,7 @@ int do_lcm_vdo_lp_read(struct ddp_lcm_read_cmd_table *read_table)
 	int ret = 0;
 	int i = 0;
 	struct cmdqRecStruct *handle;
-	static cmdqBackupSlotHandle read_Slot[2] = {0, 0};
-	int h = 0;
+	static cmdqBackupSlotHandle read_Slot;
 
 	primary_display_manual_lock();
 
@@ -381,11 +385,10 @@ int do_lcm_vdo_lp_read(struct ddp_lcm_read_cmd_table *read_table)
 
 	/* 0.create esd check cmdq */
 	cmdqRecCreate(CMDQ_SCENARIO_DISP_ESD_CHECK, &handle);
-	for (h = 0; h < 2; h++) {
-		cmdqBackupAllocateSlot(&read_Slot[h], 3);
-		for (i = 0; i < 3; i++)
-			cmdqBackupWriteSlot(read_Slot[h], i, 0xff00ff00);
-	}
+	cmdqBackupAllocateSlot(&read_Slot, 3);
+	for (i = 0; i < 3; i++)
+		cmdqBackupWriteSlot(read_Slot, i, 0xff00ff00);
+
 	/* 1.use cmdq to read from lcm */
 	if (primary_display_is_video_mode()) {
 
@@ -402,7 +405,7 @@ int do_lcm_vdo_lp_read(struct ddp_lcm_read_cmd_table *read_table)
 
 		/* 3.read from lcm */
 		ddp_dsi_read_lcm_cmdq(DISP_MODULE_DSI0,
-		read_Slot, handle, read_table);
+		&read_Slot, handle, read_table);
 
 		/* 4.start dsi vdo mode */
 		dpmgr_path_build_cmdq(primary_get_dpmgr_handle(),
@@ -438,34 +441,16 @@ int do_lcm_vdo_lp_read(struct ddp_lcm_read_cmd_table *read_table)
 		goto DISPTORY;
 	}
 
-	for (i = 0; i < 3; i++) {
-		cmdqBackupReadSlot(read_Slot[0], i,
-			(uint32_t *)&read_table->data[i]);
-
-		cmdqBackupReadSlot(read_Slot[1], i,
-			(uint32_t *)&read_table->data1[i]);
-
-		DISPERR("%s: read_table->data1[%d] byte0~1=0x%x~0x%x\n",
-			__func__, i,
-			read_table->data[i].byte0, read_table->data[i].byte1);
-		DISPERR("%s: read_table->data1[%d] byte2~3=0x%x~0x%x\n",
-			__func__, i,
-			read_table->data[i].byte2, read_table->data[i].byte3);
-		DISPERR("%s: read_table->data1[%d] byte0~1=0x%x~0x%x\n",
-			__func__, i,
-			read_table->data1[i].byte0, read_table->data1[i].byte1);
-		DISPERR("%s: read_table->data1[%d] byte2~3=0x%x~0x%x\n",
-			__func__, i,
-			read_table->data1[i].byte2, read_table->data1[i].byte3);
-	}
+	for (i = 0; i < 3; i++)
+		cmdqBackupReadSlot(read_Slot, i,
+		(uint32_t *)&read_table->data[i]);
 
 DISPTORY:
-	for (h = 0; h < 2; h++) {
-		if (read_Slot[h]) {
-			cmdqBackupFreeSlot(read_Slot[h]);
-			read_Slot[h] = 0;
-		}
+	if (read_Slot) {
+		cmdqBackupFreeSlot(read_Slot);
+		read_Slot = 0;
 	}
+
 	/* 7.destroy esd config thread */
 	cmdqRecDestroy(handle);
 	primary_display_manual_unlock();
@@ -705,6 +690,10 @@ static int primary_display_check_recovery_worker_kthread(void *data)
 	return 0;
 }
 
+#ifdef ODM_HQ_EDIT
+/* zhongwenjie@PSW.BSP.TP.Function, 2018/07/05, Add for tp fw download after esd recovery */
+extern bool flag_lcd_off;
+#endif /*ODM_HQ_EDIT*/
 /* ESD RECOVERY */
 int primary_display_esd_recovery(void)
 {
@@ -773,6 +762,19 @@ int primary_display_esd_recovery(void)
 
 	DISPDBG("[ESD]dsi power reset[begine]\n");
 	dpmgr_path_dsi_power_off(primary_get_dpmgr_handle(), NULL);
+
+	/* liunianliang@ODM.BSP.System 2020/02/17, modify for oppo6771 LCD driver, begin. */
+	#ifdef ODM_HQ_EDIT
+	if (primary_get_lcm()->drv && primary_get_lcm()->drv->hw_reset_before_lp11 && primary_get_lcm()->drv->resume_power){
+		DISPDBG("[recovery]lcm hw_reset before mipi dsi power on\n");
+		primary_get_lcm()->drv->resume_power();
+		primary_get_lcm()->drv->hw_reset_before_lp11();
+	} else {
+		DISPDBG("Do not lcm hw_reset before mipi dsi goes to LP11 state\n");
+	}
+	#endif
+	/* liunianliang@ODM.BSP.System 2020/02/17, modify for oppo6771 LCD driver, end. */
+
 	dpmgr_path_dsi_power_on(primary_get_dpmgr_handle(), NULL);
 	if (!primary_display_is_video_mode())
 		dpmgr_path_ioctl(primary_get_dpmgr_handle(), NULL,
@@ -819,6 +821,11 @@ int primary_display_esd_recovery(void)
 
 	}
 	mmprofile_log_ex(mmp_r, MMPROFILE_FLAG_PULSE, 0, 11);
+#ifdef ODM_HQ_EDIT
+/* liyan@ODM.HQ.Multimedia.LCM 2019/09/29  add backlight recovery for esd recovery */
+	disp_lcm_set_backlight(primary_get_lcm(), NULL, esd_recovery_backlight_level);
+	flag_lcd_off = false;
+#endif /*ODM_HQ_EDIT*/
 
 	/*
 	 * (in suspend) when we stop trigger loop

@@ -35,7 +35,3 @@ config IMGSENSOR_MAIN3
 	depends on SPECIFY_IMGSENSOR
 	help
 	  Specify main3 sensor.
-config IMGSENSOR_MOTO
-	string "sensor moto driver"
-	help
-	  Specify sensor moto .

@@ -46,10 +46,6 @@
 #include "port_rpc.h"
 #define MAX_QUEUE_LENGTH 16
 
-#ifdef VANZO_DEVICE_NAME_SUPPORT
-extern void v_set_dev_name(int id, char *name);
-#endif
-
 static struct gpio_item gpio_mapping_table[] = {
 	{"GPIO_FDD_Band_Support_Detection_1",
 		"GPIO_FDD_BAND_SUPPORT_DETECT_1ST_PIN",},
@@ -201,10 +197,6 @@ static void md_drdi_gpio_status_scan(void)
 	int gpio_md_view;
 	char *curr;
 	int val;
-#ifdef VANZO_DEVICE_NAME_SUPPORT
-	unsigned int drdi_val = 0;
-	char drdi_str[12] = {0};
-#endif
 
 	CCCI_BOOTUP_LOG(0, RPC, "scan didr gpio status\n");
 	for (i = 0; i < ARRAY_SIZE(gpio_mapping_table); i++) {
@@ -214,23 +206,10 @@ static void md_drdi_gpio_status_scan(void)
 		gpio_id = get_md_gpio_info(curr, size, &gpio_md_view);
 		if (gpio_id >= 0) {
 			val = get_md_gpio_val(gpio_id);
-#ifdef VANZO_DEVICE_NAME_SUPPORT
-			drdi_val |= val << i;
-#endif
 			CCCI_BOOTUP_LOG(0, RPC, "GPIO[%s]%d(%d@md),val:%d\n",
 					curr, gpio_id, gpio_md_view, val);
 		}
 	}
-#ifdef VANZO_DEVICE_NAME_SUPPORT
-        if (drdi_val == 0) {
-            strcpy(drdi_str, "E");
-        } else if (drdi_val == 1) {
-            strcpy(drdi_str, "A");
-        } else {
-            strcpy(drdi_str, "Unknown");
-        }
-	v_set_dev_name(6, drdi_str);
-#endif
 }
 
 static int get_dram_type_clk(int *clk, int *type)

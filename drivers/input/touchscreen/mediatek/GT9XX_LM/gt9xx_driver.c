@@ -42,9 +42,7 @@
 #ifdef CONFIG_MID_ITEMS_SUPPORT
 #include <mt-plat/items.h>
 #endif
-#if (defined(CONFIG_MID_ITEMS_SUPPORT) || defined(CONFIG_GTP_DRIVER_SEND_CFG))
 static int item_send_cfg = 1;
-#endif
 
 static int tpd_flag;
 int tpd_halt;
@@ -177,9 +175,7 @@ static struct st_tpd_info tpd_info;
 static u8 int_type;
 static u32 abs_x_max;
 static u32 abs_y_max;
-#ifdef CONFIG_GTP_DRIVER_SEND_CFG
 static u8 pnl_init_error;
-#endif
 u8 cfg_len;
 u8 gtp_resetting;
 static u8 chip_gt9xxs; /* true if chip type is gt9xxs,like gt915s */
@@ -1353,16 +1349,12 @@ reset_proc:
 	msleep(20);
 
 #ifdef TPD_POWER_SOURCE_CUSTOM
-#ifdef CONFIG_TPD_POWER_SOURCE_VIA_GPIO
-	tpd_ldo_power_enable(1);
-#else
 	ret = regulator_set_voltage(tpd->reg, 2800000, 2800000); /* set 2.8v */
 	if (ret)
 		GTP_ERROR("regulator set_voltage() failed!\n");
 	ret = regulator_enable(tpd->reg); /* enable regulator */
 	if (ret)
 		GTP_ERROR("regulator enable() failed!\n");
-#endif
 #else
 	hwPowerOn(MT65XX_POWER_LDO_VGP2, VOL_2800, "TP");
 #endif
@@ -1802,7 +1794,7 @@ static s32 tpd_i2c_probe(struct i2c_client *client,
 #ifdef CONFIG_GTP_PROXIMITY
 	struct hwmsen_object obj_ps;
 #endif
-	//client->addr = 0x14;
+	client->addr = 0x14;
 	i2c_client_point = client;
 
 	ret = tpd_power_on(client);
@@ -1935,13 +1927,9 @@ void force_reset_guitar(void)
 
 /* Power off TP */
 #ifdef TPD_POWER_SOURCE_CUSTOM
-#ifdef CONFIG_TPD_POWER_SOURCE_VIA_GPIO
-	tpd_ldo_power_enable(0);
-#else
 	ret = regulator_disable(tpd->reg);
 	if (ret)
 		GTP_DEBUG("regulator_disable() failed!\n");
-#endif
 #else
 	hwPowerDown(MT65XX_POWER_LDO_VGP2, "TP");
 #endif
@@ -1951,16 +1939,12 @@ void force_reset_guitar(void)
 	msleep(30);
 /* Power on TP */
 #ifdef TPD_POWER_SOURCE_CUSTOM
-#ifdef CONFIG_TPD_POWER_SOURCE_VIA_GPIO
-	tpd_ldo_power_enable(1);
-#else
 	ret = regulator_set_voltage(tpd->reg, 2800000, 2800000);
 	if (ret)
 		GTP_DEBUG("regulator_set_voltage() failed!\n");
 	ret = regulator_enable(tpd->reg); /* enable regulator */
 	if (ret)
 		GTP_DEBUG("regulator_enable() failed!\n");
-#endif
 #else
 	hwPowerOn(MT65XX_POWER_LDO_VGP2, VOL_2800, "TP");
 #endif
@@ -2697,11 +2681,9 @@ exit_unlock:
 static int tpd_local_init(void)
 {
 #ifdef TPD_POWER_SOURCE_CUSTOM
-#ifndef CONFIG_TPD_POWER_SOURCE_VIA_GPIO
-tpd->reg = regulator_get(tpd->tpd_dev, "vtouch");
-if (IS_ERR(tpd->reg))
-	GTP_ERROR("regulator_get() failed!\n");
-#endif
+	tpd->reg = regulator_get(tpd->tpd_dev, "vtouch");
+	if (IS_ERR(tpd->reg))
+		GTP_ERROR("regulator_get() failed!\n");
 #endif
 	gtp_workqueue = create_workqueue("gtp-workqueue");
 #ifdef CONFIG_GTP_ESD_PROTECT
@@ -2770,9 +2752,7 @@ if (IS_ERR(tpd->reg))
 static s8 gtp_enter_sleep(struct i2c_client *client)
 {
 #ifdef CONFIG_GTP_POWER_CTRL_SLEEP
-#ifndef CONFIG_TPD_POWER_SOURCE_VIA_GPIO
 	s32 ret_p = 0;
-#endif
 #endif
 #ifdef CONFIG_GTP_COMPATIBLE_MODE
 	if (gtp_chip_type == CHIP_TYPE_GT9F) {
@@ -2799,13 +2779,9 @@ static s8 gtp_enter_sleep(struct i2c_client *client)
 	tpd_gpio_output(GTP_INT_PORT, 0);
 	msleep(20);
 
-#ifdef CONFIG_TPD_POWER_SOURCE_VIA_GPIO
-	tpd_ldo_power_enable(0);
-#else
 	ret_p = regulator_disable(tpd->reg);
 	if (ret_p != 0)
 		TPD_DMESG("Failed to disable reg-vgp6: %d\n", ret_p);
-#endif
 
 	GTP_INFO("GTP enter sleep by poweroff!");
 	return 0;
@@ -3086,15 +3062,12 @@ static struct tpd_driver_t tpd_device_driver = {
 
 static void tpd_off(void)
 {
-#ifdef CONFIG_TPD_POWER_SOURCE_VIA_GPIO
-	tpd_ldo_power_enable(0);
-#else
+
 	int ret;
 
 	ret = regulator_disable(tpd->reg);
 	if (ret != 0)
 		TPD_DMESG("Failed to disable reg-vgp6: %d\n", ret);
-#endif
 
 	GTP_INFO("GTP enter sleep!");
 

@@ -720,7 +720,6 @@ struct cmdqRecStruct {
 
 	/* task executing data */
 	atomic_t exec;
-	atomic_t wait_protect;
 	enum TASK_STATE_ENUM state;	/* task life cycle */
 	s32 thread;
 	enum cmdq_thread_dispatch thd_dispatch;
@@ -815,8 +814,8 @@ u32 cmdq_event_get_table_size(void);
 
 /* CMDQ core feature functions */
 
-bool cmdq_core_check_user_valid(void *src, u32 size,
-	struct cmdqRecStruct *handle);
+bool cmdq_core_check_user_valid(void *src, u32 size);
+bool cmdq_core_check_pkt_valid(struct cmdq_pkt *pkt);
 
 void cmdq_core_deinit_group_cb(void);
 

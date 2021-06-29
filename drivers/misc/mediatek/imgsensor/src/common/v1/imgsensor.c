@@ -460,34 +460,15 @@ static inline int imgsensor_check_is_alive(struct IMGSENSOR_SENSOR *psensor)
 			&retLen);
 
 	if (sensorID == 0 || sensorID == 0xFFFFFFFF) {
-		pr_info("Fail to get sensor ID %x\n", sensorID);
+		pr_info("Fail to get sensor ID %x, curr_sensorname:%s\n", sensorID, psensor_inst->psensor_name);
 		err = ERROR_SENSOR_CONNECT_FAIL;
 	} else {
-		pr_info(" Sensor found ID = 0x%x\n", sensorID);
+		pr_info("Sensor found ID = 0x%x, curr_sensorname:%s\n", sensorID, psensor_inst->psensor_name);
 		err = ERROR_NONE;
 	}
 
 	if (err != ERROR_NONE)
 		pr_info("ERROR: No imgsensor alive\n");
-
-/* Stoneoim:maxiaojun on: Mon, 26 Aug 2013 17:04:18 +0800
- * board device name support.
-#ifdef VANZO_DEVICE_NAME_SUPPORT
-	{
-		extern void v_set_dev_name(int id, char *name);
-		if (ERROR_NONE == err) {
-			if (IMGSENSOR_SENSOR_IDX_MAIN == psensor_inst->sensor_idx) {
-				v_set_dev_name(3, (char *)psensor_inst->psensor_list->name);
-			} else if (IMGSENSOR_SENSOR_IDX_SUB == psensor_inst->sensor_idx) {
-				v_set_dev_name(5, (char *)psensor_inst->psensor_list->name);
-			} else if (IMGSENSOR_SENSOR_IDX_MAIN2 == psensor_inst->sensor_idx) {
-				v_set_dev_name(4, (char *)psensor_inst->psensor_list->name);
-			}
-		}
-	}
-#endif
- */
-// End of Stoneoim:maxiaojun
 
 	imgsensor_hw_power(&pgimgsensor->hw,
 	    psensor,
@@ -564,20 +545,6 @@ int imgsensor_set_driver(struct IMGSENSOR_SENSOR *psensor)
 		}
 		kfree(psensor_list);
 	}
-
-
-
-	/*pr_debug("get_search_list %d,\n %d %d %d %d\n %d %d %d %d\n",
-	 *   get_search_list,
-	 *   orderedSearchList[0],
-	 *   orderedSearchList[1],
-	 *   orderedSearchList[2],
-	 *   orderedSearchList[3],
-	 *   orderedSearchList[4],
-	 *   orderedSearchList[5],
-	 *   orderedSearchList[6],
-	 *   orderedSearchList[7]);
-	 */
 
 	/*pr_debug(" %d %d %d %d\n %d %d %d %d\n",
 	 *   orderedSearchList[8],
@@ -1179,21 +1146,6 @@ static inline int adopt_CAMERA_HW_GetInfo2(void *pBuf)
 		"\nHDR_Support(0:NO HDR,1: iHDR,2:mvHDR,3:zHDR)=%2d",
 		pSensorInfo->HDR_Support);
 
-#ifdef VANZO_DEVICE_NAME_SUPPORT
-        {
-          extern void v_set_dev_name(int id, char *name);
-            if(pSensorGetInfo->SensorId==0){
-              v_set_dev_name(3, psensor->inst.psensor_name);
-            }
-            else if(pSensorGetInfo->SensorId==1){
-              v_set_dev_name(5, psensor->inst.psensor_name);
-            }
-            else if(pSensorGetInfo->SensorId==2){
-              v_set_dev_name(4, psensor->inst.psensor_name);
-            }
-        }
-#endif
-
 	/* Resolution */
 	if (copy_to_user(
 	    (void __user *) (pSensorGetInfo->pSensorResolution),
@@ -1318,7 +1270,6 @@ static inline int adopt_CAMERA_HW_FeatureControl(void *pBuf)
 		psensor->inst.sensor_idx = pFeatureCtrl->InvokeCamera;
 		drv_idx = imgsensor_set_driver(psensor);
 		memcpy(pFeaturePara, &drv_idx, FeatureParaLen);
-
 		break;
 	}
 	case SENSOR_FEATURE_CHECK_IS_ALIVE:

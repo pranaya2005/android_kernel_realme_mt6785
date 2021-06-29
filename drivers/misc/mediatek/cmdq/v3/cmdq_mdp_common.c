@@ -993,6 +993,12 @@ void cmdq_mdp_add_consume_item(void)
 	}
 }
 
+static s32 cmdq_mdp_copy_cmd_to_task(struct cmdqRecStruct *handle,
+	void *src, u32 size, bool user_space)
+{
+	return cmdq_pkt_copy_cmd(handle, src, size, user_space);
+}
+
 static void cmdq_mdp_store_debug(struct cmdqCommandStruct *desc,
 	struct cmdqRecStruct *handle)
 {
@@ -1290,32 +1296,29 @@ s32 cmdq_mdp_flush_async(struct cmdqCommandStruct *desc, bool user_space,
 	if (desc->prop_size && desc->prop_addr &&
 		desc->prop_size < CMDQ_MAX_USER_PROP_SIZE) {
 		handle->prop_addr = kzalloc(desc->prop_size, GFP_KERNEL);
-
+		memcpy(handle->prop_addr, (void *)CMDQ_U32_PTR(desc->prop_addr),
+			desc->prop_size);
 		handle->prop_size = desc->prop_size;
-
-		if (handle->prop_addr) {
-			memcpy(handle->prop_addr,
-				(void *)CMDQ_U32_PTR(desc->prop_addr),
-				desc->prop_size);
-		} else {
-			handle->prop_addr = NULL;
-			handle->prop_size = 0;
-		}
-
 	} else {
 		handle->prop_addr = NULL;
 		handle->prop_size = 0;
 	}
 
 	copy_size = desc->blockSize - 2 * CMDQ_INST_SIZE;
-	CMDQ_TRACE_FORCE_BEGIN("%s check copy %u\n", __func__, copy_size);
-	if (user_space && !cmdq_core_check_user_valid(
-		(void *)(unsigned long)desc->pVABase, copy_size, handle)) {
-		cmdq_task_destroy(handle);
-		CMDQ_TRACE_FORCE_END();
-		return -EFAULT;
+	if (copy_size > 0) {
+		err = cmdq_mdp_copy_cmd_to_task(handle,
+			(void *)(unsigned long)desc->pVABase,
+			copy_size, user_space);
+		if (err < 0) {
+			cmdq_task_destroy(handle);
+			CMDQ_TRACE_FORCE_END();
+			return err;
+		}
 	}
-	CMDQ_TRACE_FORCE_END();
+
+	if (user_space && !cmdq_core_check_user_valid(
+		(void *)(unsigned long)desc->pVABase, copy_size))
+		return -EFAULT;
 
 	if (desc->regRequest.count &&
 			desc->regRequest.count <= CMDQ_MAX_DUMP_REG_COUNT &&
@@ -1344,8 +1347,16 @@ s32 cmdq_mdp_flush_async(struct cmdqCommandStruct *desc, bool user_space,
 	if (handle->profile_exec)
 		cmdq_pkt_perf_end(handle->pkt);
 
+	err = cmdq_mdp_copy_cmd_to_task(handle,
+		(void *)(unsigned long)desc->pVABase + copy_size,
+		2 * CMDQ_INST_SIZE, user_space);
+	if (err < 0) {
+		cmdq_task_destroy(handle);
+		CMDQ_SYSTRACE_END();
+		return err;
+	}
+
 	/* mark finalized since we copy it */
-	cmdq_pkt_finalize(handle->pkt);
 	handle->finalized = true;
 
 	/* assign handle for mdp */
@@ -1421,7 +1432,7 @@ struct cmdqRecStruct *cmdq_mdp_get_valid_handle(unsigned long job)
 s32 cmdq_mdp_wait(struct cmdqRecStruct *handle,
 	struct cmdqRegValueStruct *results)
 {
-	s32 status, waitq, wait_cnt;
+	s32 status, waitq;
 	u32 i;
 	u64 exec_cost;
 
@@ -1464,15 +1475,6 @@ s32 cmdq_mdp_wait(struct cmdqRecStruct *handle,
 	CMDQ_MSG("%s wait handle:0x%p thread:%d\n",
 		__func__, handle, handle->thread);
 
-	wait_cnt = atomic_inc_return(&handle->wait_protect);
-	if (wait_cnt != 1) {
-		CMDQ_ERR(
-			"wait twice:%d submit:%llu trigger:%llu wait:%llu irq:%llu wakeup:%llu\n",
-			wait_cnt,
-			handle->submit, handle->trigger, handle->beginWait,
-			handle->gotIRQ, handle->wakedUp);
-	}
-
 	/* wait handle flush done */
 	exec_cost = sched_clock();
 	status = cmdq_pkt_wait_flush_ex_result(handle);
@@ -1509,7 +1511,7 @@ s32 cmdq_mdp_flush(struct cmdqCommandStruct *desc, bool user_space)
 	s32 status;
 
 	status = cmdq_mdp_flush_async(desc, user_space, &handle);
-	if (!handle || status < 0) {
+	if (!handle) {
 		CMDQ_ERR("mdp flush async failed:%d\n", status);
 		return status;
 	}

@@ -1714,6 +1714,8 @@ static int speech_property_get(struct snd_kcontrol *kcontrol,
 	}
 	ucontrol->value.integer.value[0] = *sph_property;
 
+	dev_info(afe->dev, "%s(), %s = 0x%x\n", __func__,
+		 kcontrol->id.name, *sph_property);
 	return 0;
 }
 
@@ -1733,6 +1735,8 @@ static int speech_property_set(struct snd_kcontrol *kcontrol,
 	}
 	*sph_property = ucontrol->value.integer.value[0];
 
+	dev_info(afe->dev, "%s(), %s = 0x%x\n", __func__,
+		 kcontrol->id.name, *sph_property);
 	return 0;
 }
 

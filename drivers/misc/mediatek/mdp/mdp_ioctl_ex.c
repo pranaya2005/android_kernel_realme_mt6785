@@ -394,6 +394,7 @@ static s32 translate_meta(struct op_meta *meta,
 			status = cmdq_mdp_update_sec_addr_index(handle,
 				meta->sec_handle, meta->sec_index,
 				cmdq_mdp_handle_get_instr_count(handle) - 1);
+		break;
 	}
 	case CMDQ_MOP_NOP:
 		break;

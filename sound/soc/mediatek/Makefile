@@ -23,6 +23,12 @@ obj-$(CONFIG_MTK_VOW_BARGE_IN_SUPPORT) += scp_vow/
 obj-$(CONFIG_MTK_AUDIODSP_SUPPORT) += audio_dsp/
 obj-$(CONFIG_SND_SOC_MTK_AUDIO_DSP) += audio_dsp/
 
+#ifdef ODM_HQ_EDIT
+#fanxiongnan@ODM.HQ.Multimedia.Audio 2019/11/06 added for SIA8109 speaker pa
+# si driver
+obj-$(CONFIG_SND_SOC_SIA8109) += sia81xx/
+#endif /* ODM_HQ_EDIT */
+
 # btcvsd
 obj-$(CONFIG_SND_SOC_MTK_BTCVSD) += common/
 obj-$(CONFIG_MTK_AUDIO_TUNNELING_SUPPORT) += common_int/
@@ -34,12 +40,6 @@ obj-$(CONFIG_SND_SOC_MT6785) += mt6785/
 obj-$(CONFIG_SND_SOC_MT8173) += mt8173/
 obj-$(CONFIG_SND_SOC_MT6885) += mt6885/
 obj-$(CONFIG_SND_SOC_MT8167) += mt8167/
-#for AWINIC AW889X Smart K PA
-obj-$(CONFIG_SND_SOC_AW87319) += aw87319_audio.o
-obj-$(CONFIG_SND_SOC_AW87329) += aw87329_audio.o
-obj-$(CONFIG_SND_SOC_AW87359) += aw87359_audio.o
-#for AWINIC AW889X Smart K PA
-obj-$(CONFIG_SND_SOC_AW87XXX) += awinic/
 # adsp
 ifeq ($(CONFIG_MTK_AURISYS_PHONE_CALL_SUPPORT),y)
 subdir-ccflags-y += -I$(srctree)/drivers/misc/mediatek/audio_ipi/common/framework/
@@ -103,3 +103,13 @@ obj-y += $(AUDIO_PLATFORM)/
 # AP include path
 subdir-ccflags-y += -Werror -I$(src)/$(AUDIO_PLATFORM)
 endif
+
+#ifdef ODM_HQ_EDIT
+#fanxiongnan@ODM.HQ.Multimedia.Audio 2019/10/09 added for aw87339 bringup
+obj-$(CONFIG_SND_SOC_AW87339) += aw87339_audio.o
+#endif /* ODM_HQ_EDIT */
+
+#ifdef ODM_HQ_EDIT
+#sunjingtao@ODM.HQ.Multimedia.Audio 2020/04/17 added for aw87359 bringup
+obj-$(CONFIG_SND_SOC_AW87359) += aw87359_audio.o
+#endif /* ODM_HQ_EDIT */

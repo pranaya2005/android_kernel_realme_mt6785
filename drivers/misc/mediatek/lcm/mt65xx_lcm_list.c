@@ -28,59 +28,191 @@ enum LCM_DSI_MODE_CON lcm_dsi_mode;
 #define LCD_HW_ID_STATUS_ERROR  0x03
 
 struct LCM_DRIVER *lcm_driver_list[] = {
-#if defined(NT36682_CTC640_FHDPP2310)
-	&nt36682_ctc640_fhdpp2310_lcm_drv,
-#endif
-#if defined(ILI9882H_PANDA652_YKL_HDPLUS1600)
-	&ili9882h_panda652_ykl_hdplus1600_lcm_drv,
-#endif
-#if defined(NV3051D_IVO572_REDMI_HDP)
-    &nv3051d_ivo572_redmi_hdp_lcm_drv,
-#endif
-#if defined(FT8719_AUO630_XL_FHDPP2340)
-    &ft8719_auo630_xl_fhdpp2340_lcm_drv,
-#endif
-#if defined(ILI9881H_HJC652_HAIFEI_HDPLUS1600)
-	&ili9881h_hjc652_haifei_hdplus1600_lcm_drv,
-#endif
-#if defined(ILI9882H_PANDA652_HAIFEI_HDPLUS1600)
-	&ili9882h_panda652_haifei_hdplus1600_lcm_drv,
-#endif
-#if defined(ILI9882N_CAIHONG652_XINLI_HDPLUS1600)
-	&ili9882n_caihong652_xinli_hdplus1600_lcm_drv,
-#endif
-#if defined(ILI9882N_HJC652_HAIFEI_HDPLUS1600)
-	&ili9882n_hjc652_haifei_hdplus1600_lcm_drv,
-#endif
-#if defined(FT8201_CPT80_WXGA)
-	&ft8201_cpt80_wxga_lcm_drv,
-#endif
-#if defined(ILI9881C_CPT80_MC_WXGA)
-	&ili9881c_cpt80_mc_wxga_lcm_drv,
-#endif
-#if defined(NT36526_TM635_XL_HDPLUS1560)
-	&nt36526_tm635_xl_hdplus1560_lcm_drv,
-#endif
-#if defined(FT8719P_FHDPLUSPLUS_DSI_VDO_VIVO)
-	&ft8719p_fhdplusplus_dsi_vdo_vivo_lcm_drv,
-#endif
-#if defined(FT8719P_AUO63_FHDPLUSPLUS_DSI_ZONGCHENG_VDO)
-	&ft8719p_auo63_fhdplusplus_dsi_zongcheng_vdo_lcm_drv,
-#endif
-#if defined(R61350_CPT55_XINLI_LHD)
-	&r61350_cpt55_xinli_lhd_lcm_drv,
-#endif
-#if defined(TD4320_AUO640_AUO_FHDPP2310)
-    &td4320_auo640_auo_fhdpp2310_lcm_drv,
-#endif
-#if defined(TD4330_FHDPLUS_DSI_VDO_BOE)
-    &td4330_fhdplus_dsi_vdo_boe_lcm_drv,
-#endif
-#if defined(FT8719_JDI653_HST_FHDPP2340)
-    &ft8719_jdi653_hst_fhdpp2340_lcm_drv,
-#endif
+
+#ifdef ODM_HQ_EDIT
+#if defined(NT36672C_FHDP_DSI_VDO_TIANMA_ZAL1878)
+		&nt36672c_fhdp_dsi_vdo_tianma_zal1878_lcm_drv,
+#endif //NT36672C_FHDP_DSI_VDO_TIANMA_ZAL1878
+#if defined(NT36672C_FHDP_DSI_VDO_JDI_ZAL1878)
+		&nt36672c_fhdp_dsi_vdo_jdi_zal1878_lcm_drv,
+#endif //NT36672C_FHDP_DSI_VDO_JDI_ZAL1878
+#if defined(NT36672C_FHDP_DSI_VDO_BOE_T0_ZAL1878)
+		&nt36672c_fhdp_dsi_vdo_boe_t0_zal1878_lcm_drv,
+#endif //NT36672C_FHDP_DSI_VDO_BOE_T0_ZAL1878
+#if defined(NT36672C_FHDP_DSI_VDO_EVB2_ZAL1878)
+		&nt36672c_fhdp_dsi_vdo_evb2_zal1878_lcm_drv,
+#endif //NT36672C_FHDP_DSI_VDO_EVB2_ZAL1878
+#if defined(HX83112A_FHDP_DSI_VDO_JDI_ZAL1878)
+		&hx83112a_fhdp_dsi_vdo_jdi_zal1878_lcm_drv,
+#endif //HX83112A_FHDP_DSI_VDO_JDI_ZAL1878
+#if defined(HX83112A_FHDP_DSI_VDO_JDI_T0_ZAL1878)
+		&hx83112a_fhdp_dsi_vdo_jdi_t0_zal1878_lcm_drv,
+#endif //HX83112A_FHDP_DSI_VDO_JDI_T0_ZAL1878
+#if defined(NT36672C_FHDP_DSI_VDO_TIANMA_ZAL1852)
+		&nt36672c_fhdp_dsi_vdo_tianma_zal1852_lcm_drv,
+#endif //NT36672C_FHDP_DSI_VDO_TIANMA_ZAL1852
+#if defined(NT36672C_FHDP_DSI_VDO_JDI_ZAL1852)
+		&nt36672c_fhdp_dsi_vdo_jdi_zal1852_lcm_drv,
+#endif //NT36672C_FHDP_DSI_VDO_JDI_ZAL1852
+
+#if defined(NT36672C_FHDP_DSI_VDO_BOE_ZAL1852)
+		&nt36672c_fhdp_dsi_vdo_boe_zal1852_lcm_drv,
+#endif //NT36672C_FHDP_DSI_VDO_BOE_ZAL1852
+
+#endif //ODM_HQ_EDIT
+
+#ifdef ODM_HQ_EDIT
+/* Benshan.Cheng@ODM.Multimedia.LCD  2019/09/27 add for LCD bring up */
+#if defined(ILI9881H_HDP_DSI_VDO_BOE_ZAL1851)
+		&ili9881h_hdp_dsi_vdo_boe_zal1851_lcm_drv,
+#endif //ILI9881H_HDP_DSI_VDO_BOE_ZAL1851
+#if defined(NT36525B_HDP_DSI_VDO_INX_ZAL1851)
+		&nt36525b_hdp_dsi_vdo_inx_zal1851_lcm_drv,
+#endif //NT36525B_HDP_DSI_VDO_INX_ZAL1851
+#endif //ODM_HQ_EDIT
+
 #if defined(ES6311_ANX6585_ZIGZAG_WXGA)
 	&es6311_anx6585_zigzag_wxga_lcm_drv,
+#endif
+
+#ifdef VENDOR_EDIT
+/* zhoujian-xinzhi@PSW.MM.Display.LCD.Machine, 2019/09/17, Add for porting lcd driver */
+#if defined(OPPO18311_DEPUTE_NT36672_1080P_DSI_VDO)
+        &oppo18311_depute_nt36672_1080p_dsi_vdo_lcm_drv,
+#endif
+
+#if defined(OPPO18311_DSJM_HIMAX83112A_1080P_DSI_VDO)
+        &oppo18311_dsjm_himax83112a_1080p_dsi_vdo_lcm_drv,
+#endif
+
+#if defined(OPPO18311_TIANMA_NT36672_1080P_DSI_VDO)
+        &oppo18311_tianma_nt36672_1080p_dsi_vdo_lcm_drv,
+#endif
+
+#if defined(OPPO18311_TRULY_TD4320_1080P_DSI_VDO)
+        &oppo18311_truly_td4320_1080p_dsi_vdo_lcm_drv,
+#endif
+
+#if defined(OPPO19531_SAMSUNG_AMS641RW01_1080P_DSI_CMD)
+        &oppo19531_samsung_ams641rw01_1080p_dsi_cmd_lcm_drv,
+#endif
+
+#if defined(OPPO17321_BOE_TD4310_1080P_DSI_VDO)
+        &oppo17321_boe_td4310_1080p_dsi_vdo_lcm_drv,
+#endif
+
+#if defined(OPPO17321_DSJM_TD4310_1080P_DSI_VDO)
+        &oppo17321_dsjm_td4310_1080p_dsi_vdo_lcm_drv,
+#endif
+
+#if defined(OPPO17321_TIANMA_TD4310_1080P_DSI_VDO)
+        &oppo17321_tianma_td4310_1080p_dsi_vdo_lcm_drv,
+#endif
+
+#if defined(OPPO_DSJM_NT36672_1080P_DSI_VDO)
+        &oppo_dsjm_nt36672_1080p_dsi_vdo_lcm_drv,
+#endif
+
+#if defined(OPPO_HIMAX83112B_1080P_DSI_CMD)
+        &oppo_himax83112b_1080p_dsi_cmd_lcm_drv,
+#endif
+
+#if defined(OPPO_JDI_NT36672_1080P_DSI_VDO)
+        &oppo_jdi_nt36672_1080p_dsi_vdo_lcm_drv,
+#endif
+
+#if defined(OPPO_JDI_TD4310_1080P_DSI_VDO)
+        &oppo_jdi_td4310_1080p_dsi_vdo_lcm_drv,
+#endif
+
+#if defined(OPPO_JDI_TD4330_1080P_DSI_CMD)
+        &oppo_jdi_td4330_1080p_dsi_cmd_lcm_drv,
+#endif
+
+#if defined(OPPO_SAMSUNG_AMS628NW_1080P_DSI_CMD)
+        &oppo_samsung_ams628nw_1080p_dsi_cmd_lcm_drv,
+#endif
+
+#if defined(OPPO_SAMSUNG_AMS628NW_LSI_1080P_DSI_CMD)
+        &oppo_samsung_ams628nw_lsi_1080p_dsi_cmd_lcm_drv,
+#endif
+
+#if defined(OPPO_TIANMA_NT36672_1080P_DSI_VDO)
+        &oppo_tianma_nt36672_1080p_dsi_vdo_lcm_drv,
+#endif
+
+#if defined(OPPO_TRULY_NT36672_AUO_1080P_DSI_VDO)
+        &oppo_truly_nt36672_auo_1080p_dsi_vdo_lcm_drv,
+#endif
+
+#if defined(OPPO_AUO_NT36672_1080P_DSI_VDO)
+       &oppo_auo_nt36672_1080p_dsi_vdo_lcm_drv,
+#endif
+
+#if defined(OPPO_DPT_JDI_HX83112A_1080P_DSI_VDO)
+        &oppo_dpt_jdi_hx83112a_1080p_dsi_vdo_lcm_drv,
+#endif
+
+#if defined(OPPO_DPT_JDI_NT36672_1080P_DSI_VDO)
+        &oppo_dpt_jdi_nt36672_1080p_dsi_vdo_lcm_drv,
+#endif
+
+#if defined(OPPO_DPT_JDI_TD4330_1080P_DSI_CMD)
+        &oppo_dpt_jdi_td4330_1080p_dsi_cmd_lcm_drv,
+#endif
+#endif /* VENDOR_EDIT*/
+
+/* zhoujian-xinzhi@PSW.MM.Display.LCD.Machine, 2019/09/03, Add for porting 18561 lcd driver */
+#ifdef VENDOR_EDIT
+#if defined(OPPO18561_DJN_JDI_HIMAX83112B_1080P_DSI_CMD)
+	&oppo18561_djn_jdi_himax83112b_1080p_dsi_cmd_lcm_drv,
+#endif
+
+#if defined(OPPO18561_DPT_JDI_TD4330_1080P_DSI_CMD)
+	&oppo18561_dpt_jdi_td4330_1080p_dsi_cmd_lcm_drv,
+#endif
+
+#if defined(OPPO18561_DSJM_JDI_HIMAX83112A_1080P_DSI_VDO)
+	&oppo18561_dsjm_jdi_himax83112a_1080p_dsi_vdo_lcm_drv,
+#endif
+
+#if defined(OPPO18561_DSJM_JDI_TD4330_1080P_DSI_CMD)
+	&oppo18561_dsjm_jdi_td4330_1080p_dsi_cmd_lcm_drv,
+#endif
+
+#if defined(OPPO18561_TIANMA_HIMAX83112A_1080P_DSI_VDO)
+	&oppo18561_tianma_himax83112a_1080p_dsi_vdo_lcm_drv,
+#endif
+
+#if defined(OPPO18561_TIANMA_TD4330_1080P_DSI_CMD)
+	&oppo18561_tianma_td4330_1080p_dsi_cmd_lcm_drv,
+#endif
+#endif /* VENDOR_EDIT*/
+/* zhoujian-xinzhi@PSW.MM.Display.LCD.Machine, 2019/08/30, Add for porting 18531 lcd driver */
+#ifdef VENDOR_EDIT
+#if defined(OPPO18531_TM_HIMAX83112A_2_1080P_DSI_VDO)
+	&oppo18531_tm_himax83112a_2_1080p_dsi_vdo_lcm_drv,
+#endif
+#if defined(OPPO18531_TM_NT36670A_1080P_DSI_CMD)
+	&oppo18531_tm_nt36670a_1080p_dsi_cmd_lcm_drv,
+#endif
+#if defined(OPPO18531_DSJM_JDI_HIMAX83112B_1080P_DSI_CMD)
+	&oppo18531_dsjm_jdi_himax83112b_1080p_dsi_cmd_lcm_drv,
+#endif
+#if defined(OPPO18531_DPT_JDI_HIMAX83112A_2_1080P_DSI_VDO)
+	&oppo18531_dpt_jdi_himax83112a_2_1080p_dsi_vdo_lcm_drv,
+#endif
+#endif /*VENDOR_EDIT*/
+#if defined(OPPO18531_TIANMA_TD4330_1080P_DSI_CMD)
+	&oppo18531_tianma_td4330_1080p_dsi_cmd_lcm_drv,
+#endif
+
+#if defined(OPPO18531_DPT_JDI_TD4330_1080P_DSI_CMD)
+	&oppo18531_dpt_jdi_td4330_1080p_dsi_cmd_lcm_drv,
+#endif
+
+#if defined(OPPO18531_DSJM_JDI_TD4330_1080P_DSI_CMD)
+	&oppo18531_dsjm_jdi_td4330_1080p_dsi_cmd_lcm_drv,
 #endif
 
 #if defined(OTM1284A_HD720_DSI_VDO_TM)
@@ -937,6 +1069,10 @@ struct LCM_DRIVER *lcm_driver_list[] = {
 	&otm1906a_fhd_dsi_cmd_auto_lcm_drv,
 #endif
 
+#if defined(NT35532_FHD_DSI_VDO_SHARP)
+	&nt35532_fhd_dsi_vdo_sharp_lcm_drv,
+#endif
+
 #if defined(CLAP070WP03XG_LVDS)
 	&clap070wp03xg_lvds_lcm_drv,
 #endif
@@ -1217,10 +1353,6 @@ struct LCM_DRIVER *lcm_driver_list[] = {
 	&hx83112b_fhdp_dsi_cmd_auo_rt5081_hdp_lcm_drv,
 #endif
 
-#if defined(HX83112B_FHDP_DSI_CMD_AUO_RT5081_HDP_1560)
-	&hx83112b_fhdp_dsi_cmd_auo_rt5081_hdp_1560_lcm_drv,
-#endif
-
 #if defined(HX83112B_FHDP_DSI_VDO_AUO_RT5081_HDP)
 	&hx83112b_fhdp_dsi_vdo_auo_rt5081_hdp_lcm_drv,
 #endif
@@ -1312,16 +1444,16 @@ struct LCM_DRIVER *lcm_driver_list[] = {
 	&otm1287_wxga_dsi_vdo_auo_guoxian_lcm_drv,
 #endif
 
+#if defined(NT35532_FHD_DSI_VDO_SHARP)
+	&nt35532_fhd_dsi_vdo_sharp_lcm_drv,
+#endif
+
 #if defined(OTM1901A_FHD_DSI_VDO_TPV)
 	&otm1901a_fhd_dsi_vdo_tpv_lcm_drv,
 #endif
 
 #if defined(R63350A_FHD_DSI_VDO_TRULY)
 	&r63350a_fhd_dsi_vdo_truly_lcm_drv,
-#endif
-
-#if defined(NT35532_FHD_DSI_VDO_SHARP)
-	&nt35532_fhd_dsi_vdo_sharp_lcm_drv,
 #endif
 
 #if defined(TD4320_FHDP_DSI_VDO_AUO_RT5081)
@@ -1332,9 +1464,22 @@ struct LCM_DRIVER *lcm_driver_list[] = {
 	&nt51021h_wuxga_vdo_oncell_boe_lcm_drv,
 #endif
 
-#if defined(IT6112_SAMPLE_DSI_VDO)
-	&it6112_sample_dsi_vdo_lcm_drv,
+/* liunianliang@ODM.BSP.System 2020/02/17, modify for oppo6771 LCD driver, begin. */
+#ifdef CONFIG_MACH_MT6771
+#if defined(NT36525_HD_DSI_VDO_DJ_BOE_ZAL1810)
+	&nt36525_hd_dsi_vdo_dj_boe_zal1810_lcm_drv,
+#endif //NT36525_HD_DSI_VDO_DJ_BOE_ZAL1810
+#if defined(ILI9881_HD_DSI_VDO_TXD_CSOT_ZAL1810)
+       &ili9881_hd_dsi_vdo_txd_csot_zal1810_lcm_drv,
+#endif //ILI9881_HD_DSI_VDO_TXD_CSOT_ZAL1810
+#if defined(ILI9881_HD_DSI_VDO_DJ_BOE_ZAL1810)
+	&ili9881_hd_dsi_vdo_dj_boe_zal1810_lcm_drv,
+#endif //ILI9881_HD_DSI_VDO_DJ_BOE_ZAL1810
+#if defined(ILI9881_HD_DSI_VDO_QC_INX_ZAL1810)
+	&ili9881_hd_dsi_vdo_qc_inx_zal1810_lcm_drv,
+#endif //ILI9881_HD_DSI_VDO_QC_INX_ZAL1810
 #endif
+/* liunianliang@ODM.BSP.System 2020/02/17, modify for oppo6771 LCD driver, end. */
 };
 
 unsigned char lcm_name_list[][128] = {
@@ -1414,10 +1559,6 @@ unsigned char lcm_name_list[][128] = {
 
 #if defined(NT35695B_FHD_DSI_VDO_AUO_RT5081_HDP_20_9)
 	"nt35695B_fhd_dsi_vdo_auo_rt5081_hdp_20_9_drv",
-#endif
-
-#if defined(IT6112_SAMPLE_DSI_VDO)
-	"it6112_sample_dsi_vdo_lcm_drv",
 #endif
 };
 

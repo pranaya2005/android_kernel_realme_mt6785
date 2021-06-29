@@ -24,7 +24,50 @@
 
 /* ------------------------------------------------------------------------- */
 
+#ifdef VENDOR_EDIT
+/* LiPing-m@PSW.MM.Display.LCD.Machine, 2017/11/03, Add for porting 17331 lcd driver */
+#define LM3697_EXPONENTIAL 1
+#define MP3188_EXPONENTIAL 1
+
+#ifdef VENDOR_EDIT
+/*
+ * Guoqiang.jiang@MM.Display.LCD.Machine, 2018/03/13,
+ * add for backlight IC KTD3136
+ */
+#define KTD3136_EXPONENTIAL 1
+#endif /*VENDOR_EDIT*/
+
+extern int is_lm3697;
+extern long lcd_bl_en_setting(unsigned int value);
+extern long lcd_enn_bias_setting(unsigned int value);
+extern long lcd_enp_bias_setting(unsigned int value);
+extern long lcd_rst_setting(unsigned int value);
+extern long lcd_1p8_en_setting(unsigned int value);
+/* ZhongWenjie@PSW.BSP.TP.FUNCTION, 2018/6/7, Add for no-flash TP */
+extern long spi_csn_en_setting(unsigned int value);
+/* LiPing-m@PSW.MM.Display.LCD.Machine, 2017/12/27, Add for 17197 lcd driver */
+extern long lcd_vci_setting(unsigned int value);
+extern long lcd_vpoc_setting(unsigned int value);
+extern long lcd_mipi_err_setting(unsigned int value);
+extern long lcd_ldo_setting(unsigned int value);
+#endif /* VENDOR_EDIT */
+
 /* common enumerations */
+
+#ifdef ODM_HQ_EDIT
+/* liyan@ODM.Multimedia.LCD  2019/08/27 add for LCD bias setting */
+#ifdef CONFIG_SET_LCD_BIAS_ODM_HQ
+typedef enum {
+	OFF = 0,
+	ON = 1
+} LCD_BIAS_VSPN_POWER_ON_OFF;
+
+typedef enum {
+	VSP_FIRST_VSN_AFTER = 0,
+	VSN_FIRST_VSP_AFTER = 1
+} LCD_BIAS_VSPN_POWER_ON_SEQUENCE;
+#endif //CONFIG_SET_LCD_BIAS_ODM_HQ
+#endif //ODM_HQ_EDIT
 
 enum LCM_TYPE {
 	LCM_TYPE_DBI = 0,
@@ -532,10 +575,11 @@ struct dynamic_fps_info {
 enum DynFPS_LEVEL {
 	DFPS_LEVEL0 = 0,
 	DFPS_LEVEL1,
+        DFPS_LEVEL2,
 	DFPS_LEVELNUM,
 };
 
-#define DFPS_LEVELS 2
+#define DFPS_LEVELS 3
 enum FPS_CHANGE_INDEX {
 	DYNFPS_NOT_DEFINED = 0,
 	DYNFPS_DSI_VFP = 1,
@@ -786,6 +830,21 @@ struct LCM_PARAMS {
 	unsigned int min_luminance;
 	unsigned int average_luminance;
 	unsigned int max_luminance;
+	#ifdef VENDOR_EDIT
+	/*
+	* Ling.Guo@PSW.MM.Display.LCD.Stability, 2019/06/11,
+	* modify for support aod state.
+	*/
+	unsigned int hbm_en_time;
+	unsigned int hbm_dis_time;
+	#endif
+#ifdef ODM_HQ_EDIT
+/* Liyan@ODM.HQ.Multimedia.LCM 2019/09/19 modified for backlight remapping */
+	int *blmap;
+	int blmap_size;
+	int brightness_max;
+	int brightness_min;
+#endif
 };
 
 
@@ -940,6 +999,12 @@ struct LCM_UTIL_FUNCS {
 	int (*set_gpio_mode)(unsigned int pin, unsigned int mode);
 	int (*set_gpio_dir)(unsigned int pin, unsigned int dir);
 	int (*set_gpio_pull_enable)(unsigned int pin, unsigned char pull_en);
+#ifdef ODM_HQ_EDIT
+	/* liyan@ODM.Multimedia.LCD  2019/08/27 add for LCD bias setting */
+#ifdef CONFIG_SET_LCD_BIAS_ODM_HQ
+	void (*set_lcd_bias_en) (unsigned int en, unsigned int seq, unsigned int value);
+#endif //CONFIG_SET_LCD_BIAS_ODM_HQ
+#endif //ODM_HQ_EDIT
 	long (*set_gpio_lcd_enp_bias)(unsigned int value);
 	void (*dsi_set_cmdq_V11)(void *cmdq, unsigned int *pdata,
 			unsigned int queue_size, unsigned char force_update);
@@ -973,6 +1038,12 @@ struct LCM_DRIVER {
 	void (*suspend)(void);
 	void (*resume)(void);
 
+/* liunianliang@ODM.BSP.System 2020/02/17, modify for oppo6771 LCD driver, begin. */
+#if defined(CONFIG_MACH_MT6771) || defined(CONFIG_MACH_MT6768)
+	void (*hw_reset_before_lp11)(void);
+#endif
+/* liunianliang@ODM.BSP.System 2020/02/17, modify for oppo6771 LCD driver, end. */
+
 	/* for power-on sequence refinement */
 	void (*init_power)(void);
 	void (*suspend_power)(void);
@@ -987,10 +1058,40 @@ struct LCM_DRIVER {
 	/* /////////////////////////CABC backlight related function */
 	void (*set_backlight)(unsigned int level);
 	void (*set_backlight_cmdq)(void *handle, unsigned int level);
+	bool (*get_hbm_state)(void);
+	bool (*get_hbm_wait)(void);
+	bool (*set_hbm_wait)(bool wait);
+	bool (*set_hbm_cmdq)(bool en, void *qhandle);
 	void (*set_pwm)(unsigned int divider);
 	unsigned int (*get_pwm)(unsigned int divider);
 	void (*set_backlight_mode)(unsigned int mode);
 	/* ///////////////////////// */
+#ifdef VENDOR_EDIT
+/* Yongpeng.Yi@PSW.MultiMedia.Display.LCD.Machine, 2018/09/10, Add for Porting cabc interface */
+	void (*set_cabc_mode_cmdq)(void *handle, unsigned int level);
+	/*
+	* liping-m@PSW.MM.Display.LCD.Stability, 2018/07/20,
+	* add power seq api for ulps
+	*/
+	void (*poweron_before_ulps)(void);
+	void (*poweroff_after_ulps)(void);
+	/*
+	* Yongpeng.Yi@PSW.MM.Display.LCD.Stability, 2018/01/16,
+	* add for samsung lcd hbm node
+	*/
+	void (*set_hbm_mode_cmdq)(void *handle, unsigned int level);
+	/*
+	* Yongpeng.Yi@PSW.MM.Display.LCD.Feature, 2018/09/26,
+	* add for Aod feature
+	*/
+	void (*aod_doze_resume)(void);
+	/*
+	* Ling.Guo@PSW.MM.Display.LCD.Stability, 2019/02/14,
+	* modify for support aod state.
+	*/
+	void (*disp_lcm_aod_from_display_on)(void);
+	void (*set_aod_brightness)(void *handle, unsigned int mode);
+#endif /* VENDOR_EDIT */
 
 	int (*adjust_fps)(void *cmdq, int fps, struct LCM_PARAMS *params);
 	void (*validate_roi)(int *x, int *y, int *width, int *height);
@@ -1040,6 +1141,13 @@ extern int display_bias_enable(void);
 extern int display_bias_disable(void);
 extern int display_bias_regulator_init(void);
 
+#ifdef VENDOR_EDIT
+/*
+* Yongpeng.Yi@PSW.MM.Display.LCD.Feature, 2018/01/16,
+* add for Aod feature
+*/
+extern unsigned int aod_mode;
+#endif /* VENDOR_EDIT */
 
 
 #endif /* __LCM_DRV_H__ */

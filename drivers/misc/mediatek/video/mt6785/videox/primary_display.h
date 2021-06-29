@@ -304,16 +304,6 @@ struct display_primary_path_context {
 #endif
 };
 
-#define LCM_FPS_ARRAY_SIZE	32
-struct lcm_fps_ctx_t {
-	int is_inited;
-	struct mutex lock;
-	unsigned int dsi_mode;
-	unsigned int head_idx;
-	unsigned int num;
-	unsigned long long last_ns;
-	unsigned long long array[LCM_FPS_ARRAY_SIZE];
-};
 
 static inline char *lcm_power_state_to_string(enum lcm_power_state ps)
 {
@@ -464,6 +454,19 @@ int do_primary_display_switch_mode(int sess_mode, unsigned int session,
 int primary_display_check_test(void);
 void _primary_path_switch_dst_lock(void);
 void _primary_path_switch_dst_unlock(void);
+#ifdef ODM_HQ_EDIT
+/*
+* Yongpeng.Yi@PSW.MM.Display.LCD.Machine, 2018/02/27,
+* add for face fill light node
+*/
+void ffl_set_init(void);
+void ffl_set_enable(unsigned int enable);
+#endif /* ODM_HQ_EDIT */
+
+//#ifdef ODM_HQ_EDIT
+/* Longyajun@ODM.HQ.Multimedia.LCM 2019/12/12 modified for TM JDI pq */
+int _ioctl_get_lcm_module_info(unsigned long arg);
+//#endif /* ODM_HQ_EDIT */
 
 /* AOD */
 enum lcm_power_state primary_display_set_power_state(
@@ -548,12 +551,6 @@ unsigned int primary_display_current_fps(enum arr_fps_type fps_type,
 bool disp_idle_check_rsz(void);
 int primary_display_is_directlink_mode(void);
 bool disp_input_has_yuv(void);
-
-extern struct lcm_fps_ctx_t lcm_fps_ctx;
-int lcm_fps_ctx_init(struct lcm_fps_ctx_t *fps_ctx);
-int lcm_fps_ctx_reset(struct lcm_fps_ctx_t *fps_ctx);
-int lcm_fps_ctx_update(struct lcm_fps_ctx_t *fps_ctx,
-		unsigned long long cur_ns);
 
 #ifdef CONFIG_MTK_HIGH_FRAME_RATE
 /**************function for DynFPS start************************/

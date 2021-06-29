@@ -9,15 +9,15 @@ ccflags-y += -I$(srctree)/drivers/base
 ccflags-y += -I$(srctree)/drivers/misc/mediatek/hwmon/include
 ccflags-y += -I$(srctree)/drivers/misc/mediatek/alsps/inc/
 
-obj-y	+=  focaltech_core.o
-obj-y	+=  focaltech_ex_fun.o
-obj-y	+=  focaltech_ex_mode.o
-obj-y	+=  focaltech_gesture.o
-obj-y	+=  focaltech_esdcheck.o
-obj-y   +=  focaltech_point_report_check.o
-obj-y   +=  focaltech_proximity.o
-# obj-y   +=  focaltech_test/
+obj-$(CONFIG_TOUCHSCREEN_MTK_FOCALTECH_FHD)	+=  focaltech_core.o
+obj-$(CONFIG_TOUCHSCREEN_MTK_FOCALTECH_FHD)	+=  focaltech_ex_fun.o
+obj-$(CONFIG_TOUCHSCREEN_MTK_FOCALTECH_FHD)	+=  focaltech_ex_mode.o
+obj-$(CONFIG_TOUCHSCREEN_MTK_FOCALTECH_FHD)	+=  focaltech_gesture.o
+obj-$(CONFIG_TOUCHSCREEN_MTK_FOCALTECH_FHD)	+=  focaltech_esdcheck.o
+obj-$(CONFIG_TOUCHSCREEN_MTK_FOCALTECH_FHD)   +=  focaltech_point_report_check.o
+obj-$(CONFIG_TOUCHSCREEN_MTK_FOCALTECH_FHD)   +=  focaltech_proximity.o
+# obj-$(CONFIG_TOUCHSCREEN_MTK_FOCALTECH_FHD)   +=  focaltech_test/
 
-obj-y   +=  focaltech_i2c.o
-obj-y	+=  focaltech_flash.o
-obj-y   +=  focaltech_flash/
+obj-$(CONFIG_TOUCHSCREEN_MTK_FOCALTECH_FHD)   +=  focaltech_i2c.o
+obj-$(CONFIG_TOUCHSCREEN_MTK_FOCALTECH_FHD)	+=  focaltech_flash.o
+obj-$(CONFIG_TOUCHSCREEN_MTK_FOCALTECH_FHD)   +=  focaltech_flash/

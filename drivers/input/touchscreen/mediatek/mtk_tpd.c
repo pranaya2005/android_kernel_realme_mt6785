@@ -49,13 +49,6 @@ struct pinctrl *pinctrl1;
 struct pinctrl_state *pins_default;
 struct pinctrl_state *eint_as_int, *eint_output0,
 		*eint_output1, *rst_output0, *rst_output1;
-/* Stoneoim:zhangqingzhan on: Thu, 26 Sep 2019 15:04:30 +0800
- * for touchpannel gpio contril ldo
- */
-#ifdef CONFIG_TPD_POWER_SOURCE_VIA_GPIO
-struct pinctrl_state *ldoen_output0, *ldoen_output1;
-#endif
-// End of Stoneoim: zhangqingzhan
 const struct of_device_id touch_of_match[] = {
 	{ .compatible = "mediatek,touch", },
 	{ .compatible = "mediatek,mt8167-touch", },
@@ -188,7 +181,6 @@ void tpd_gpio_output(int pin, int level)
 	}
 	mutex_unlock(&tpd_set_gpio_mutex);
 }
-
 int tpd_get_gpio_info(struct platform_device *pdev)
 {
 	int ret;
@@ -239,41 +231,9 @@ int tpd_get_gpio_info(struct platform_device *pdev)
 			return ret;
 		}
 	}
-/* Stoneoim:zhangqingzhan on: Thu, 26 Sep 2019 15:09:10 +0800
- * for touchpannel gpio contril ldo
- */
-#ifdef CONFIG_TPD_POWER_SOURCE_VIA_GPIO
-	ldoen_output0 = pinctrl_lookup_state(pinctrl1, "state_ldoen_output0");
-	if (IS_ERR(ldoen_output0)) {
-		ret = PTR_ERR(ldoen_output0);
-		TPD_DMESG("Cannot find pinctrl state_ldoen_output0!\n");
-		return ret;
-	}
-	ldoen_output1 = pinctrl_lookup_state(pinctrl1, "state_ldoen_output1");
-	if (IS_ERR(ldoen_output1)) {
-		ret = PTR_ERR(ldoen_output1);
-		TPD_DMESG("Cannot find pinctrl state_ldoen_output1!\n");
-		return ret;
-	}
-#endif
-// End of Stoneoim: zhangqingzhan
 	TPD_DEBUG("[tpd%d] mt_tpd_pinctrl----------\n", pdev->id);
 	return 0;
 }
-
-/* Stoneoim:zhangqingzhan on: Thu, 26 Sep 2019 15:10:53 +0800
- * for touchpannel gpio contril ldo
- */
-#ifdef CONFIG_TPD_POWER_SOURCE_VIA_GPIO
-void tpd_ldo_power_enable(bool en)
-{
-    if (en==1 && !IS_ERR(ldoen_output1))
-        pinctrl_select_state(pinctrl1, ldoen_output1);
-    else if(en==0 && !IS_ERR(ldoen_output0))
-        pinctrl_select_state(pinctrl1, ldoen_output0);
-}
-#endif
-// End of Stoneoim: zhangqingzhan
 
 static int tpd_misc_open(struct inode *inode, struct file *file)
 {
@@ -685,16 +645,6 @@ static int tpd_probe(struct platform_device *pdev)
 				TPD_DMESG("%s, tpd_driver_name=%s\n", __func__,
 					  tpd_driver_list[i].tpd_device_name);
 				g_tpd_drv = &tpd_driver_list[i];
-/* Stoneoim:zhangqingzhan on: Tue, 01 Nov 2016 18:38:34 +0800
- *for tpd info
- */
-#ifdef VANZO_DEVICE_NAME_SUPPORT
-				{
-					extern void v_set_dev_name(int id, char *name);
-					v_set_dev_name(2, tpd_driver_list[i].tpd_device_name);
-				}
-#endif
-// End of Stoneoim: zhangqingzhan
 				break;
 			}
 		}

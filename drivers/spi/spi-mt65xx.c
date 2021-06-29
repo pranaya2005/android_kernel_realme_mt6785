@@ -29,15 +29,6 @@
 #include <linux/dma-mapping.h>
 
 
-#ifdef CONFIG_TRUSTKERNEL_TEE_FP_SUPPORT
-#define SPI_TRUSTKERNEL_TEE_SUPPORT
-#endif
-
-#ifdef SPI_TRUSTKERNEL_TEE_SUPPORT
-#include <linux/tee_clkmgr.h>
-#include <linux/tee_fp.h>
-#endif
-
 #define SPI_CFG0_REG                      0x0000
 #define SPI_CFG1_REG                      0x0004
 #define SPI_TX_SRC_REG                    0x0008
@@ -488,7 +479,7 @@ static void mtk_spi_prepare_transfer(struct spi_master *master,
 			SPI_CFG0_CS_SETUP_OFFSET);
 		writel(reg_val, mdata->base + SPI_CFG0_REG);
 	}
-
+  
 	reg_val = readl(mdata->base + SPI_CFG1_REG);
 	reg_val &= ~SPI_CFG1_CS_IDLE_MASK;
 	reg_val |= (((cs_idletime - 1) & 0xff) << SPI_CFG1_CS_IDLE_OFFSET);
@@ -741,6 +732,20 @@ static irqreturn_t mtk_spi_interrupt(int irq, void *dev_id)
 		mdata->state = MTK_SPI_PAUSED;
 	else
 		mdata->state = MTK_SPI_IDLE;
+		
+#ifdef VENDOR_EDIT
+/* Fuchun.Liao@BSP.CHG.Basic 2018/09/20 add for master->cur_msg = NULL crash, workaround ALPS04114936 */
+	if (NULL == master->cur_msg) {
+		master->cur_msg_prepared = false;
+#if 1   /*KERNEL_VERSION(4, 9, 0) <= LINUX_VERSION_CODE*/
+		kthread_queue_work(&master->kworker, &master->pump_messages);
+#else
+		queue_kthread_work(&master->kworker, &master->pump_messages);
+#endif
+		spi_debug("mtk_spi_interrupt NULL == master->cur_msg  \n");  
+		return IRQ_HANDLED;
+	}
+#endif /* VENDOR_EDIT */
 
 	if (!master->can_dma(master, master->cur_msg->spi, trans)) {
 		if (trans->rx_buf) {
@@ -849,10 +854,6 @@ static int mtk_spi_probe(struct platform_device *pdev)
 		else
 			master->rt = false;
 	}
-
-#ifdef SPI_TRUSTKERNEL_TEE_SUPPORT
-    tee_clkmgr_register1("spi", master->bus_num, clk_prepare_enable, clk_disable_unprepare, mdata->spi_clk);
-#endif
 
 	if (mdata->dev_comp->need_pad_sel) {
 		mdata->pad_num = of_property_count_u32_elems(

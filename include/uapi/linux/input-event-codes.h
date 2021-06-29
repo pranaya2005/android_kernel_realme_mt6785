@@ -337,12 +337,6 @@
 
 #define KEY_MICMUTE		248	/* Mute / unmute the microphone */
 
-/* Stoneoim:zhangxinyu on: Thu, 19 Mar 2020 18:54:09 +0800
- */
-#define KEY_SOS		249
-#define KEY_SCAN		250
-// End of Stoneoim:zhangxinyu
-
 /* Code 255 is reserved for special needs of AT keyboard driver */
 
 #define BTN_MISC		0x100

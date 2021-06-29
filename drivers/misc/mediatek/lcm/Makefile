@@ -14,19 +14,6 @@
 #
 # Makefile for misc devices that really don't fit anywhere else.
 #
-# Stoneoim:yucheng on: Fri, 14 Oct 2016 18:32:37 +0800
-# added for aosp management to import our variable
-project_name:=$(shell echo $(VANZO_INNER_PROJECT_NAME))
-ifneq ($(strip $(project_name)),)
--include $(srctree)/../zprojects/$(project_name)/$(project_name).mk
-ccflags-y += -I$(VANZO_PROJECT_HEADERS)
-
-# here use the CUSTOM_LK_LCM to prio the CUSTOM_LK_LCM when zprojects is open
-ifneq ($(strip $(CUSTOM_KERNEL_LCM)),)
-CONFIG_CUSTOM_KERNEL_LCM = $(CUSTOM_KERNEL_LCM)
-endif
-endif
-# End of Stoneoim: yucheng
 
 obj-$(CONFIG_MTK_LCM) += mt65xx_lcm_list.o        \
                          lcm_common.o             \
@@ -44,9 +31,17 @@ subdir-ccflags-$(CONFIG_MTK_FB) += -I$(srctree)/drivers/misc/mediatek/video/$(MT
                                        -I$(srctree)/drivers/misc/mediatek/video/$(MTK_PLATFORM)/videox \
                                        -I$(srctree)/drivers/misc/mediatek/video/include
 
+ifeq ($(HQ_COMPILE_FACTORY_VERSION),yes)
+subdir-ccflags-y += -DATO_ESD_CHECK_DISABLE
+endif
+
 LCM_DEFINES := $(shell echo $(CONFIG_CUSTOM_KERNEL_LCM) | tr a-z A-Z)
 DEFINES += $(foreach LCM,$(LCM_DEFINES),$(LCM))
 DEFINES += MTK_LCM_PHYSICAL_ROTATION=\"$(MTK_LCM_PHYSICAL_ROTATION)\"
 ccflags-$(CONFIG_MTK_LCM) += $(addprefix -D, $(DEFINES))
 ccflags-$(CONFIG_MTK_LCM_DEVICE_TREE_SUPPORT) += -DMTK_LCM_DEVICE_TREE_SUPPORT
+
+#YongPeng.Yi@SWP.MM.Display.LCD.Machine, 2017/11/03, Add for porting lcd driver
+obj-$(CONFIG_MTK_LCM) += power/
+#obj-$(CONFIG_MTK_LCM) += backlight/
 

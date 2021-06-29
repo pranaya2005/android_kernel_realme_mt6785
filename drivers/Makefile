@@ -131,6 +131,7 @@ obj-$(CONFIG_CPU_FREQ)		+= cpufreq/
 obj-$(CONFIG_CPU_IDLE)		+= cpuidle/
 obj-y				+= mmc/
 obj-$(CONFIG_MEMSTICK)		+= memstick/
+obj-$(CONFIG_SWITCH)		+= switch/
 obj-$(CONFIG_NEW_LEDS)		+= leds/
 obj-$(CONFIG_INFINIBAND)	+= infiniband/
 obj-$(CONFIG_SGI_SN)		+= sn/
@@ -184,19 +185,3 @@ obj-$(CONFIG_FSI)		+= fsi/
 obj-$(CONFIG_TEE)		+= tee/
 obj-$(CONFIG_MULTIPLEXER)	+= mux/
 obj-$(CONFIG_TRUSTY)	+= trusty/
-
-ifeq ($(VANZO_DEVICE_NAME_SUPPORT),yes)
-subdir-ccflags-y += -DVANZO_DEVICE_NAME_SUPPORT
-endif
-ifeq ($(VANZO_FP_NAME_SUPPORT),yes)
-subdir-ccflags-y += -DVANZO_FP_NAME_SUPPORT
-endif
-ifeq ($(VANZO_DUAL_CAM_NAME_SUPPORT),yes)
-subdir-ccflags-y += -DVANZO_DUAL_CAM_NAME_SUPPORT
-endif
-ifeq ($(VANZO_FEATURE_FAKE_DUAL_CAMERA_BY_NAME),yes)
-subdir-ccflags-y += -DVANZO_FEATURE_FAKE_DUAL_CAMERA_BY_NAME
-endif
-ifeq ($(VANZO_TPD_POWER_SOURCE_VIA_GPIO), yes)
-subdir-ccflags-y += -DCONFIG_TPD_POWER_SOURCE_VIA_GPIO
-endif

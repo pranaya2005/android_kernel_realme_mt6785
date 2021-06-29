@@ -21,11 +21,10 @@
 		{1, 0, 0, "flashlights_led191", 1, 0},
 	};
 #else
-        const struct flashlight_device_id flashlight_id[] = {
-	        /* {TYPE, CT, PART, "NAME", CHANNEL, DECOUPLE} */
-                {0, 0, 0, "flashlights-dummy-gpio", 0, 0},
-                {1, 0, 0, "sub-flashlights-dummy-gpio", 0, 0},
-        };
+	const struct flashlight_device_id flashlight_id[] = {
+		/* {TYPE, CT, PART, "NAME", CHANNEL, DECOUPLE} */
+		{0, 0, 0, "flashlights-rt4505", 0, 0},
+	};
 #endif
 #elif defined(mt6757)
 	#if defined(evb6757p_dm_64) || defined(k57pv1_dm_64) || \
@@ -68,6 +67,11 @@ const struct flashlight_device_id flashlight_id[] = {
 	{0, 0, 0, "flashlights-mt6370", 0, 0},
 	{0, 1, 0, "flashlights-mt6370", 1, 0},
 };
+#elif defined(mt6771)
+const struct flashlight_device_id flashlight_id[] = {
+	/* {TYPE, CT, PART, "NAME", CHANNEL, DECOUPLE} */
+	{0, 0, 0, "flashlights-mt6370", 0, 1},
+};
 #elif defined(mt6799)
 const struct flashlight_device_id flashlight_id[] = {
 	/* {TYPE, CT, PART, "NAME", CHANNEL, DECOUPLE} */
@@ -82,7 +86,16 @@ const struct flashlight_device_id flashlight_id[] = {
 #else
 const struct flashlight_device_id flashlight_id[] = {
 	/* {TYPE, CT, PART, "NAME", CHANNEL, DECOUPLE} */
-	{0, 0, 0, "flashlights-none", -1, 0},
+	{0, 0, 0, "flashlights-mt6360", 0, 1},
+    /*weiriqin@camera.driver on 20190516, debug flashlight use mt6370 pmic first time*/
+    #ifndef CONFIG_MTK_FLASHLIGHT_MT6370
+	#ifdef VENDOR_EDIT
+	/*Feng.Hu@Camera.Driver 20171121 add for lm3642, mp3331*/
+	{0, 0, 0, "flashlights-lm3642", 0, 0},
+	{0, 0, 1, "flashlights-aw3642", 0, 0},
+	{0, 0, 0, "flashlights-mp3331", 0, 0},
+    #endif
+	#endif
 	{0, 1, 0, "flashlights-none", -1, 0},
 	{1, 0, 0, "flashlights-none", -1, 0},
 	{1, 1, 0, "flashlights-none", -1, 0},
