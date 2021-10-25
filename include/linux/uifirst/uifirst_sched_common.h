@@ -53,15 +53,19 @@ extern bool test_ux_prefer_cpu(struct task_struct *tsk, int cpu);
 extern void find_ux_task_cpu(struct task_struct *tsk, int *target_cpu);
 extern int set_ux_task_cpu_common(struct task_struct *task, int prev_cpu, int *target_cpu);
 static inline void find_slide_boost_task_cpu(struct task_struct *tsk, int *target_cpu) {}
-static inline bool is_heavy_ux_task(struct task_struct *task)
-{
-	return task->static_ux == 2;
-}
+
 static inline is_animator_ux_task(struct task_struct *task)
 {
 	return task->static_ux == 1;
 }
 
+static inline bool is_heavy_ux_task(struct task_struct *task)
+{
+	return task->static_ux == 2;
+}
+
 extern void place_entity_adjust_ux_task(struct cfs_rq *cfs_rq, struct sched_entity *se, int initial);
+extern bool should_ux_task_skip_further_check(struct sched_entity *se);
 extern bool should_ux_preempt_wakeup(struct task_struct *wake_task, struct task_struct *curr_task);
+extern bool ux_skip_sync_wakeup(struct task_struct *task, int *sync);
 #endif

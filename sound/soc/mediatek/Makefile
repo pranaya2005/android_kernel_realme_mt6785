@@ -27,7 +27,6 @@ obj-$(CONFIG_SND_SOC_MTK_AUDIO_DSP) += common_int/
 # Zengchao.Duan@ODM_WT.MM.AudioDriver.Machine 2019/10/12, MonetX audio sia8108 bringup
 obj-y += sia81xx/
 #endif # OPLUS_BUG_STABILITY
-
 # btcvsd
 obj-$(CONFIG_SND_SOC_MTK_BTCVSD) += common/
 obj-$(CONFIG_SND_SOC_MEDIATEK) += common/

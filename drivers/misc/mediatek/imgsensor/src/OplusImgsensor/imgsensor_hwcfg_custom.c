@@ -11,21 +11,11 @@
  * GNU General Public License for more details.
  */
 #include "imgsensor_hwcfg_custom.h"
-#ifdef SENSOR_PLATFORM_5G_H
-int camera_status = 0;
-
-int is_check_camera_status(void)
-{
-    pr_debug("For checking camera_status: %d \n", camera_status);
-    return camera_status;
-}
-EXPORT_SYMBOL(is_check_camera_status);
-#endif
-
 struct IMGSENSOR_SENSOR_LIST *Oplusimgsensor_Sensorlist(void)
 {
     struct IMGSENSOR_SENSOR_LIST *pOplusImglist = gimgsensor_sensor_list;
     pr_debug("Oplusimgsensor_Sensorlist enter:\n");
+
     /*Henry.Chang@Cam.Drv, 20200725, add for project CHAKA 20131,20133*/
     pOplusImglist = oplus_gimgsensor_sensor_list;
     pr_info("oplus_gimgsensor_sensor_list Selected\n");
@@ -57,7 +47,7 @@ enum IMGSENSOR_RETURN Oplusimgsensor_i2c_init(
     pOplusImgHWCfg = Oplusimgsensor_Custom_Config();
     ret = imgsensor_i2c_init(&psensor_inst->i2c_cfg,
                              pOplusImgHWCfg[psensor_inst->sensor_idx].i2c_dev);
-    pr_debug("[%s] sensor_idx:%d name:%s ret: %d\n",
+    pr_info("[%s] sensor_idx:%d name:%s ret: %d\n",
         __func__,
         psensor_inst->sensor_idx,
         psensor_inst->psensor_list->name,
@@ -88,9 +78,9 @@ struct IMGSENSOR_HW_POWER_SEQ *Oplusimgsensor_matchhwcfg_power(
 
 #ifdef SENSOR_PLATFORM_4G_20682
     } else if (pwr_actidx == IMGSENSOR_POWER_MATCHMIPI_HWCFG_INDEX){
-            if (is_project(20682) || is_project(19661)) {
+            if (is_project(20682) || is_project(19661) || is_project(20730) || is_project(20731) || is_project(20732)) {
                 ppwr_seq = oplus_platform_power_sequence;
-                pr_info("[%s] match 20682 19661 IMGSENSOR_POWER_MATCHMIPI_HWCFG_INDEX \n", __func__);
+                pr_info("[%s] match 20682 19661 20730 IMGSENSOR_POWER_MATCHMIPI_HWCFG_INDEX \n", __func__);
             }
 #endif
 
@@ -102,9 +92,17 @@ struct IMGSENSOR_HW_POWER_SEQ *Oplusimgsensor_matchhwcfg_power(
 
 #ifdef SENSOR_PLATFORM_MT6771
     } else if (pwr_actidx == IMGSENSOR_POWER_MATCHMIPI_HWCFG_INDEX){
-            if (is_project(19531)) {
+            if (is_project(19531) || is_project(19151) || is_project(19350)) {
                 ppwr_seq = oplus_platform_power_sequence;
-                pr_info("[%s] MT6771 19531 IMGSENSOR_POWER_MATCHMIPI_HWCFG_INDEX \n", __func__);
+                pr_info("[%s] MT6771 19531 19151 19350IMGSENSOR_POWER_MATCHMIPI_HWCFG_INDEX \n", __func__);
+            }
+#endif
+
+#ifdef SENSOR_PLATFORM_5G_H
+    } else if (pwr_actidx == IMGSENSOR_POWER_MATCHMIPI_HWCFG_INDEX){
+            if(is_project(19165)){
+            pr_info("[%s] enter for 19165 IMGSENSOR_POWER_MATCHMIPI_HWCFG_INDEX \n", __func__);
+            return NULL;
             }
 #endif
     } else {
@@ -121,75 +119,65 @@ enum IMGSENSOR_RETURN Oplusimgsensor_ldoenable_power(
 {
 #ifdef SENSOR_PLATFORM_5G_H
     struct IMGSENSOR_HW_DEVICE *pdev = phw->pdev[IMGSENSOR_HW_ID_GPIO];
-    pr_debug("[%s] sensor_idx:%d pdev->set is ERROR\n", __func__, sensor_idx );
+    if (is_project(19165)) {
+        pr_debug("Is project 19165,non-fan53870 project.");
+        return IMGSENSOR_RETURN_SUCCESS;
+    }
     if ((pwr_status == IMGSENSOR_HW_POWER_STATUS_ON)
         && (is_project(20131) || is_project(20133)
               || is_project(20255) || is_project(20257))) {
         if (pdev->set != NULL) {
-            pr_debug("set GPIO29 to enable pmic");
-            pdev->set(pdev->pinstance, sensor_idx, IMGSENSOR_HW_PIN_PMIC_ENABLE, Vol_High);
+            pr_debug("set GPIO29 to enable fan53870");
+            pdev->set(pdev->pinstance, sensor_idx, IMGSENSOR_HW_PIN_FAN53870_ENABLE, Vol_High);
         } else {
             pr_debug("[%s] sensor_idx:%d pdev->set is ERROR\n", __func__, sensor_idx );
         }
-    } else if ((pwr_status == IMGSENSOR_HW_POWER_STATUS_ON)
-        && (is_project(20601) || is_project(20602)|| is_project(20660))) {
-        if (is_check_lcm_status() || camera_status == 1) {
-            pr_debug("camera enable: the gpiod_set_value is 1, last_camera_status%d, lcm_status%d\n", camera_status, is_check_lcm_status());
+    }
+#endif
+#ifdef SENSOR_PLATFORM_4G_20682
+    struct IMGSENSOR_HW_DEVICE *pdev = phw->pdev[IMGSENSOR_HW_ID_GPIO];
+    pr_debug("[%s] sensor_idx:%d pdev->set is ERROR\n", __func__, sensor_idx );
+    if ((pwr_status == IMGSENSOR_HW_POWER_STATUS_ON)
+        && (is_project(20730)||is_project(20731)||is_project(20732))) {
+        if (pdev->set != NULL) {
+            pr_debug("set GPI122 to enable fan53870");
+            //pdev->set(pdev->pinstance, sensor_idx, IMGSENSOR_HW_PIN_FAN53870_ENABLE, Vol_High);
         } else {
-            pdev = phw->pdev[IMGSENSOR_HW_ID_GPIO];
-            if (pdev->set != NULL) {
-                pr_debug("camera enable: the gpiod_set_value is 1, last_camera_status%d, lcm_status%d\n", camera_status, is_check_lcm_status());
-                pdev->set(pdev->pinstance, IMGSENSOR_SENSOR_IDX_MAIN, IMGSENSOR_HW_PIN_PMIC_ENABLE, Vol_High);
-            }
+            pr_debug("[%s] sensor_idx:%d pdev->set is ERROR\n", __func__, sensor_idx );
         }
-        camera_status = 1;
-    } else if ((pwr_status == IMGSENSOR_HW_POWER_STATUS_OFF)
-        && (is_project(20601) || is_project(20602)|| is_project(20660))) {
-                if(is_check_lcm_status()) {
-            pr_debug("camera disable: the gpiod_set_value is 1, last_camera_status%d, lcm_status%d\n", camera_status, is_check_lcm_status());
-        } else if(camera_status == 0) {
-            pr_debug("camera disable: the gpiod_set_value is 0, last_camera_status%d, lcm_status%d\n", camera_status, is_check_lcm_status());
-        } else {
-            pdev = phw->pdev[IMGSENSOR_HW_ID_GPIO];
-            if (pdev->set != NULL) {
-                pr_debug("camera disable: the gpiod_set_value is 0, camera_status%d, lcm_status%d\n", camera_status, is_check_lcm_status());
-                pdev->set(pdev->pinstance, IMGSENSOR_SENSOR_IDX_MAIN, IMGSENSOR_HW_PIN_PMIC_ENABLE, Vol_Low);
-            }
-        }
-        camera_status = 0;
     }
 #endif
     return IMGSENSOR_RETURN_SUCCESS;
 }
 
-enum IMGSENSOR_RETURN Oplusimgsensor_power_pmic_20601(
+enum IMGSENSOR_RETURN Oplusimgsensor_power_fan53870_20601(
         enum   IMGSENSOR_SENSOR_IDX      sensor_idx,
         enum   IMGSENSOR_HW_PIN          pin,
         enum   IMGSENSOR_HW_POWER_STATUS pwr_status)
 {
-    int pmic_avdd_20601[5][2] = {{3,2900},{4,2800},{4,2800},{4,2800},{4,2800}};
-    int pmic_avdd1_20601[2] = {5,1800};
-    int pmic_dvdd_20601[2] = {2,1200};
+    int fan53870_avdd_20601[5][2] = {{3,2900},{4,2800},{4,2800},{4,2800},{4,2800}};
+    int fan53870_avdd1_20601[2] = {5,1800};
+    int fan53870_dvdd_20601[2] = {2,1200};
     int avddIdx = sensor_idx;
-    pr_debug("[%s] is_pmic:%d pwr_status:%d avddIdx:%d", __func__, pmic_ldo_get_type(), pwr_status, avddIdx);
+    pr_debug("[%s] is_fan53870_pmic:%d pwr_status:%d avddIdx:%d", __func__, is_fan53870_pmic(), pwr_status, avddIdx);
 
     if (pwr_status == IMGSENSOR_HW_POWER_STATUS_ON) {
         if (pin == IMGSENSOR_HW_PIN_AVDD) {
-            pmic_ldo_set_voltage_mv(pmic_avdd_20601[avddIdx][0], pmic_avdd_20601[avddIdx][1]);
+            fan53870_cam_ldo_set_voltage(fan53870_avdd_20601[avddIdx][0], fan53870_avdd_20601[avddIdx][1]);
         } else if (pin == IMGSENSOR_HW_PIN_AVDD_1){
-            pmic_ldo_set_voltage_mv(pmic_avdd1_20601[0],pmic_avdd1_20601[1]);
+            fan53870_cam_ldo_set_voltage(fan53870_avdd1_20601[0],fan53870_avdd1_20601[1]);
         } else if (pin == IMGSENSOR_HW_PIN_DVDD && ((sensor_idx == IMGSENSOR_SENSOR_IDX_MAIN2) || (sensor_idx == IMGSENSOR_SENSOR_IDX_SUB2)) ){
-            pmic_ldo_set_voltage_mv(pmic_dvdd_20601[0],pmic_dvdd_20601[1]);
+            fan53870_cam_ldo_set_voltage(fan53870_dvdd_20601[0],fan53870_dvdd_20601[1]);
         } else {
             return IMGSENSOR_RETURN_ERROR;
         }
     } else {
         if (pin == IMGSENSOR_HW_PIN_AVDD) {
-            pmic_ldo_set_disable(pmic_avdd_20601[avddIdx][0]);
+            fan53870_cam_ldo_disable(fan53870_avdd_20601[avddIdx][0]);
         }else if(pin == IMGSENSOR_HW_PIN_AVDD_1){
-            pmic_ldo_set_disable(pmic_avdd1_20601[0]);
+            fan53870_cam_ldo_disable(fan53870_avdd1_20601[0]);
         }else if (pin == IMGSENSOR_HW_PIN_DVDD && ((sensor_idx == IMGSENSOR_SENSOR_IDX_MAIN2) || (sensor_idx == IMGSENSOR_SENSOR_IDX_SUB2)) ){
-            pmic_ldo_set_disable(pmic_dvdd_20601[0]);
+            fan53870_cam_ldo_disable(fan53870_dvdd_20601[0]);
         } else {
             return IMGSENSOR_RETURN_ERROR;
         }
@@ -246,6 +234,50 @@ enum IMGSENSOR_RETURN Oplusimgsensor_power_fan53870_20630(
 
 }
 
+enum IMGSENSOR_RETURN Oplusimgsensor_power_fan53870_20730(
+        enum   IMGSENSOR_SENSOR_IDX      sensor_idx,
+        enum   IMGSENSOR_HW_PIN          pin,
+        enum   IMGSENSOR_HW_POWER_STATUS pwr_status)
+{
+    int fan53870_avdd_20730[5][2] = {{3,2800},{4,2800},{7,2800},{7,2800},{7,2800}};
+    int fan53870_dvdd_20730[3][2] = {{2,1100},{1,1100},{1,1200}};
+    int fan53870_afvdd_20730[2]= {6,2800};
+    int avddIdx = sensor_idx;
+    int dvddIdx= sensor_idx;
+    pr_debug("[%s] is_fan53870_pmic:%d pwr_status:%d avddIdx:%d", __func__, is_fan53870_pmic(), pwr_status, avddIdx);
+    if (pwr_status == IMGSENSOR_HW_POWER_STATUS_ON) {
+        if (pin == IMGSENSOR_HW_PIN_AVDD) {
+            printk("IMGSENSOR_HW_PIN_AVDD on");
+            fan53870_cam_ldo_set_voltage(fan53870_avdd_20730[avddIdx][0], fan53870_avdd_20730[avddIdx][1]);
+        }
+        else if (pin == IMGSENSOR_HW_PIN_AFVDD){
+            fan53870_cam_ldo_set_voltage(fan53870_afvdd_20730[0],fan53870_afvdd_20730[1]);
+        }
+        else if (pin == IMGSENSOR_HW_PIN_DVDD){
+            printk("IMGSENSOR_HW_PIN_DVDD on");
+            fan53870_cam_ldo_set_voltage(fan53870_dvdd_20730[sensor_idx][0],fan53870_dvdd_20730[sensor_idx][1]);
+        } else {
+            return IMGSENSOR_RETURN_ERROR;
+        }
+    } else {
+        if (pin == IMGSENSOR_HW_PIN_AVDD) {
+            printk("IMGSENSOR_HW_PIN_AVDD off");
+            fan53870_cam_ldo_disable(fan53870_avdd_20730[avddIdx][0]);
+        }
+        else if (pin == IMGSENSOR_HW_PIN_DVDD /*&& ((sensor_idx == IMGSENSOR_SENSOR_IDX_MAIN2) || (sensor_idx == IMGSENSOR_SENSOR_IDX_SUB2)) */){
+            printk("IMGSENSOR_HW_PIN_DVDD off");
+            fan53870_cam_ldo_disable(fan53870_dvdd_20730[dvddIdx][0]);
+        }
+        else if (pin == IMGSENSOR_HW_PIN_AFVDD){
+            fan53870_cam_ldo_disable(fan53870_afvdd_20730[0]);
+        }
+        else {
+            return IMGSENSOR_RETURN_ERROR;
+        }
+    }
+    return IMGSENSOR_RETURN_SUCCESS;
+
+}
 
 enum IMGSENSOR_RETURN Oplusimgsensor_ldo_powerset(
         enum   IMGSENSOR_SENSOR_IDX      sensor_idx,
@@ -255,18 +287,17 @@ enum IMGSENSOR_RETURN Oplusimgsensor_ldo_powerset(
     int fan53870_avdd[3][2] = {{3, 2800}, {4, 2900}, {6, 2800}};
     int avddIdx = sensor_idx > IMGSENSOR_SENSOR_IDX_SUB ?
                     IMGSENSOR_SENSOR_IDX_MAIN2 : sensor_idx;
-
-    pr_debug("[%s] is_pmic:%d pwr_status:%d avddIdx:%d",
-                    __func__, pmic_ldo_get_type(), pwr_status, avddIdx);
+    pr_debug("[%s] is_fan53870_pmic:%d pwr_status:%d avddIdx:%d",
+                    __func__, is_fan53870_pmic(), pwr_status, avddIdx);
     if(is_project(20601) || is_project(20602) || is_project(20660))
-        return Oplusimgsensor_power_pmic_20601(sensor_idx,pin,pwr_status);
-
+        return Oplusimgsensor_power_fan53870_20601(sensor_idx,pin,pwr_status);
     if(is_project(20630) || is_project(20633) || is_project(20631) || is_project(20632) || is_project(0x206B4) \
         || is_project(20634) || is_project(20635))
         return Oplusimgsensor_power_fan53870_20630(sensor_idx,pin,pwr_status);
-
+    if(is_project(20730)||is_project(20731)||is_project(20732))
+        return Oplusimgsensor_power_fan53870_20730(sensor_idx,pin,pwr_status);
     /*pankaj.kumar@Cam.Drv, 20200928, add for project 18531  19531*/
-    if(is_project(OPPO_18531) || is_project(OPPO_18561) || is_project(19531))
+    if(is_project(OPPO_18531) || is_project(OPPO_18561) || is_project(19531) || is_project(19151) || is_project(19350))
        return IMGSENSOR_RETURN_ERROR;
 
     //Niepengfei@Cam.Drv, 20201009, add for project 19165
@@ -279,6 +310,12 @@ enum IMGSENSOR_RETURN Oplusimgsensor_ldo_powerset(
 #ifdef SENSOR_PLATFORM_5G_B
     if (is_project(20075) || is_project(20076))
         return IMGSENSOR_RETURN_ERROR;
+
+    if (is_project(20151) || is_project(20301) || is_project(20302))
+        return IMGSENSOR_RETURN_ERROR;
+
+    if((is_project(20001)) || (is_project(20002)) || (is_project(20003)) || (is_project(20200)))
+        return IMGSENSOR_RETURN_ERROR;
 #endif
 
 #ifdef SENSOR_PLATFORM_5G_A
@@ -287,24 +324,22 @@ enum IMGSENSOR_RETURN Oplusimgsensor_ldo_powerset(
 #endif
 
 #ifdef SENSOR_PLATFORM_4G_20682
-    if (is_project(20682) || is_project(20683)|| is_project(19661))
+    if (is_project(20682) || is_project(20683) || is_project(19661))
         return IMGSENSOR_RETURN_ERROR;
 #endif
 
     if (pwr_status == IMGSENSOR_HW_POWER_STATUS_ON) {
         if (pin == IMGSENSOR_HW_PIN_AVDD) {
-            if((is_project(20645) || is_project(20649)
-                || is_project(0x2064A) || is_project(0x2068D))
+           if((is_project(20645) || is_project(20644))
                 && sensor_idx == IMGSENSOR_SENSOR_IDX_SUB){
                 fan53870_cam_ldo_set_voltage(4,2800);
            }else{
                 fan53870_cam_ldo_set_voltage(
                         fan53870_avdd[avddIdx][0], fan53870_avdd[avddIdx][1]);
-            }
+           }
         } else if (pin == IMGSENSOR_HW_PIN_DVDD
                 && sensor_idx == IMGSENSOR_SENSOR_IDX_MAIN2){
-                if(is_project(20645) || is_project(20649)
-                    || is_project(0x2064A) || is_project(0x2068D)) {
+                if(is_project(20645) || is_project(20644)){
                     fan53870_cam_ldo_set_voltage(1, 1200);
                 }else{
                     fan53870_cam_ldo_set_voltage(1, 1050);
@@ -372,7 +407,8 @@ void Oplusimgsensor_Registdeviceinfo(char *name, char *version, kal_uint8 module
 void Oplusimgsensor_powerstate_notify(bool val)
 {
     if (is_project(20131) || is_project(20133)
-          || is_project(20255) || is_project(20257)) {
+          || is_project(20255) || is_project(20257)
+          || is_project(20151) || is_project(20301) || is_project(20302) ) {
         pr_info("[%s] val:%d", __func__, val);
         oplus_chg_set_camera_status(val);
         oplus_chg_set_camera_on(val);

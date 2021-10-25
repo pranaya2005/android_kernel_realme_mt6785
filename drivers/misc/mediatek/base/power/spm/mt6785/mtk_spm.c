@@ -100,6 +100,14 @@ ssize_t __attribute__((weak)) get_spm_system_stats(
 ssize_t __attribute__((weak)) get_spm_subsystem_stats(
 	char *ToUserBuf, size_t sz, void *priv) { return 0; }
 
+#ifdef VENDOR_EDIT
+ssize_t __attribute__((weak)) get_oplus_rpm_master_stats(
+	char *ToUserBuf, size_t sz, void *priv) { return 0; }
+
+ssize_t __attribute__((weak)) get_oplus_rpm_stats(
+	char *ToUserBuf, size_t sz, void *priv) { return 0; }
+#endif
+
 /* Note: implemented in mtk_spm_sleep.c */
 ssize_t __attribute__((weak)) get_spm_last_wakeup_src(
 	char *ToUserBuf, size_t sz, void *priv) { return 0; }
@@ -311,6 +319,16 @@ static const struct mtk_idle_sysfs_op spm_subsystem_stats_fops = {
 	.fs_read = get_spm_subsystem_stats,
 };
 
+#ifdef VENDOR_EDIT
+static const struct mtk_idle_sysfs_op oplus_rpm_stats_fops = {
+	.fs_read = get_oplus_rpm_stats,
+};
+
+static const struct mtk_idle_sysfs_op oplus_rpm_master_stats_fops = {
+	.fs_read = get_oplus_rpm_master_stats,
+};
+#endif
+
 static const struct mtk_idle_sysfs_op spm_last_wakeup_src_fops = {
 	.fs_read = get_spm_last_wakeup_src,
 };
@@ -384,6 +402,12 @@ static int spm_module_init(void)
 			, &spm_system_stats_fops, &pParent2ND, NULL);
 		mtk_idle_sysfs_entry_func_node_add("subsystem_stats", 0444
 			, &spm_subsystem_stats_fops, &pParent2ND, NULL);
+		#ifdef VENDOR_EDIT
+		mtk_idle_sysfs_entry_func_node_add("oplus_rpmh_stats", 0444
+				, &oplus_rpm_stats_fops,&pParent2ND, NULL);
+		mtk_idle_sysfs_entry_func_node_add("oplus_rpmh_master_stats", 0444
+				, &oplus_rpm_master_stats_fops,&pParent2ND, NULL);
+		#endif
 		mtk_idle_sysfs_entry_func_node_add("spm_sleep_count", 0444
 			, &spm_sleep_count_fops, &pParent2ND, NULL);
 		mtk_idle_sysfs_entry_func_node_add("spm_last_wakeup_src", 0444

@@ -2232,11 +2232,7 @@ static int pmic_eint_queue_work(int eintID)
 			schedule_delayed_work(&hskey_block_work, msecs_to_jiffies(1500));
 #endif /* CONFIG_HSKEY_BLOCK */
 			pr_info("%s delayed work 500ms scheduled when plugging in\n", __func__);
-                        if(is_project(20631) || is_project(20630) || is_project(20632) || is_project(20633) || is_project(20634) || is_project(20635) || is_project(0x206B4)){
-			schedule_delayed_work(&hp_detect_work, 0);
-			} else {
 			schedule_delayed_work(&hp_detect_work, msecs_to_jiffies(500));
-			}
 #ifdef OPLUS_FEATURE_TP_BASIC
 //shifan@bsp.tp 2020/0227 add for notifying touchpanel switch headset mode when detected plug in
 			pr_info("[TP] going to switch headset mode [%d] \n", 1);

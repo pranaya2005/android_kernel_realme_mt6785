@@ -265,6 +265,28 @@ static struct ufs_dev_fix ufs_fixups[] = {
 		UFS_DEVICE_QUIRK_LIMITED_RPMB_MAX_RW_SIZE),
 	UFS_FIX(UFS_VENDOR_MICRON, UFS_ANY_MODEL,
 		UFS_DEVICE_QUIRK_VCC_OFF_DELAY),
+	UFS_FIX(UFS_VENDOR_SKHYNIX, "H28S8D301DMR",
+		UFS_DEVICE_QUIRK_VCC_OFF_DELAY),
+	UFS_FIX(UFS_VENDOR_SKHYNIX, "H28S9Q301CMR",
+		UFS_DEVICE_QUIRK_VCC_OFF_DELAY),
+	UFS_FIX(UFS_VENDOR_SKHYNIX, "H28SAO301MMR",
+		UFS_DEVICE_QUIRK_VCC_OFF_DELAY),
+	UFS_FIX(UFS_VENDOR_SKHYNIX, "H28S8Y401DMR",
+		UFS_DEVICE_QUIRK_VCC_OFF_DELAY),
+	UFS_FIX(UFS_VENDOR_SKHYNIX, "H28S9X401CMR",
+		UFS_DEVICE_QUIRK_VCC_OFF_DELAY),
+	UFS_FIX(UFS_VENDOR_SKHYNIX, "H28SAW401MMR",
+		UFS_DEVICE_QUIRK_VCC_OFF_DELAY),
+	UFS_FIX(UFS_VENDOR_SKHYNIX, "H9HQ21AFAMZDAR",
+		UFS_DEVICE_QUIRK_VCC_OFF_DELAY),
+	UFS_FIX(UFS_VENDOR_SKHYNIX, "H9HQ21AECMZDAR",
+		UFS_DEVICE_QUIRK_VCC_OFF_DELAY),
+	UFS_FIX(UFS_VENDOR_SKHYNIX, "H9HQ15AFAMADAR",
+		UFS_DEVICE_QUIRK_VCC_OFF_DELAY),
+	UFS_FIX(UFS_VENDOR_SKHYNIX, "H9HQ15AECMADAR",
+		UFS_DEVICE_QUIRK_VCC_OFF_DELAY),
+	UFS_FIX(UFS_VENDOR_SKHYNIX, "H9HQ15ACPMADAR",
+		UFS_DEVICE_QUIRK_VCC_OFF_DELAY),
 
 	/* MTK PATCH */
 	UFS_FIX(UFS_VENDOR_TOSHIBA, "THGJFCT0T44BAKLA",
@@ -4953,7 +4975,9 @@ static inline void ufshcd_hba_stop(struct ufs_hba *hba, bool can_sleep)
 int ufshcd_hba_enable(struct ufs_hba *hba)
 {
 	int retry;
+	bool retry_reset = false;
 
+hba_retry:
 	/*
 	 * msleep of 1 and 5 used in this function might result in msleep(20),
 	 * but it was necessary to send the UFS FPGA to reset mode during
@@ -4997,7 +5021,12 @@ int ufshcd_hba_enable(struct ufs_hba *hba)
 			ufs_mtk_pltfrm_host_sw_rst(hba,
 				SW_RST_TARGET_UFSHCI |
 				SW_RST_TARGET_UFSCPT | SW_RST_TARGET_UNIPRO);
-			return -EIO;
+			/* try again after sw reset */
+			if (!retry_reset) {
+				retry_reset = true;
+				goto hba_retry;
+			} else
+				return -EIO;
 		}
 		usleep_range(1000, 1100);
 	}
@@ -9139,6 +9168,14 @@ out:
 static void ufshcd_vreg_set_lpm(struct ufs_hba *hba)
 {
 	/*
+	 * Some device need VCC off delay but host cannot provide this delay
+	 * VCC always on to save these kind of device.
+	 */
+	if ((hba->quirks & UFSHCD_QUIRK_UFS_VCC_ALWAYS_ON) &&
+	    (hba->dev_quirks & UFS_DEVICE_QUIRK_VCC_OFF_DELAY))
+		return;
+
+	/*
 	 * It seems some UFS devices may keep drawing more than sleep current
 	 * (atleast for 500us) from UFS rails (especially from VCCQ rail).
 	 * To avoid this situation, add 2ms delay before putting these UFS
@@ -9175,6 +9212,14 @@ static void ufshcd_vreg_set_lpm(struct ufs_hba *hba)
 static int ufshcd_vreg_set_hpm(struct ufs_hba *hba)
 {
 	int ret = 0;
+
+	/*
+	 * Some device need VCC off delay but host cannot provide this delay
+	 * VCC always on to save these kind of device.
+	 */
+	if ((hba->quirks & UFSHCD_QUIRK_UFS_VCC_ALWAYS_ON) &&
+	    (hba->dev_quirks & UFS_DEVICE_QUIRK_VCC_OFF_DELAY))
+		goto out;
 
 	if (ufshcd_is_ufs_dev_poweroff(hba) && ufshcd_is_link_off(hba) &&
 	    !hba->dev_info.is_lu_power_on_wp) {
@@ -9372,7 +9417,11 @@ static int ufshcd_suspend(struct ufs_hba *hba, enum ufs_pm_op pm_op)
 	ufshcd_set_reg_state(hba, UFS_REG_SUSPEND_SET_LPM); /* MTK PATCH */
 	ufshcd_vreg_set_lpm(hba);
 
-	if (hba->dev_quirks & UFS_DEVICE_QUIRK_VCC_OFF_DELAY)
+	/*
+	 * Some device need VCC off delay and host can provide this delay
+	 */
+	if (!(hba->quirks & UFSHCD_QUIRK_UFS_VCC_ALWAYS_ON) &&
+	    (hba->dev_quirks & UFS_DEVICE_QUIRK_VCC_OFF_DELAY))
 		mdelay(5);
 
 disable_clks:

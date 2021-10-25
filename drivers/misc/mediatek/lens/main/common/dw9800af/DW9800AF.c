@@ -140,9 +140,9 @@ static int initAF(void)
 		char puSendCmd1[2] = {0x02, 0x00};
 		char puSendCmd4[2] = {0x02, 0x02};
 		/* soft power on */
-		/* Shipei.Chen@Cam.Drv, 20200630, modify for DW9800AF VCM Driver init*/
-		char puSendCmd2[2] = {0x06, 0x80};
-		char puSendCmd3[2] = {0x07, 0x01};
+        /* Shipei.Chen@Cam.Drv, 20200630, modify for DW9800AF VCM Driver init*/
+        char puSendCmd2[2] = {0x06, 0x80};
+        char puSendCmd3[2] = {0x07, 0x01};
 
 		g_pstAF_I2Cclient->addr = AF_I2C_SLAVE_ADDR;
 		g_pstAF_I2Cclient->addr = g_pstAF_I2Cclient->addr >> 1;

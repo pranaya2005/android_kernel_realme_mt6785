@@ -132,18 +132,17 @@ static int sia81xx_apr_cmd_memory_map(SIA81XX_AFE *afe);
 static int afe_port_to_apr_port(
 	uint16_t afe_port)
 {
-	/* range: 0x10 ~ APR_MAX_PORTS£¬ to avoid the port : 0x00 */
-	return (afe_port % (APR_MAX_PORTS - 0x10)) + 0x10;
+	return afe_port % APR_MAX_PORTS;
 }
 
 static int sia81xx_fill_apr_hdr(
-	struct apr_hdr *apr_hdr, 
+	struct apr_hdr *apr_hdr,
 	uint32_t port,
-	uint32_t opcode, 
+	uint32_t opcode,
 	uint32_t apr_msg_size)
 {
 	if (apr_hdr == NULL) {
-		pr_err("[  err][%s] %s: invalid APR pointer \r\n", 
+		pr_err("[  err][%s] %s: invalid APR pointer \r\n",
 			LOG_FLAG, __func__);
 		return -EINVAL;
 	}
@@ -169,6 +168,7 @@ static int32_t sia81xx_afe_callback(
 	struct apr_client_data *data,
 	void *priv)
 {
+
 	SIA81XX_AFE *afe = NULL;
 
 	if (!data) {
@@ -185,21 +185,23 @@ static int32_t sia81xx_afe_callback(
 
 	/* priv must a SIA81XX_AFE type pointer */
 	afe = (SIA81XX_AFE *)priv;
-
-	if(RESET_EVENTS == data->opcode) {
-		pr_info("[ info][%s] %s: RESET_EVENTS, event : %d !! \r\n",
-			LOG_FLAG, __func__, (int)data->reset_event);
-
-		afe->cal_block.dsp_mmap_handle = 0;
-
-		if (afe->apr) {
-			apr_reset(afe->apr);
-			atomic_set(&afe->state, 0);
-			afe->apr = NULL;
-		}
+/*
+	pr_debug("[debug][%s] %s[0]: src port : 0x%04x, des port : 0x%04x, "
+		"des srv : 0x%04x \r\n ",
+		LOG_FLAG, __func__, data->src_port, data->dest_port, data->dest_svc);
+	pr_debug("[debug][%s] %s[1]: afe port : 0x%08x, token : 0x%08x, "
+		"opcode : 0x%08x, payload size : %d \r\n",
+		LOG_FLAG, __func__, afe->afe_port_id, data->token,
+		data->opcode, data->payload_size);
+*/
+	if (atomic_read(&afe->state) != 1) {
+		pr_err("[  err][%s] %s: error afe state \r\n",
+			LOG_FLAG, __func__);
+		return -EINVAL;
 	}
 
 	switch(data->opcode) {
+
 		case AFE_SERVICE_CMDRSP_SHARED_MEM_MAP_REGIONS:
 		{
 			struct afe_service_cmdrsp_shared_mem_map_regions *payload = NULL;
@@ -220,6 +222,7 @@ static int32_t sia81xx_afe_callback(
 
 			break;
 		}
+
 		case AFE_PORT_CMDRSP_GET_PARAM_V2:
 		{
 			atomic_set(&afe->state, 0);
@@ -227,6 +230,7 @@ static int32_t sia81xx_afe_callback(
 
 			break;
 		}
+
 		case APR_BASIC_RSP_RESULT:
 		{
 			uint32_t *payload = NULL;
@@ -247,6 +251,7 @@ static int32_t sia81xx_afe_callback(
 
 					break;
 				}
+
 				case AFE_SERVICE_CMD_SHARED_MEM_UNMAP_REGIONS :
 				{
 					afe->cal_block.dsp_mmap_handle = 0;
@@ -256,6 +261,7 @@ static int32_t sia81xx_afe_callback(
 
 					break;
 				}
+
 				default :
 				{
 					pr_err("[  err][%s] %s: unknow payload[0] = 0x%08x "
@@ -267,6 +273,7 @@ static int32_t sia81xx_afe_callback(
 
 			break;
 		}
+
 		default :
 		{
 			pr_err("[  err][%s] %s: invalid opcode = 0x%08x \r\n",
@@ -637,7 +644,7 @@ static void add_sia81xx_afe_list(
 	list_add(&afe->list, &sia81xx_afe_list);
 	mutex_unlock(&sia81xx_afe_list_mutex);
 
-	pr_debug("[debug][%s] %s: add afe port id : %u, count = %u \r\n", 
+	pr_debug("[debug][%s] %s: add afe port id : %u, count = %u \r\n",
 		LOG_FLAG, __func__, afe->afe_port_id, sia81xx_afe_list_count());
 }
 
@@ -649,7 +656,7 @@ static void del_sia81xx_afe_list(
 		return ;
 	}
 
-	pr_debug("[debug][%s] %s: del fe port id : %u, count = %u \r\n", 
+	pr_debug("[debug][%s] %s: del fe port id : %u, count = %u \r\n",
 		LOG_FLAG, __func__, afe->afe_port_id, sia81xx_afe_list_count());
 
 	mutex_lock(&sia81xx_afe_list_mutex);
@@ -658,38 +665,32 @@ static void del_sia81xx_afe_list(
 }
 
 int sia81xx_afe_send(
-	unsigned long afe_handle, 
-	uint32_t module_id, 
-	uint32_t param_id, 
-	uint32_t param_size, 
+	unsigned long afe_handle,
+	uint32_t module_id,
+	uint32_t param_id,
+	uint32_t param_size,
 	uint8_t *buf)
 {
 	int ret = 0;
 	afe_cmd_sia81xx_set_cal apr_cmd;
 	SIA81XX_AFE *afe = (SIA81XX_AFE *)afe_handle;
 
-	if(NULL == afe) 
-		return -EINVAL;
-
-	if(APR_SUBSYS_LOADED != apr_get_q6_state()) {
-		pr_err("[  err][%s] %s: q6_state : %u \r\n", 
-			LOG_FLAG, __func__, (unsigned int)apr_get_q6_state());
-		return -EINVAL;
-	}
+	if(NULL == afe)
+		return -1;
 
 	mutex_lock(&afe->afe_lock);
 
 	ret = chack_afe_validity(afe);
 	if(0 != ret) {
-		pr_err("[  err][%s] %s: chack_afe_validity failed !! \r\n", 
+		pr_err("[  err][%s] %s: chack_afe_validity failed !! \r\n",
 			LOG_FLAG, __func__);
 		goto err;
 	}
 
 	/* is the pa size has a capacity of holding the param */
-	if (param_size > 
+	if (param_size >
 		(afe->cal_block.pa_size- sizeof(afe_cmd_sia81xx_param_payload))) {
-		pr_err("[  err][%s] %s: invalid payload size = %d \r\n", 
+		pr_err("[  err][%s] %s: invalid payload size = %d \r\n",
 			LOG_FLAG, __func__, param_size);
 		ret = -EINVAL;
 		goto err;
@@ -697,10 +698,10 @@ int sia81xx_afe_send(
 
 	/* write param to out-of-band payload */
 	sia81xx_write_param_to_payload(
-		(afe_cmd_sia81xx_param_payload *)(afe->cal_block.kvaddr), 
-		module_id, 
-		param_id, 
-		param_size, 
+		(afe_cmd_sia81xx_param_payload *)(afe->cal_block.kvaddr),
+		module_id,
+		param_id,
+		param_size,
 		buf);
 
 	/* clear cmd */
@@ -710,13 +711,13 @@ int sia81xx_afe_send(
 	/* fill cmd head */
 	sia81xx_fill_apr_hdr(
 			(struct apr_hdr *)(&apr_cmd.apr_hdr),
-			afe_port_to_apr_port(afe->afe_port_id), 
-			AFE_PORT_CMD_SET_PARAM_V2, 
+			afe_port_to_apr_port(afe->afe_port_id),
+			AFE_PORT_CMD_SET_PARAM_V2,
 			sizeof(apr_cmd));
 
 	/* fill cmd entity */
 	apr_cmd.port_id = afe->afe_port_id;
-	apr_cmd.payload_size = 
+	apr_cmd.payload_size =
 		param_size + sizeof(afe_cmd_sia81xx_param_payload);
 	apr_cmd.mem_hdr.data_payload_addr_lsw =
 		lower_32_bits(afe->cal_block.paddr);
@@ -749,57 +750,51 @@ int sia81xx_afe_send(
 	}
 
 	pr_debug("[debug][%s] %s: afe send ret = %d, handle 0x%08x, "
-		"module_id 0x%08x, param_id 0x%08x, size %d \r\n", 
-		LOG_FLAG, __func__, ret, afe->cal_block.dsp_mmap_handle, 
+		"module_id 0x%08x, param_id 0x%08x, size %d \r\n",
+		LOG_FLAG, __func__, ret, afe->cal_block.dsp_mmap_handle,
 		module_id, param_id, param_size);
 
 	mutex_unlock(&afe->afe_lock);
 
 	return ret;
-	
+
 err:
 	pr_err("[  err][%s] %s: afe send failed ret = %d, "
-		"module_id 0x%08x, param_id 0x%08x, size %d \r\n", 
+		"module_id 0x%08x, param_id 0x%08x, size %d \r\n",
 		LOG_FLAG, __func__, ret, module_id, param_id, param_size);
-	
+
 	mutex_unlock(&afe->afe_lock);
-	
+
 	return ret;
 }
 
 int sia81xx_afe_read(
-	unsigned long afe_handle, 
-	uint32_t module_id, 
-	uint32_t param_id, 
-	uint32_t param_size, 
+	unsigned long afe_handle,
+	uint32_t module_id,
+	uint32_t param_id,
+	uint32_t param_size,
 	uint8_t *buf)
 {
 	int ret = 0;
 	afe_cmd_sia81xx_get_cal apr_cmd;
 	SIA81XX_AFE *afe = (SIA81XX_AFE *)afe_handle;
 
-	if(NULL == afe) 
-		return -EINVAL;
+	if(NULL == afe)
+		return -1;
 
-	if(APR_SUBSYS_LOADED != apr_get_q6_state()) {
-		pr_err("[  err][%s] %s: q6_state : %u \r\n", 
-			LOG_FLAG, __func__, (unsigned int)apr_get_q6_state());
-		return -EINVAL;
-	}
-	
 	mutex_lock(&afe->afe_lock);
-	
+
 	ret = chack_afe_validity(afe);
 	if(0 != ret) {
-		pr_err("[  err][%s] %s: chack_afe_validity failed !! \r\n", 
+		pr_err("[  err][%s] %s: chack_afe_validity failed !! \r\n",
 			LOG_FLAG, __func__);
 		goto err;
 	}
 
 	/* is the pa size has a capacity of holding the param */
-	if (param_size > 
+	if (param_size >
 		(afe->cal_block.pa_size - sizeof(afe_cmd_sia81xx_param_payload))) {
-		pr_err("[  err][%s] %s: invalid payload size = %d \r\n", 
+		pr_err("[  err][%s] %s: invalid payload size = %d \r\n",
 			LOG_FLAG, __func__, param_size);
 		ret = -EINVAL;
 		goto err;
@@ -807,10 +802,10 @@ int sia81xx_afe_read(
 
 	/* write param to out-of-band payload */
 	sia81xx_write_param_to_payload(
-		(afe_cmd_sia81xx_param_payload *)(afe->cal_block.kvaddr), 
-		module_id, 
-		param_id, 
-		param_size, 
+		(afe_cmd_sia81xx_param_payload *)(afe->cal_block.kvaddr),
+		module_id,
+		param_id,
+		param_size,
 		buf);
 
 	/* clear cmd */
@@ -820,13 +815,13 @@ int sia81xx_afe_read(
 	/* fill cmd head */
 	sia81xx_fill_apr_hdr(
 			(struct apr_hdr *)(&apr_cmd.apr_hdr),
-			afe_port_to_apr_port(afe->afe_port_id), 
-			AFE_PORT_CMD_GET_PARAM_V2, 
+			afe_port_to_apr_port(afe->afe_port_id),
+			AFE_PORT_CMD_GET_PARAM_V2,
 			sizeof(apr_cmd));
 
 	/* fill cmd entity */
 	apr_cmd.port_id = afe->afe_port_id;
-	apr_cmd.payload_size = 
+	apr_cmd.payload_size =
 		param_size + sizeof(afe_cmd_sia81xx_param_payload);
 	apr_cmd.mem_hdr.data_payload_addr_lsw =
 		lower_32_bits(afe->cal_block.paddr);
@@ -895,14 +890,12 @@ err:
 	return ret;
 }
 
+
+
 unsigned long sia81xx_afe_open(
 	uint32_t afe_prot_id) {
 
 	SIA81XX_AFE *afe;
-
-	/* when open afe, maybe q6 has not start,
-	 * so must be considered this case.
-	 * 0 == apr_get_q6_state() */
 
 	afe = find_sia81xx_afe_list(afe_prot_id);
 	if(NULL != afe)
@@ -1025,6 +1018,7 @@ static void sia81xx_afe_exit(void) {
 		LOG_FLAG, __func__);
 }
 
+
 struct sia81xx_cal_opt tuning_if_opt = {
 	.init = sia81xx_afe_init,
 	.exit = sia81xx_afe_exit,
@@ -1033,5 +1027,6 @@ struct sia81xx_cal_opt tuning_if_opt = {
 	.read = sia81xx_afe_read,
 	.write = sia81xx_afe_send
 };
+
 
 

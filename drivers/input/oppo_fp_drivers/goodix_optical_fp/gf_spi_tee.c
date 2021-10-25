@@ -507,7 +507,7 @@ static long gf_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 		return -EFAULT;
 
 	if (gf_dev->device_available == 0) {
-		if ((cmd == GF_IOC_ENABLE_POWER) || (cmd == GF_IOC_DISABLE_POWER)) {
+		if ((cmd == GF_IOC_ENABLE_POWER) || (cmd == GF_IOC_DISABLE_POWER) || (cmd == GF_IOC_POWER_RESET)) {
 			pr_info("power cmd\n");
 		} else {
 			pr_info("Sensor is power off currently. \n");
@@ -536,7 +536,12 @@ static long gf_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 		break;
 	case GF_IOC_RESET:
 		pr_info("%s GF_IOC_RESET. \n", __func__);
-		gf_hw_reset(gf_dev, 60);
+		gf_hw_reset(gf_dev, 10);
+		break;
+	case GF_IOC_POWER_RESET:
+		pr_info("%s GF_IOC_POWER_RESET. \n", __func__);
+		gf_power_reset(gf_dev);
+		gf_dev->device_available = 1;
 		break;
 	case GF_IOC_INPUT_KEY_EVENT:
 		if (copy_from_user(&gf_key, (struct gf_key *)arg, sizeof(struct gf_key))) {
@@ -582,10 +587,8 @@ static long gf_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 		pr_debug("%s GF_IOC_ENABLE_POWER\n", __func__);
 		if (gf_dev->device_available == 1)
 			pr_info("Sensor has already powered-on.\n");
-		else {
+		else
 			gf_power_on(gf_dev);
-			mdelay(60);
-		}
 		gf_dev->device_available = 1;
 		break;
 	case GF_IOC_DISABLE_POWER:
@@ -1024,7 +1027,9 @@ static int __init gf_init(void)
         && (FP_GOODIX_5228 != get_fpsensor_type())
         && (FP_GOODIX_5658 != get_fpsensor_type())
         && (FP_GOODIX_OPTICAL_95 != get_fpsensor_type())
-		&& (FP_GOODIX_3626 != get_fpsensor_type())){
+        && (FP_GOODIX_3626 != get_fpsensor_type())
+        && (FP_GOODIX_3688 != get_fpsensor_type())
+        && (FP_GOODIX_3636 != get_fpsensor_type())) {
         pr_err("%s, found not goodix sensor\n", __func__);
         status = -EINVAL;
         return status;

@@ -6221,6 +6221,8 @@ rlmChangeOperationMode(
 			/* No callback */
 			return OP_CHANGE_STATUS_VALID_CHANGE_CALLBACK_DONE;
 		}
+
+		return OP_CHANGE_STATUS_VALID_CHANGE_CALLBACK_WAIT;
 	}
 	/* <6>Handling OP Info change for AP/GO */
 	else if (prBssInfo->eCurrentOPMode == OP_MODE_ACCESS_POINT) {
@@ -6228,7 +6230,10 @@ rlmChangeOperationMode(
 		rlmCompleteOpModeChange(prAdapter, prBssInfo, TRUE);
 		return OP_CHANGE_STATUS_VALID_CHANGE_CALLBACK_DONE;
 	}
-	return OP_CHANGE_STATUS_VALID_CHANGE_CALLBACK_WAIT;
+
+	/* Complete OP mode change if no sending action frames */
+	rlmCompleteOpModeChange(prAdapter, prBssInfo, TRUE);
+	return OP_CHANGE_STATUS_VALID_CHANGE_CALLBACK_DONE;
 }
 
 

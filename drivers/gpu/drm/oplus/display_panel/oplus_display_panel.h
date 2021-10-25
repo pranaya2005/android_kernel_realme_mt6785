@@ -114,9 +114,14 @@ struct panel_reg_rw {
 	uint32_t value[PANEL_REG_MAX_LENS]; /*for read, value is empty, just user get function for read the value*/
 };
 
+struct kernel_loglevel {
+	unsigned int enable;
+	unsigned int log_level;
+};
+
 /*oplus ioctl case start*/
 #define PANEL_COMMOND_BASE 0x00
-#define PANEL_COMMOND_MAX  0x30
+#define PANEL_COMMOND_MAX  0x40
 
 #define PANEL_IOCTL_SET_POWER				  PANEL_IOW(0x01, struct panel_vol_set)
 #define PANEL_IOCTL_GET_POWER				  PANEL_IOWR(0x02, struct panel_vol_get)
@@ -166,6 +171,8 @@ struct panel_reg_rw {
 #define PANEL_IOCTL_SET_AOD_AREA	          PANEL_IOW(0x2E, unsigned int)
 #define PANEL_IOCTL_SET_ESD                   PANEL_IOW(0x2F, unsigned int)
 #define PANEL_IOCTL_GET_ESD                   PANEL_IOW(0x30, unsigned int)
+#define PANEL_IOCTL_SET_MTK_LOG_LEVEL         PANEL_IOW(0x31, struct kernel_loglevel)
+
 /*oplus ioctl case end*/
 
 #endif /*_OPPO_DISPLAY_PANEL_H_*/

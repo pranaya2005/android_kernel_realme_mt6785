@@ -4891,6 +4891,11 @@ long si_mem_available(void)
 			global_node_page_state(NR_KERNEL_MISC_RECLAIMABLE);
 	available += reclaimable - min(reclaimable / 2, wmark_low);
 
+#if defined(OPLUS_FEATURE_HEALTHINFO) && defined(CONFIG_OPPO_HEALTHINFO)
+//add for ion cache add to avaible memory statistics
+	available += global_zone_page_state(NR_IONCACHE_PAGES);
+#endif
+
 	if (available < 0)
 		available = 0;
 	return available;

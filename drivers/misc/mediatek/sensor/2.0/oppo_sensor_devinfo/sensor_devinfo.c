@@ -845,7 +845,6 @@ static void sensor_devinfo_work(struct work_struct *dwork)
     }
     if (!is_support_mtk_cali) {
         ret = oppo_sensor_cfg_to_hub(ID_ACCELEROMETER, (uint8_t *)cfg_data, sizeof(cfg_data));
-
         if (ret < 0) {
             DEVINFO_LOG("send acc config fail\n");
         }
@@ -887,6 +886,16 @@ static void sensor_devinfo_work(struct work_struct *dwork)
         }
     }
     memset(cfg_data, 0, sizeof(int) * 12);
+
+#ifdef OPLUS_CCT_SENSOR_TYPE_SUPPORT
+    /*rear_als*/
+    cfg_data[0] = g_cali_data->rear_als_factor;
+    ret = oppo_sensor_cfg_to_hub(ID_REAR_ALS, (uint8_t *)cfg_data, sizeof(cfg_data));
+    if (ret < 0) {
+        DEVINFO_LOG("send rear als config fail\n");
+    }
+    memset(cfg_data, 0, sizeof(int) * 12);
+#endif
 
     oplus_als_cali_data_init();
     get_accgyro_cali_version();

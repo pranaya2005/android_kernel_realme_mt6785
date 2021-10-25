@@ -1,6 +1,6 @@
 /************************************************************************************
 ** VENDOR_EDIT
-** Copyright (C), 2018-2019, OPPO Mobile Comm Corp., Ltd
+** Copyright (C), 2018-2019, OPLUS Mobile Comm Corp., Ltd
 **
 ** Description:
 **    For SY6974 charger ic driver

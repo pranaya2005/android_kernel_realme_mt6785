@@ -1922,7 +1922,7 @@ static int lcm_probe(struct mipi_dsi_device *dsi)
 	struct device_node *dsi_node, *remote_node = NULL, *endpoint = NULL;
 
 	dsi_node = of_get_parent(dev->of_node);
-	pr_info("[soso]samsung probe\n");
+	pr_info("[soso]20131 samsung probe\n");
 	if (dsi_node) {
 		endpoint = of_graph_get_next_endpoint(dsi_node, NULL);
 		if (endpoint) {
@@ -1931,7 +1931,7 @@ static int lcm_probe(struct mipi_dsi_device *dsi)
         }
 	}
 	if (remote_node != dev->of_node) {
-		pr_info("%s+ skip probe due to not current lcm,dev->of_node is %s\n", __func__,dev->of_node);
+		pr_info("%s+ skip probe due to not current lcm,dev->of_node is %s\n", __func__,dev->of_node->name);
 		return 0;
 	}
 	ctx = devm_kzalloc(dev, sizeof(struct lcm), GFP_KERNEL);

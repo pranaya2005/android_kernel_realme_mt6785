@@ -104,6 +104,21 @@
 #define RSN_AKM_SUITE_NONE              0x00AC0F00
 #define RSN_AKM_SUITE_802_1X            0x01AC0F00
 #define RSN_AKM_SUITE_PSK               0x02AC0F00
+
+#define RSN_AKM_SUITE_FT_802_1X         0x03AC0F00
+#define RSN_AKM_SUITE_FT_PSK            0x04AC0F00
+
+#if KERNEL_VERSION(4, 12, 0) < LINUX_VERSION_CODE
+#ifndef LINUX_IEEE80211_H
+#define WLAN_AKM_SUITE_FT_8021X         0x000FAC03
+#define WLAN_AKM_SUITE_FT_PSK           0x000FAC04
+#endif
+#else
+#define WLAN_AKM_SUITE_FT_8021X         0x000FAC03
+#define WLAN_AKM_SUITE_FT_PSK           0x000FAC04
+#endif
+
+
 #if CFG_SUPPORT_802_11W
 #define RSN_AKM_SUITE_802_1X_SHA256     0x05AC0F00
 #define RSN_AKM_SUITE_PSK_SHA256        0x06AC0F00
@@ -115,12 +130,17 @@
 #define RSN_AKM_SUITE_OWE               0x12AC0F00
 #endif
 
+#define RSN_AKM_SUITE_DPP               0x029A6F50
+
+
 #define WPA_AKM_SUITE_NONE              0x00F25000
 #define WPA_AKM_SUITE_802_1X            0x01F25000
 #define WPA_AKM_SUITE_PSK               0x02F25000
+
 #if CFG_SUPPORT_CFG80211_AUTH
 #define WLAN_CIPHER_SUITE_NO_GROUP_ADDR 0x000fac07
 #endif
+#define WLAN_AKM_SUITE_DPP              0x506F9A02
 
 #define ELEM_ID_RSN_LEN_FIXED           20	/* The RSN IE len for associate request */
 

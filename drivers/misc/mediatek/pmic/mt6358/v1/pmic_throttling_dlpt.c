@@ -1141,13 +1141,8 @@ int dlpt_notify_handler(void *unused)
 					, power_off_cnt);
 
 				if (power_off_cnt >= 4)
-#ifndef OPLUS_FEATURE_CHG_BASIC
-/*Liu.Yong@BSP.CHG.basic 2020/11/26, add for shutdown use oppo uisoc*/
 					kernel_restart(
 						"DLPT reboot system");
-#else
-					power_off_cnt = 0;
-#endif /*OPLUS_FEATURE_CHG_BASIC*/
 			} else
 				power_off_cnt = 0;
 		}

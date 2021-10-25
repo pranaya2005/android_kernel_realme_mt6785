@@ -24,6 +24,9 @@
 #define AW3642_DTNAME     "mediatek,flashlights_aw3642"
 #define AW3642_DTNAME_I2C "mediatek,strobe_main_2"
 #endif
+//XingYu.Liu@ODM_WT.CAMERA.Driver.2019/10/9,Add for flashlight bring up
+#define MONET_DTNAME     "mediatek,flashlights_monet"
+#define MONET_DTNAME_I2C "mediatek,strobe_main"
 
 #define DUMMY_GPIO_DTNAME "mediatek,flashlights_dummy_gpio"
 #define DUMMY_DTNAME      "mediatek,flashlights_dummy"
@@ -41,7 +44,5 @@
 #define RT4505_DTNAME     "mediatek,flashlights_rt4505"
 #define RT4505_DTNAME_I2C "mediatek,strobe_main"
 #define RT5081_DTNAME     "mediatek,flashlights_rt5081"
-#define MONET_DTNAME      "mediatek,flashlights_monet"
-#define MONET_DTNAME_I2C  "mediatek,strobe_main"
 
 #endif /* _FLASHLIGHT_DT_H */

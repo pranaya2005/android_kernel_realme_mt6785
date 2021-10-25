@@ -26,6 +26,11 @@
 #include <soc/oppo/oppo_project.h>
 //#endif /*OPLUS_BUG_STABILITY*/
 
+#if IS_ENABLED(CONFIG_OPLUS_FEATURE_THEIA)
+//Yang.Gang@BSP.Kernel.Stability,add 2020/06/08 for BScheck
+#include <soc/oplus/system/oplus_bscheck.h>
+#include <soc/oplus/system/oplus_brightscreen_check.h>
+#endif
 #ifdef CONFIG_MTK_PMIC_NEW_ARCH /*for pmic not ready*/
 static int kpd_enable_lprst = 1;
 #endif
@@ -204,6 +209,15 @@ void kpd_pmic_pwrkey_hal(unsigned long pressed)
 	input_sync(kpd_input_dev);
 	kpd_print(KPD_SAY "(%s) HW keycode =%d using PMIC\n",
 	       pressed ? "pressed" : "released", kpd_dts_data.kpd_sw_pwrkey);
+
+    #if IS_ENABLED(CONFIG_OPLUS_FEATURE_THEIA)
+    //Yang.Gang@BSP.Kernel.Stability,add 2020/06/08 for BScheck
+    if(pressed){
+        //we should canel per work
+        black_screen_timer_restart();
+        bright_screen_timer_restart();
+    }
+    #endif		   
 }
 
 static int mrdump_eint_state;

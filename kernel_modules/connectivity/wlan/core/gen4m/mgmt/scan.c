@@ -1990,35 +1990,37 @@ struct BSS_DESC *scanAddToBssDesc(IN struct ADAPTER *prAdapter,
 #if (CFG_SUPPORT_HE_ER == 1)
 				if (IE_ID_EXT(pucIE) == ELEM_EXT_ID_HE_CAP) {
 					prHeCap = (struct _IE_HE_CAP_T *) pucIE;
-					if (IE_SIZE(prHeCap)
-					    < (sizeof(struct _IE_HE_CAP_T))) {
+					if (IE_LEN(prHeCap) !=
+					    (sizeof(struct _IE_HE_CAP_T) - 2)) {
 						DBGLOG(SCN, WARN,
-						    "HE_CAP IE_LEN err(%d)!\n",
-						    IE_LEN(prHeCap));
+							"HE_CAP IE_LEN err!\n");
 						break;
 					}
 					prBssDesc->fgIsHEPresent = TRUE;
 					prBssDesc->ucDCMMaxConRx =
 					HE_GET_PHY_CAP_DCM_MAX_CONSTELLATION_RX(
 						prHeCap->ucHePhyCap);
-					DBGLOG(SCN, INFO, "ER: SSID:%s,rx:%x\n",
+					DBGLOG(SCN, INFO,
+						"ER: BSSID:" MACSTR
+						" SSID:%s,rx:%x\n",
 						MAC2STR(prBssDesc->aucBSSID),
 						prBssDesc->aucSSID,
 						prBssDesc->ucDCMMaxConRx);
 				}
 				if (IE_ID_EXT(pucIE) == ELEM_EXT_ID_HE_OP) {
 					prHeOp = (struct _IE_HE_OP_T *) pucIE;
-					if (IE_SIZE(prHeOp)
-					    < (sizeof(struct _IE_HE_OP_T))) {
+					if (IE_LEN(prHeOp) !=
+					    (sizeof(struct _IE_HE_OP_T) - 2)) {
 						DBGLOG(SCN, WARN,
-						    "HE_OP IE_LEN err(%d)!\n",
-						    IE_LEN(prHeOp));
+							"HE_OP IE_LEN err!\n");
 						break;
 					}
 					prBssDesc->fgIsERSUDisable =
 					HE_IS_ER_SU_DISABLE(
 						prHeOp->ucHeOpParams);
-					DBGLOG(SCN, INFO, "ER: SSID:%s,er:%x\n",
+					DBGLOG(SCN, INFO,
+						"ER: BSSID:" MACSTR
+						" SSID:%s,er:%x\n",
 						MAC2STR(prBssDesc->aucBSSID),
 						prBssDesc->aucSSID,
 						prBssDesc->fgIsERSUDisable);
@@ -3870,7 +3872,7 @@ void scanReqLog(struct CMD_SCAN_REQ_V2 *prCmdScanReq)
 		prCmdScanReq->u2ChannelDwellTime,
 		prCmdScanReq->u2ChannelMinDwellTime,
 		prCmdScanReq->ucScnFuncMask,
-		prCmdScanReq->aucRandomMac,
+		MAC2STR(prCmdScanReq->aucRandomMac),
 		strbuf != pos ? strbuf : "");
 #undef TEMP_LOG_TEMPLATE
 	kalMemFree(strbuf, VIR_MEM_TYPE, slen);

@@ -47,7 +47,9 @@
 #endif
 #include "pmic_auxadc.h"
 #endif /* end of #if PMIC_ACCDET_KERNEL */
-
+#ifdef CONFIG_OPLUS_FEATURE_ACCDET_CLOSE_INTERNAL_EINT
+#include <soc/oppo/oppo_project.h>
+#endif
 /********************grobal variable definitions******************/
 #ifdef OPLUS_BUG_COMPATIBILITY
 /* Jingjing.Jiang@PSW.MM.AudioDriver.HeadsetDet, 2020/01/14,
@@ -96,6 +98,12 @@ bool g_hskey_block_flag;
 #define EINT_PIN_PLUG_OUT       (0)
 #define EINT_PIN_MOISTURE_DETECTED (2)
 #define ANALOG_FASTDISCHARGE_SUPPORT
+
+#ifdef OPLUS_BUG_COMPATIBILITY
+/*zhanghao@ODM_WT.mm.audiodriver.Machine, 2021/02/04, Add for setting 2.4V to eint comparator*/
+#define EINT_COMPARATOR_HIGH        (8)
+#define EINT_COMPARATOR_LOW         (4)
+#endif
 
 #ifdef CONFIG_ACCDET_EINT_IRQ
 enum pmic_eint_ID {
@@ -1978,7 +1986,10 @@ static int accdet_get_dts_data(void)
 	of_property_read_u32(node, "accdet-mic-mode", &accdet_dts.mic_mode);
 	of_property_read_u32(node, "headset-eint-level-pol",
 			&accdet_dts.eint_pol);
-
+#ifdef OPLUS_BUG_COMPATIBILITY
+	/*zhanghao@ODM_WT.mm.audiodriver.Machine, 2021/02/04, Add for setting 2.4V to eint comparator,8 2.4 */
+	of_property_read_u32(node, "headset-eint-comparator", &accdet_dts.eint_comparator);
+#endif
 	pr_info("accdet mic_vol=%d, plugout_deb=%d mic_mode=%d eint_pol=%d\n",
 	     accdet_dts.mic_vol, accdet_dts.plugout_deb,
 	     accdet_dts.mic_mode, accdet_dts.eint_pol);
@@ -2175,6 +2186,27 @@ static void accdet_init_once(void)
 	reg = pmic_read(AUDENC_ANA_CON10);
 	pmic_write(AUDENC_ANA_CON10,
 		reg | (accdet_dts.mic_vol<<4) | RG_AUD_MICBIAS1_LOWP_EN);
+	#ifdef OPLUS_BUG_COMPATIBILITY
+	/*zhanghao@ODM_WT.mm.audiodriver.Machine, 2021/02/04, Add for setting 2.4V to eint comparator,8 2.4 */
+	if(accdet_dts.eint_comparator==EINT_COMPARATOR_HIGH)
+		pmic_write(AUDENC_ANA_CON11, pmic_read(AUDENC_ANA_CON11) & 0xFBFF);
+	#endif
+    #ifdef CONFIG_OPLUS_FEATURE_ACCDET_CLOSE_INTERNAL_EINT
+	/* Yongpei.Zhang@PSW.MM.AudioDriver.HeadsetDet, 2018/09/18,
+	* change VTH to 2V and internal eint resitance to 500k */
+	/* select VTH for 2v, set 239E bit[10] = 1 */
+	pmic_write(AUDENC_ANA_CON11, pmic_read(AUDENC_ANA_CON11) | 0x0400);
+	/* Yongpei.Yao@PSW.MM.AudioDriver.HeadsetDet, 2019/01/01, Close
+	internal eint resitance for 18561*/
+	if ((is_project(OPPO_18561)) || (is_project(OPPO_18161))) {
+	/* use internal eint resitance 2M,  set 239E bit[11]=1 [12] = 0*/
+	//pmic_write(AUDENC_ANA_CON11, pmic_read(AUDENC_ANA_CON11) | 0x0800);
+	} else {
+	/* use internal eint resitance 500k,  set 239E bit[11]=1 [12] = 1*/
+	pmic_write(AUDENC_ANA_CON11, pmic_read(AUDENC_ANA_CON11) | 0x1800);
+	}
+
+    #endif /* CONFIG_OPLUS_FEATURE_ACCDET_CLOSE_INTERNAL_EINT */
 
 	/* mic mode setting */
 	reg = pmic_read(AUDENC_ANA_CON11);

@@ -78,15 +78,15 @@ static int get_md_gpio_val(unsigned int num)
 {
 	//#ifdef OPLUS_FEATURE_THREESTATE_GPIO
 	//Yuchun.Luo@NETWORK.RF, 2020/11/26, Add for tristate gpio
-	if(is_project(19749) || is_project(19600) || is_project(19741) || is_project(19742) || is_project(19740) || is_project(19673) || is_project(19674) || 
-		is_project(19747) || is_project(19748) || is_project(19746) || is_project(19677) || is_project(19678) || is_project(0x206AC) || is_project(0x206AD) || 
-		is_project(0x206AE) || is_project(0x206AF) || is_project(0x206A0) || is_project(0x2073B) || is_project(0x2073C) )
+	//Junfeng.Gao@NETWORK.RF, 2021/05/13, Add for EvenC tristate gpio
+	if(is_project(20730) || is_project(20731) || is_project(20732) || is_project(20733) || is_project(20761) || is_project(20762) || is_project(20764) || is_project(20766) || is_project(20767) || is_project(0x2167A) || is_project(0x2167B) || is_project(0x2167C) || is_project(0x2167D)
+	|| is_project(0x216AF) || is_project(0x216B0) || is_project(0x216B1))
 	{
-          return gpio_get_tristate_input(num);
+		return gpio_get_tristate_input(num);
 	}
 	else
 	{
-          return gpio_get_value(num);
+		return gpio_get_value(num);
 	}
 	//#endif OPLUS_FEATURE_THREESTATE_GPIO
 }

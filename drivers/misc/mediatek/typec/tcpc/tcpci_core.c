@@ -32,6 +32,9 @@
 #include "mtk_battery.h"
 #endif /* CONFIG_RECV_BAT_ABSENT_NOTIFY */
 #endif /* CONFIG_USB_POWER_DELIVERY */
+/* Chenxu@BSP.storage.Basic, 2021/02/26, Add for init typec role sink */
+#include <soc/oppo/oppo_project.h>
+extern unsigned int is_project(int project );
 
 #define TCPC_CORE_VERSION		"2.0.12_MTK"
 
@@ -490,8 +493,13 @@ static int tcpc_device_irq_enable(struct tcpc_device *tcpc)
 		pr_err("%s tcpc init fail\n", __func__);
 		return ret;
 	}
-
-	ret = tcpc_typec_init(tcpc, tcpc->desc.role_def + 1);
+        /* Chenxu@BSP.storage.Basic, 2021/02/26, Add for init typec role sink */
+        if(is_project(20761) || is_project(20762) || is_project(20764) || is_project(20766) || is_project(20767) ||
+           is_project(0x2167A) || is_project(0x2167B) || is_project(0x2167C) || is_project(0x2167D) ||
+	   is_project(0x216AF) || is_project(0x216B0) || is_project(0x216B1))
+	        ret = tcpc_typec_init(tcpc, tcpc->desc.role_def - 3);
+        else
+                ret = tcpc_typec_init(tcpc, tcpc->desc.role_def + 1);
 	tcpci_unlock_typec(tcpc);
 	if (ret < 0) {
 		pr_err("%s : tcpc typec init fail\n", __func__);

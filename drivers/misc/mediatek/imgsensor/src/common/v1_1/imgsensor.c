@@ -101,6 +101,63 @@ void IMGSENSOR_PROFILE(struct timeval *ptv, char *tag)
 }
 #endif
 
+#ifdef VENDOR_EDIT
+/* Add by LiuBin for register device info at 20160616 */
+#include <soc/oppo/device_info.h>
+#define DEVICE_MANUFACUTRE_NA        "None"
+#define DEVICE_MANUFACUTRE_SUNNY        "Sunny"
+#define DEVICE_MANUFACUTRE_TRULY        "Truly"
+#define DEVICE_MANUFACUTRE_SEMCO        "Semco"
+#define DEVICE_MANUFACUTRE_LITEON       "Liteon"
+#define DEVICE_MANUFACUTRE_QTECH        "Qtech"
+#define DEVICE_MANUFACUTRE_OFILM        "Ofilm"
+#define DEVICE_MANUFACUTRE_SHINE        "Shine"
+
+#define IMGSENSOR_MODULE_ID_SUNNY       0x01
+#define IMGSENSOR_MODULE_ID_TRULY       0x02
+#define IMGSENSOR_MODULE_ID_SEMCO       0x03
+#define IMGSENSOR_MODULE_ID_LITEON      0x04
+#define IMGSENSOR_MODULE_ID_QTECH       0x05
+#define IMGSENSOR_MODULE_ID_OFILM       0x06
+#define IMGSENSOR_MODULE_ID_SHINE       0x07
+void register_imgsensor_deviceinfo(char *name, char *version, u8 module_id)
+{
+    char *manufacture;
+    if (name == NULL || version == NULL)
+    {
+        PK_PR_ERR("name or version is NULL");
+        return;
+    }
+    switch (module_id)
+    {
+        case IMGSENSOR_MODULE_ID_SUNNY:  /* Sunny */
+            manufacture = DEVICE_MANUFACUTRE_SUNNY;
+            break;
+        case IMGSENSOR_MODULE_ID_TRULY:  /* Truly */
+            manufacture = DEVICE_MANUFACUTRE_TRULY;
+            break;
+        case IMGSENSOR_MODULE_ID_SEMCO:  /* Semco */
+            manufacture = DEVICE_MANUFACUTRE_SEMCO;
+            break;
+        case IMGSENSOR_MODULE_ID_LITEON:  /* Lite-ON */
+            manufacture = DEVICE_MANUFACUTRE_LITEON;
+            break;
+        case IMGSENSOR_MODULE_ID_QTECH:  /* Q-Tech */
+            manufacture = DEVICE_MANUFACUTRE_QTECH;
+            break;
+        case IMGSENSOR_MODULE_ID_OFILM:  /* O-Film */
+            manufacture = DEVICE_MANUFACUTRE_OFILM;
+            break;
+        case IMGSENSOR_MODULE_ID_SHINE:  /* Shine */
+            manufacture = DEVICE_MANUFACUTRE_SHINE;
+            break;
+        default:
+            manufacture = DEVICE_MANUFACUTRE_NA;
+    }
+    register_device_proc(name, version, manufacture);
+}
+#endif
+
 /******************************************************************************
  * sensor function adapter
  ******************************************************************************/
@@ -201,12 +258,10 @@ MINT32 imgsensor_sensor_open(struct IMGSENSOR_SENSOR *psensor)
 
 		/* turn on power */
 		IMGSENSOR_PROFILE_INIT(&psensor_inst->profile_time);
-		imgsensor_mutex_lock(psensor_inst);
 
 		ret = imgsensor_hw_power(&pimgsensor->hw,
 				psensor,
 				IMGSENSOR_HW_POWER_STATUS_ON);
-		imgsensor_mutex_unlock(psensor_inst);
 
 		if (ret != IMGSENSOR_RETURN_SUCCESS) {
 			PK_PR_ERR("[%s]", __func__);
@@ -741,7 +796,7 @@ static inline int adopt_CAMERA_HW_GetInfo2(void *pBuf)
 	PK_DBG("[%s]Entry%d\n", __func__, pSensorGetInfo->SensorId);
 
 	for (i = MSDK_SCENARIO_ID_CAMERA_PREVIEW;
-			i < MSDK_SCENARIO_ID_CUSTOM5;
+			i < MSDK_SCENARIO_ID_CUSTOM15;
 			i++) {
 		imgsensor_sensor_get_info(psensor, i, &info, &config);
 
@@ -1724,6 +1779,7 @@ static inline int adopt_CAMERA_HW_FeatureControl(void *pBuf)
 		}
 		break;
 	case SENSOR_FEATURE_GET_PDAF_DATA:
+	case SENSOR_FEATURE_GET_4CELL_DATA:
 		{
 #define PDAF_DATA_SIZE 4096
 			char *pPdaf_data = NULL;
@@ -1766,52 +1822,6 @@ static inline int adopt_CAMERA_HW_FeatureControl(void *pBuf)
 				PK_DBG("[CAMERA_HW]ERROR: copy_to_user fail\n");
 			}
 			kfree(pPdaf_data);
-			*(pFeaturePara_64 + 1) = (uintptr_t) usr_ptr;
-		}
-		break;
-	/* Shipei.Chen@Cam.Drv, 20201219, modify for gw3 64M remosaic Rotatemirror! */
-	case SENSOR_FEATURE_GET_4CELL_DATA:
-		{
-#define FCELL_DATA_SIZE 8192
-			char *p4cell_data = NULL;
-			unsigned long long *pFeaturePara_64 =
-				(unsigned long long *)pFeaturePara;
-			void *usr_ptr =
-				(void *)(uintptr_t) (*(pFeaturePara_64 + 1));
-			kal_uint32 buf_sz =
-				(kal_uint32) (*(pFeaturePara_64 + 2));
-
-			/* buffer size exam */
-			if (buf_sz > FCELL_DATA_SIZE) {
-				kfree(pFeaturePara);
-				PK_PR_ERR(
-				"buffer size (%u) can't larger than %d bytes\n",
-					  buf_sz, FCELL_DATA_SIZE);
-				return -EINVAL;
-			}
-
-			p4cell_data = kmalloc(
-				sizeof(char) * FCELL_DATA_SIZE, GFP_KERNEL);
-			if (p4cell_data == NULL) {
-				kfree(pFeaturePara);
-				PK_PR_ERR(" ioctl allocate mem failed\n");
-				return -ENOMEM;
-			}
-			memset(p4cell_data, 0xff, sizeof(char) * FCELL_DATA_SIZE);
-
-			if (pFeaturePara_64 != NULL)
-				*(pFeaturePara_64 + 1) = (uintptr_t) p4cell_data;
-
-			ret = imgsensor_sensor_feature_control(psensor,
-					pFeatureCtrl->FeatureId,
-					(unsigned char *)pFeaturePara,
-					(unsigned int *)&FeatureParaLen);
-
-			if (copy_to_user((void __user *)usr_ptr,
-					 (void *)p4cell_data, buf_sz)) {
-				PK_DBG("[CAMERA_HW]ERROR: copy_to_user fail\n");
-			}
-			kfree(p4cell_data);
 			*(pFeaturePara_64 + 1) = (uintptr_t) usr_ptr;
 		}
 		break;

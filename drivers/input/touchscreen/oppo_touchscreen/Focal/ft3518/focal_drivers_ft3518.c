@@ -31,6 +31,10 @@
 
 struct fts_ts_data *fts_data = NULL;
 extern int tp_register_times;
+#ifdef CONFIG_TOUCHPANEL_FOCAL_FT3518_GPIO_DEBUG
+/*bsp.tp@shifan 2020.1209 add for ft3518 gpio debug info, reverting is needed later*/
+extern void gpio_dump_regs_range(int start, int end);
+#endif /*CONFIG_TOUCHPANEL_FOCAL_FT3518_RST_DEBUG*/
 
 /*******Part0:LOG TAG Declear********************/
 
@@ -130,17 +134,30 @@ static int fts_rstgpio_set(struct hw_resource *hw_res, bool on)
 static int fts_hw_reset(struct fts_ts_data *ts_data, u32 delayms)
 {
     TPD_INFO("%s.\n", __func__);
+#ifdef CONFIG_TOUCHPANEL_FOCAL_FT3518_GPIO_DEBUG
+/*bsp.tp@shifan 2020.1209 add for ft3518 gpio debug info, reverting is needed later*/
+    gpio_dump_regs_range(4, 4);
+#endif /*CONFIG_TOUCHPANEL_FOCAL_FT3518_GPIO_DEBUG*/
     fts_rstgpio_set(ts_data->hw_res, false); /* reset gpio*/
     msleep(5);
+#ifdef CONFIG_TOUCHPANEL_FOCAL_FT3518_GPIO_DEBUG
+/*bsp.tp@shifan 2020.1209 add for ft3518 gpio debug info, reverting is needed later*/
+    gpio_dump_regs_range(58, 58);
+    gpio_dump_regs_range(4, 4);
+#endif /*CONFIG_TOUCHPANEL_FOCAL_FT3518_GPIO_DEBUG*/
     fts_rstgpio_set(ts_data->hw_res, true); /* reset gpio*/
     if (delayms) {
         msleep(delayms);
     }
+#ifdef CONFIG_TOUCHPANEL_FOCAL_FT3518_GPIO_DEBUG
+/*bsp.tp@shifan 2020.1209 add for ft3518 gpio debug info, reverting is needed later*/
+    gpio_dump_regs_range(58, 58);
+#endif /*CONFIG_TOUCHPANEL_FOCAL_FT3518_GPIO_DEBUG*/
 
     return 0;
 }
 
-static int focal_dump_reg_state(void *chip_data, char *buf)
+static int focal_dump_reg_state(void *chip_data, char *buf, int len)
 {
     int count = 0;
     u8 regvalue = 0;
@@ -148,31 +165,31 @@ static int focal_dump_reg_state(void *chip_data, char *buf)
 
     //power mode 0:active 1:monitor 3:sleep
     regvalue = touch_i2c_read_byte(ts_data->client, FTS_REG_POWER_MODE);
-    count += sprintf(buf + count, "Power Mode:0x%02x\n", regvalue);
+    count += snprintf(buf + count, len - count, "Power Mode:0x%02x\n", regvalue);
 
     //FW version
     regvalue = touch_i2c_read_byte(ts_data->client, FTS_REG_FW_VER);
-    count += sprintf(buf + count, "FW Ver:0x%02x\n", regvalue);
+    count += snprintf(buf + count, len - count,"FW Ver:0x%02x\n", regvalue);
 
     //Vendor ID
     regvalue = touch_i2c_read_byte(ts_data->client, FTS_REG_VENDOR_ID);
-    count += sprintf(buf + count, "Vendor ID:0x%02x\n", regvalue);
+    count += snprintf(buf + count, len - count,"Vendor ID:0x%02x\n", regvalue);
 
     // 1 Gesture mode,0 Normal mode
     regvalue = touch_i2c_read_byte(ts_data->client, FTS_REG_GESTURE_EN);
-    count += sprintf(buf + count, "Gesture Mode:0x%02x\n", regvalue);
+    count += snprintf(buf + count, len - count,"Gesture Mode:0x%02x\n", regvalue);
 
     // 3 charge in
     regvalue = touch_i2c_read_byte(ts_data->client, FTS_REG_CHARGER_MODE_EN);
-    count += sprintf(buf + count, "charge stat:0x%02x\n", regvalue);
+    count += snprintf(buf + count, len - count,"charge stat:0x%02x\n", regvalue);
 
     //Interrupt counter
     regvalue = touch_i2c_read_byte(ts_data->client, FTS_REG_INT_CNT);
-    count += sprintf(buf + count, "INT count:0x%02x\n", regvalue);
+    count += snprintf(buf + count, len - count,"INT count:0x%02x\n", regvalue);
 
     //Flow work counter
     regvalue = touch_i2c_read_byte(ts_data->client, FTS_REG_FLOW_WORK_CNT);
-    count += sprintf(buf + count, "ESD count:0x%02x\n", regvalue);
+    count += snprintf(buf + count, len - count,"ESD count:0x%02x\n", regvalue);
 
     return count;
 }
@@ -239,7 +256,7 @@ static int fts_esd_handle(void *chip_data)
     }
     flow_work_cnt_last = ret;
 
-    if ((err_cnt >= 5) || (i2c_err >= 3)) {
+    if ((err_cnt >= 3) || (i2c_err >= 3)) {
         TPD_INFO("esd check failed, start reset!\n");
         disable_irq_nosync(ts_data->client->irq);
         tp_touch_btnkey_release();
@@ -974,19 +991,28 @@ static int fts_enable_black_gesture(struct fts_ts_data *ts_data, bool enable)
 
 static int fts_enable_edge_limit(struct fts_ts_data *ts_data, bool enable)
 {
-    u8 edge_mode = 0;
+    u8 cur_data = 0;
 
     /*0:Horizontal, 1:Vertical*/
+    ts_data->edge_mode = 0;
     if ((enable == 1) || (VERTICAL_SCREEN == ts_data->touch_direction)) {
-        edge_mode = 0;
+        ts_data->edge_mode &= 0xFE;//edge_mode = 0
+        cur_data = ts_data->grip_level & 0xFE;
     } else if (enable == 0) {
-        if (LANDSCAPE_SCREEN_90 == ts_data->touch_direction)
-            edge_mode = 1;
-        else if (LANDSCAPE_SCREEN_270 == ts_data->touch_direction)
-            edge_mode = 2;
+        if (LANDSCAPE_SCREEN_90 == ts_data->touch_direction) {
+            ts_data->edge_mode |= 0x1;//edge_mode = 1
+            cur_data = ts_data->grip_level | 0x1;
+        } else if (LANDSCAPE_SCREEN_270 == ts_data->touch_direction) {
+            ts_data->edge_mode &= 0xFE;
+            ts_data->edge_mode |= 0x2;//edge_mode = 2
+            cur_data = ts_data->grip_level & 0xFE;
+            cur_data = cur_data | 0x2;
+        }
     }
-    TPD_INFO("MODE_EDGE, write 0x8C=%d", edge_mode);
-    return touch_i2c_write_byte(ts_data->client, FTS_REG_EDGE_LIMIT, edge_mode);
+
+    TPD_INFO("%s:level:%d,edge_mode:%d, cur_data:%d", __func__, ts_data->grip_level,
+        ts_data->edge_mode, cur_data);
+    return touch_i2c_write_byte(ts_data->client, FTS_REG_EDGE_LIMIT, cur_data);
 }
 
 static int fts_enable_charge_mode(struct fts_ts_data *ts_data, bool enable)
@@ -1238,7 +1264,7 @@ static fw_check_state fts_fw_check(void *chip_data, struct resolution_info *reso
     ts_data->fwver = panel_data->TP_FW;
     TPD_INFO("FW VER:%d", panel_data->TP_FW);
     if (panel_data->manufacture_info.version) {
-        sprintf(dev_version, "%04x", panel_data->TP_FW);
+        snprintf(dev_version, MAX_DEVICE_VERSION_LENGTH, "%04x", panel_data->TP_FW);
         strlcpy(&(panel_data->manufacture_info.version[7]), dev_version, 5);
     }
     return FW_NORMAL;
@@ -1747,6 +1773,28 @@ static int fts_sensitive_lv_set(void *chip_data, int level)
     return touch_i2c_write_byte(ts_data->client, FTS_REG_SENSITIVE_LEVEL, level);
 }
 
+static int fts_set_grip_level(void *chip_data, int level)
+{
+    struct fts_ts_data *ts_data = (struct fts_ts_data *)chip_data;
+    int ret = 0;
+    u8 cur_data = 0;
+
+    ts_data->grip_level = 0;
+
+    if (!(level & (1 << GRIP_DISABLE_LARGE))) {
+        ts_data->grip_level &= 0x7f;
+        cur_data = ts_data->edge_mode & 0x7f;
+    } else {
+        ts_data->grip_level |= 0x80;
+        cur_data = ts_data->edge_mode | 0x80;
+    }
+    TPD_INFO("%s:level:%d,edge_mode:%d, cur_data:%d", __func__, ts_data->grip_level,
+            ts_data->edge_mode, cur_data);
+    ret = touch_i2c_write_byte(ts_data->client, FTS_REG_EDGE_LIMIT, cur_data);
+
+    return ret;
+}
+
 static struct oppo_touchpanel_operations fts_ops = {
     .power_control              = fts_power_control,
     .get_vendor                 = fts_get_vendor,
@@ -1771,6 +1819,7 @@ static struct oppo_touchpanel_operations fts_ops = {
     .tp_refresh_switch          = fts_refresh_switch,
     .smooth_lv_set              = fts_smooth_lv_set,
     .sensitive_lv_set           = fts_sensitive_lv_set,
+    .tp_set_grip_level          = fts_set_grip_level,
 };
 
 static struct fts_proc_operations fts_proc_ops = {
@@ -1909,6 +1958,7 @@ static int fts_tp_probe(struct i2c_client *client, const struct i2c_device_id *i
     if (ts->health_monitor_v2_support) {
         tp_healthinfo_report(&ts->monitor_data_v2, HEALTH_PROBE, &time_counter);
     }
+    focal_esd_check_enable(ts_data, true);
     ts_data->probe_done = 1;
     TPD_INFO("%s, probe normal end\n", __func__);
 

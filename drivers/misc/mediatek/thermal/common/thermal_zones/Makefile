@@ -5,6 +5,8 @@
 
 ifeq ($(CONFIG_MACH_MT6833),y)
 	PDIR = mt6833
+else ifeq ($(CONFIG_MACH_MT6893),y)
+	PDIR = mt6893
 else
 	PDIR = $(MTK_PLATFORM)
 endif
@@ -25,7 +27,7 @@ ccflags-y  += -I$(srctree)/drivers/misc/mediatek/imgsensor/inc/
 ifeq ($(CONFIG_MTK_TINYSYS_SSPM_SUPPORT),y)
 ccflags-y  += -I$(srctree)/drivers/misc/mediatek/sspm
 ccflags-y  += -I$(srctree)/drivers/misc/mediatek/sspm/v1
-ccflags-y  += -I$(srctree)/drivers/misc/mediatek/sspm/$(PDIR)
+ccflags-y  += -I$(srctree)/drivers/misc/mediatek/sspm/$(MTK_PLATFORM)
 ccflags-y  += -I$(srctree)/drivers/misc/mediatek/mcupm/$(PDIR)
 endif
 
@@ -370,6 +372,10 @@ obj-$(CONFIG_THERMAL) += mtk_ts_pa_thput.o
 
 obj-$(CONFIG_THERMAL) += mtk_ts_charger.o
 #obj-$(CONFIG_THERMAL) += mtk_ts_charger2.o
+#ifdef OPLUS_FEATURE_CAMERA_COMMON
+#Weiqiang.He@ODM_WT.CAMERA.Driver 20210121 add for flashlight NTC
+obj-$(CONFIG_THERMAL) += mtk_ts_flashlight_even.o
+#endif
 
 ifneq ($(CONFIG_MTK_COMBO_WIFI),)
     obj-$(CONFIG_THERMAL) += mtk_ts_wmt.o
@@ -392,6 +398,7 @@ obj-$(CONFIG_THERMAL) += mtk_ts_battery.o
 obj-$(CONFIG_THERMAL) += mtk_ts_bts.o
 obj-$(CONFIG_THERMAL) += mtk_ts_btsmdpa.o
 
+obj-$(CONFIG_THERMAL) += mtk_ts_chg_mos.o
 obj-$(CONFIG_THERMAL) += mtk_ts_cpu_noBank.o
 obj-$(CONFIG_THERMAL) += mtk_ts_pa.o
 obj-$(CONFIG_THERMAL) += mtk_ts_pa_thput.o

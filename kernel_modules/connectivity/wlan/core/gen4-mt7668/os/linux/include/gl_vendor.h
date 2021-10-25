@@ -172,6 +172,11 @@ typedef enum {
 	LSTATS_SUBCMD_GET_INFO = ANDROID_NL80211_SUBCMD_LSTATS_RANGE_START,
 } LSTATS_SUB_COMMAND;
 
+enum WIFI_OFFLOAD_SUB_COMMAND {
+	WIFI_OFFLOAD_START_MKEEP_ALIVE =
+		ANDROID_NL80211_SUBCMD_WIFI_OFFLOAD_RANGE_START,
+	WIFI_OFFLOAD_STOP_MKEEP_ALIVE,
+};
 
 /* moved from wifi_logger.cpp */
 enum DEBUG_SUB_COMMAND {
@@ -283,6 +288,15 @@ typedef enum {
 	WIFI_BAND_ABG_WITH_DFS = 7, /* 2.4 GHz + 5 GHz with DFS */
 } WIFI_BAND;
 
+enum WIFI_MKEEP_ALIVE_ATTRIBUTE {
+	MKEEP_ALIVE_ATTRIBUTE_ID = 1,
+	MKEEP_ALIVE_ATTRIBUTE_IP_PKT_LEN,
+	MKEEP_ALIVE_ATTRIBUTE_IP_PKT,
+	MKEEP_ALIVE_ATTRIBUTE_SRC_MAC_ADDR,
+	MKEEP_ALIVE_ATTRIBUTE_DST_MAC_ADDR,
+	MKEEP_ALIVE_ATTRIBUTE_PERIOD_MSEC
+};
+
 typedef enum {
 	WIFI_SCAN_BUFFER_FULL,
 	WIFI_SCAN_COMPLETE,
@@ -365,6 +379,24 @@ typedef INT_32 wifi_rssi;
 #define NLA_PUT_U64(skb, attrtype, value) \
 	NLA_PUT_TYPE(skb, NLA_PUT_DATE_U64, attrtype, value)
 
+#endif
+
+#if KERNEL_VERSION(5, 3, 0) <= CFG80211_VERSION_CODE
+#define VENDOR_OPS_SET_POLICY(_val) .policy = (_val),
+#else
+#define VENDOR_OPS_SET_POLICY(_val)
+#endif
+
+#if KERNEL_VERSION(4, 12, 0) <= CFG80211_VERSION_CODE
+#define NLA_PARSE_NESTED(nlattr, maxtype, nla, policy)  \
+	nla_parse_nested(nlattr, maxtype, nla, policy, NULL)
+#define NLA_PARSE(tb, maxtype, head, len, policy) \
+	nla_parse(tb, maxtype, head, len, policy, NULL)
+#else
+#define NLA_PARSE_NESTED(nlattr, maxtype, nla, policy)  \
+	nla_parse_nested(nlattr, maxtype, nla, policy)
+#define NLA_PARSE(tb, maxtype, head, len, policy) \
+	nla_parse(tb, maxtype, head, len, policy)
 #endif
 
 /********************************************************************************
@@ -663,6 +695,17 @@ typedef enum _ENUM_NLA_PUT_DATE_TYPE {
 	NLA_PUT_DATE_U64,
 } ENUM_NLA_PUT_DATE_TYPE;
 
+/* Packet Keep Alive */
+struct PARAM_PACKET_KEEPALIVE_T {
+	bool enable;	/* 1=Start, 0=Stop*/
+	uint8_t index;
+	int16_t u2IpPktLen;
+	uint8_t pIpPkt[256];
+	uint8_t ucSrcMacAddr[PARAM_MAC_ADDR_LEN];
+	uint8_t ucDstMacAddr[PARAM_MAC_ADDR_LEN];
+	uint32_t u4PeriodMsec;
+	uint8_t reserved[8]; /* reserved for MT6632 */
+};
 
 /*******************************************************************************
 *                                 M A C R O S
@@ -749,6 +792,13 @@ int mtk_cfg80211_vendor_get_supported_feature_set(
 int mtk_cfg80211_vendor_set_tx_power_scenario(
 	struct wiphy *wiphy, struct wireless_dev *wdev,
 	const void *data, int data_len);
+int mtk_cfg80211_vendor_packet_keep_alive_start(
+	struct wiphy *wiphy,
+	struct wireless_dev *wdev, const void *data, int data_len);
+
+int mtk_cfg80211_vendor_packet_keep_alive_stop(
+	struct wiphy *wiphy,
+	struct wireless_dev *wdev, const void *data, int data_len);
 int mtk_cfg80211_vendor_get_version(struct wiphy *wiphy,
 				    struct wireless_dev *wdev,
 				    const void *data, int data_len);

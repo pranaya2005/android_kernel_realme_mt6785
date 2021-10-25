@@ -62,6 +62,7 @@ enum _netlink_cmd_t {
 	SIFP_NETLINK_SCR_ON,
 	SIFP_NETLINK_CONNECT,
 	SIFP_NETLINK_DISCONNECT,
+	SIFP_NETLINK_UI_READY,
 	SIFP_NETLINK_TP_TOUCHDOWN,
 	SIFP_NETLINK_TP_TOUCHUP,
 	SIFP_NETLINK_MAX,
@@ -153,13 +154,13 @@ struct fp_dev_touch_info {
 #define SIFP_IOC_PWDN         _IOW(SIFP_IOC_MAGIC, 28, u8)
 #define SIFP_IOC_PROC_NODE    _IOW(SIFP_IOC_MAGIC, 29, char[PROC_VND_ID_LEN])
 #define SIFP_IOC_SET_FEATURE  _IOW(SIFP_IOC_MAGIC, 30, u8)
+#define SIFP_IOC_GET_TP_TOUCH_INFO          _IOR(SIFP_IOC_MAGIC, 31, struct fp_dev_touch_info)//add heng
 
 #define FEATURE_FLASH_CS      0x01
 
 #define RESET_TIME            2	/* Default chip reset wait time(ms) */
 #define RESET_TIME_MULTIPLE   1 /* Multiple for reset time multiple*wait_time */
-//#define SIFP_NETLINK_ROUTE    30
-#define SIFP_NETLINK_ROUTE    0 //30
+#define SIFP_NETLINK_ROUTE    30
 #define NL_MSG_LEN            16
 
 //#define PROC_DIR		"fp"      /* if defined, create node under /proc/fp/xxx */
@@ -179,15 +180,14 @@ struct fp_dev_touch_info {
 #endif /* ! BSP_SIL_PLAT_MTK & ! BSP_SIL_PLAT_QCOM */
 
 /* Todo: enable correct power supply mode */
-//#define BSP_SIL_POWER_SUPPLY_REGULATOR
-#define BSP_SIL_POWER_SUPPLY_PINCTRL
+#define BSP_SIL_POWER_SUPPLY_REGULATOR
+//#define BSP_SIL_POWER_SUPPLY_PINCTRL
 //#define BSP_SIL_POWER_SUPPLY_GPIO
 
 /* AVDD voltage range 2.8v ~ 3.3v */
-//#define AVDD_MAX  3000000
-//#define AVDD_MIN  3000000
-#define AVDD_MAX  2800000
-#define AVDD_MIN  2800000
+#define AVDD_MAX  3000000
+#define AVDD_MIN  3000000
+
 /* VDDIO voltage range 1.8v ~ AVDD */
 #define VDDIO_MAX 1800000
 #define VDDIO_MIN 1800000
@@ -203,9 +203,9 @@ struct fp_dev_touch_info {
   #define DEVICE "/dev/spidev1.0"
   //#define BSP_SIL_IRQ_CONFIRM
   #define PKG_SIZE 1
- // #define BSP_SIL_DYNAMIC_SPI
+  #define BSP_SIL_DYNAMIC_SPI
  #ifndef CONFIG_SILEAD_FP_PLATFORM
-  //#define BSP_SIL_CTRL_SPI
+  #define BSP_SIL_CTRL_SPI
  #endif /* !CONFIG_SILEAD_FP_PLATFORM */
 #elif defined(BSP_SIL_PLAT_QCOM)
   #define QSEE_V4  /* Enable it if QSEE v4 or higher */

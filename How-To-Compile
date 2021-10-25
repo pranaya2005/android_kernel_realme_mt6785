@@ -11,12 +11,12 @@ git clone https://android.googlesource.com/platform/prebuilts/gcc/linux-x86/aarc
 
 (4) add toolchain path to PATH environment variable
 
-2. export some environment variable and build the kernel and dtb ,oppo6785 instead of oppo6769 follow for mobile model RMX2151 RMX2183 RMX2161 RMX2001 RMX2001 RMX2003 RMX2002 RMX2156
+2. export some environment variable and build the kernel and dtb ,mobile model RMX3085 use oppo6785;RMX3191,RM3192,RMX3193 use oppo6768 instead of oppo6785,RMX3195,RMX3197,RMX3430 use oppo6769 instead of oppo6785 below
 
 export SOURCE_ROOT=~/workspace/source
-export DEFCONFIG=oppo6769_defconfig
-export COMPILE_PLATFORM=oppo6769
-export OPPO_COMPILE_PLATFORM=oppo6769
+export DEFCONFIG=oppo6785_defconfig
+export COMPILE_PLATFORM=oppo6785
+export OPPO_COMPILE_PLATFORM=oppo6785
 export PATH=${SOURCE_ROOT}/prebuilts/clang/host/linux-x86/clang-r383902b/bin:${SOURCE_ROOT}/prebuilts/gcc/linux-x86/aarch64/aarch64-linux-android-4.9/bin:/usr/bin:/bin:$PATH
 export MAKE_PATH=${SOURCE_ROOT}/prebuilts/build-tools/linux-x86/bin/
 export CROSS_COMPILE=${SOURCE_ROOT}/prebuilts/gcc/linux-x86/aarch64/aarch64-linux-android-4.9.1/bin/aarch64-linux-androidkernel-

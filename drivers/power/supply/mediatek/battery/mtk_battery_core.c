@@ -82,7 +82,7 @@
 #endif
 
 
-#ifdef CONFIG_OPLUS_CHARGER_MTK6769
+#if defined (CONFIG_OPLUS_CHARGER_MTK6769) || defined (CONFIG_OPLUS_CHARGER_MTK6768) || defined (CONFIG_OPLUS_CHARGER_MTK6769R)
 #include <linux/of_platform.h>
 #include <linux/iio/consumer.h>
 /*Shouli.Wang@ODM_WT.BSP.CHG 2019/9/25, add battery name*/
@@ -98,16 +98,21 @@ extern unsigned int is_project(int project );
 extern bool is_vooc_project(void);
 #endif
 
-#ifdef CONFIG_OPLUS_CHARGER_MTK6889
+#if defined(CONFIG_OPLUS_CHARGER_MTK6889) || defined(CONFIG_OPLUS_CHARGER_MTK6873) || defined(CONFIG_OPLUS_CHARGER_MTK6853)
 /*lizhijie@BSP.CHG.Basic 2020/04/23 lzj add for fg*/
 extern bool is_fuelgauge_apply(void);
 #endif /*CONFIG_OPLUS_CHARGER_MTK6889*/
 
 
-#ifdef CONFIG_OPLUS_CHARGER_MTK6889
+#if defined(CONFIG_OPLUS_CHARGER_MTK6889) || defined(CONFIG_OPLUS_CHARGER_MTK6873)
 /* Baoquan.Lai@BSP.CHG.Basic, 2020/03/19, Add for charging logo */
 extern int fgauge_is_start;
 #endif /*CONFIG_OPLUS_CHARGER_MTK6889*/
+
+#ifdef CONFIG_OPLUS_CHARGER_MTK6853
+/* Baoquan.Lai@BSP.CHG.Basic, 2020/12/30, Add for subboard_temp */
+extern bool prj_is_subboard_temp_support(void);
+#endif /*OPLUS_FEATURE_CHG_BASIC*/
 
 /* ============================================================ */
 /* global variable */
@@ -259,7 +264,7 @@ int gauge_set_nag_en(int nafg_zcv_en)
 		return 0;
 
 
-#if defined(CONFIG_OPLUS_CHARGER_MTK6889) || defined(CONFIG_OPLUS_CHARGER_MTK6771)
+#if defined(CONFIG_OPLUS_CHARGER_MTK6889) || defined(CONFIG_OPLUS_CHARGER_MTK6771) || defined(CONFIG_OPLUS_CHARGER_MTK6873)
 #ifndef CONFIG_OPLUS_CHARGER_MTK6771
 /* Qiao.Hu@EXP.BSP.BaseDrv.CHG.Basic, 2017/08/15, Add for charger full status */
 	if (is_fuelgauge_apply() == true) {
@@ -396,7 +401,7 @@ bool __attribute__ ((weak)) mt_usb_is_device(void)
 /* ============================================================ */
 /* custom setting */
 /* ============================================================ */
-#ifdef CONFIG_OPLUS_CHARGER_MTK6769
+#if defined (CONFIG_OPLUS_CHARGER_MTK6769) || defined (CONFIG_OPLUS_CHARGER_MTK6768) || defined (CONFIG_OPLUS_CHARGER_MTK6769R)
 /*liu.yong@RM.CM.BSP.Kernel.Boot, 2020/08/24, Add for oplusversion and devinfo*/
 enum oplus_batt_num{
 	OPLUS_ATL = 0,
@@ -432,7 +437,7 @@ void fgauge_get_profile_id(void)
 	int id = 0;
 	int ret = 0;
 	int auxadc_voltage = 0;
-#ifdef CONFIG_OPLUS_CHARGER_MTK6769
+#if defined (CONFIG_OPLUS_CHARGER_MTK6769) || defined (CONFIG_OPLUS_CHARGER_MTK6768) || defined (CONFIG_OPLUS_CHARGER_MTK6769R)
 /*Yong.Liu@BSP.CHG.Basic, 2020/09/29, Modify for battery id*/
 	int offset = 0;
 	char battery_name[27];
@@ -472,7 +477,7 @@ void fgauge_get_profile_id(void)
 
 	bm_err("[%s]auxadc_voltage is %d\n", __func__, auxadc_voltage);
 	id_volt = auxadc_voltage * 1500 / 4096;
-#ifdef CONFIG_OPLUS_CHARGER_MTK6769
+#if defined (CONFIG_OPLUS_CHARGER_MTK6769) || defined (CONFIG_OPLUS_CHARGER_MTK6768) || defined (CONFIG_OPLUS_CHARGER_MTK6769R)
 /*Sidong.Zhao@ODM_WT.BSP.CHG 2019/11/11,distinguish battery id*/
 	id_volt = id_volt * 1000;
 	battery_id_vol = id_volt;
@@ -483,17 +488,22 @@ void fgauge_get_profile_id(void)
 			break;
 		}
 	}
-	
+
 	if(is_project_pascalAC()){
 		offset = OPLUS_MAX_NUM;
 	}
-	
+
+/* EVEN,gudi@WT.BSP,2021/01/29,modify offset for battery prowerfile */
+#if defined (CONFIG_OPLUS_CHARGER_MTK6768) || defined (CONFIG_OPLUS_CHARGER_MTK6769R)
+	offset = OPLUS_MAX_NUM;
+#endif/*CONFIG_OPLUS_CHARGER_MTK6768*/
+
 	if((bat_id_num >= OPLUS_ATL)&&(bat_id_num < OPLUS_MAX_NUM)){
 		gm.battery_id = bat_id_num + offset;
 	}else{
 		gm.battery_id = 0 + offset;
 	}
-	
+
 	if(bat_id_num == OPLUS_ATL){
 		sprintf(battery_name,"oplus-atl-4v45-%smah",is_project_pascalAC()?"6000":"5000");
 		devinfo_info_set("battery","4.45v","ATL");
@@ -536,7 +546,7 @@ void fgauge_get_profile_id(void)
 	gm.battery_id = 0;
 }
 #else
-#ifdef CONFIG_OPLUS_CHARGER_MTK6889
+#if defined(CONFIG_OPLUS_CHARGER_MTK6889) || defined(CONFIG_OPLUS_CHARGER_MTK6873)
 /* W9004582@BSP.CHG.Basic, 2020/03/07, Add for battery id  */
 #ifndef CONFIG_OPLUS_CHARGER_MTK6771
 extern int battery_type_check(void);
@@ -544,7 +554,7 @@ extern int battery_type_check(void);
 #endif
 void fgauge_get_profile_id(void)
 {
-#ifndef CONFIG_OPLUS_CHARGER_MTK6889
+#if (!defined(CONFIG_OPLUS_CHARGER_MTK6889)) && (!defined(CONFIG_OPLUS_CHARGER_MTK6873))
 	/* W9004582@BSP.CHG.Basic, 2020/03/07, Add for battery id  */
 
 	if (get_ec()->debug_bat_id_en == 1)
@@ -557,7 +567,7 @@ void fgauge_get_profile_id(void)
 		gm.battery_id, get_ec()->debug_bat_id_en,
 		get_ec()->debug_bat_id_value);
 #else
-#ifdef CONFIG_OPLUS_CHARGER_MTK6889
+#if defined(CONFIG_OPLUS_CHARGER_MTK6889) || defined(CONFIG_OPLUS_CHARGER_MTK6873)
 /*lizhijie@BSP.CHG.Basic 2020/04/26 lzj add for charger */
 #ifndef CONFIG_OPLUS_CHARGER_MTK6771
 	if (is_fuelgauge_apply() == true)
@@ -1049,7 +1059,69 @@ static void fg_custom_parse_table(const struct device_node *np,
 	}
 }
 
+/* struct FUELGAUGE_TEMPERATURE Fg_Temperature_Table[21]; */
+static void fg_custom_part_ntc_table(const struct device_node *np,
+		struct FUELGAUGE_TEMPERATURE *profile_struct)
+{
+	struct FUELGAUGE_TEMPERATURE *p_fg_temp_table;
+	int bat_temp = 0, temperature_r = 0;
+	int saddles = 0, idx = 0, ret = 0, ret_a = 0;
+#if 0
+	int i;
+#endif
+	p_fg_temp_table = profile_struct;
 
+#if 0 /* dump */
+	bm_err("[before]Fg_Temperature_Table - bat_temp : temperature_r\n");
+	for (i = 0; i < 21; i++) {
+		bm_err("%d : %d %d\n", i, Fg_Temperature_Table[i].BatteryTemp,
+			Fg_Temperature_Table[i].TemperatureR);
+	}
+#endif
+
+	ret = fg_read_dts_val(np, "RBAT_TYPE", &(gm.rbat.type), 1);
+	ret_a = fg_read_dts_val(np, "RBAT_PULL_UP_R",
+			&(gm.rbat.rbat_pull_up_r), 1);
+	if ((ret == -1) || (ret_a == -1)) {
+		bm_err("Fail to get ntc type from dts.Keep default value\t");
+		bm_err("RBAT_TYPE=%d, RBAT_PULL_UP_R=%d\n",
+			gm.rbat.type, gm.rbat.rbat_pull_up_r);
+		return;
+	}
+	bm_err("From DTS. RBAT_TYPE = %d, RBAT_PULL_UP_R=%d\n",
+		gm.rbat.type, gm.rbat.rbat_pull_up_r);
+
+	fg_read_dts_val(np, "rbat_temperature_table_num", &saddles, 1);
+	bm_err("%s : rbat_temperature_table_num(%d)\n", __func__, saddles);
+
+	idx = 0;
+
+	while (1) {
+		ret = of_property_read_u32_index(np, "rbat_battery_temperature",
+							idx, &bat_temp);
+
+		idx++;
+		if (!of_property_read_u32_index(
+			np, "rbat_battery_temperature", idx, &temperature_r))
+			bm_debug("bat_temp = %d, temperature_r=%d\n",
+					bat_temp, temperature_r);
+
+		p_fg_temp_table->BatteryTemp = bat_temp;
+		p_fg_temp_table->TemperatureR = temperature_r;
+
+		p_fg_temp_table++;
+		if ((idx++) >= (saddles * 2))
+			break;
+	}
+
+#if 0 /* dump */
+	bm_err("[after]Fg_Temperature_Table - bat_temp : temperature_r\n");
+	for (i = 0; i < saddles; i++) {
+		bm_err("%d : %d %d\n", i, Fg_Temperature_Table[i].BatteryTemp,
+			Fg_Temperature_Table[i].TemperatureR);
+	}
+#endif
+}
 
 void fg_custom_init_from_dts(struct platform_device *dev)
 {
@@ -1105,6 +1177,8 @@ void fg_custom_init_from_dts(struct platform_device *dev)
 		&(fg_cust_data.com_r_fg_value), UNIT_TRANS_10);
 	if (ret == -1)
 		fg_cust_data.com_r_fg_value = fg_cust_data.r_fg_value;
+
+	fg_custom_part_ntc_table(np, Fg_Temperature_Table);
 
 	fg_read_dts_val(np, "FULL_TRACKING_BAT_INT2_MULTIPLY",
 		&(fg_cust_data.full_tracking_bat_int2_multiply), 1);
@@ -2137,14 +2211,34 @@ void fg_bat_temp_int_init(void)
 	if (fg_interrupt_check() == false)
 		return;
 
-#ifdef CONFIG_OPLUS_CHARGER_MTK6889
-#ifndef CONFIG_OPLUS_CHARGER_MTK6771
+#if defined(CONFIG_OPLUS_CHARGER_MTK6889) || defined(CONFIG_OPLUS_CHARGER_MTK6873) || defined(CONFIG_OPLUS_CHARGER_MTK6853)
 /*lizhijie@BSP.CHG.Basic 2020/04/23 lzj add for fg*/
     if (is_fuelgauge_apply() == false) {
-#else
-	if (is_vooc_project()) {
-#endif
     	return;
+    } else {
+#ifdef CONFIG_OPLUS_CHARGER_MTK6853
+		if (prj_is_subboard_temp_support() == true){
+			tmp = force_get_tbat_internal(true);
+		} else {
+			tmp = force_get_tbat(true);
+		}
+#else
+		tmp = force_get_tbat(true);
+#endif
+
+    	fg_bat_new_ht = TempToBattVolt(tmp + 1, 1);
+    	fg_bat_new_lt = TempToBattVolt(tmp - 1, 0);
+
+    	gauge_dev_enable_battery_tmp_lt_interrupt(gm.gdev, false, 0);
+    	gauge_dev_enable_battery_tmp_ht_interrupt(gm.gdev, false, 0);
+    	gauge_dev_enable_battery_tmp_lt_interrupt(
+    		gm.gdev, true, fg_bat_new_lt);
+    	gauge_dev_enable_battery_tmp_ht_interrupt(
+    		gm.gdev, true, fg_bat_new_ht);
+    }
+#elif defined(CONFIG_OPLUS_CHARGER_MTK6771)
+	if (is_vooc_project()) {
+	    	return;
     } else {
      	tmp = force_get_tbat(true);
 
@@ -2184,15 +2278,19 @@ void fg_bat_temp_int_internal(void)
 {
 	int tmp = 0;
 	int fg_bat_new_ht, fg_bat_new_lt;
+#if defined(CONFIG_MTK_DISABLE_GAUGE) || defined(FIXED_TBAT_25)
+#else
+	int tmp_internal = 0;
+#endif
 
+#if defined(CONFIG_OPLUS_CHARGER_MTK6889) || defined(CONFIG_OPLUS_CHARGER_MTK6873) || defined(CONFIG_OPLUS_CHARGER_MTK6853)
 
-#ifdef CONFIG_OPLUS_CHARGER_MTK6889
-#ifndef CONFIG_OPLUS_CHARGER_MTK6771
 /* Qiao.Hu@EXP.BSP.BaseDrv.CHG.Basic, 2017/08/15, Add for charger full status */
 	if (is_fuelgauge_apply() == false) {
-#else
+		return;
+	}
+#elif defined(CONFIG_OPLUS_CHARGER_MTK6771)
 	if (is_vooc_project()) {
-#endif
 		return;
 	}
 #endif
@@ -2222,6 +2320,7 @@ void fg_bat_temp_int_internal(void)
 	return;
 #else
 	tmp = force_get_tbat(true);
+	tmp_internal = force_get_tbat_internal(true);
 
 	gauge_dev_enable_battery_tmp_lt_interrupt(gm.gdev, false, 0);
 	gauge_dev_enable_battery_tmp_ht_interrupt(gm.gdev, false, 0);
@@ -2239,8 +2338,18 @@ void fg_bat_temp_int_internal(void)
 	else if (tmp <= gm.fg_bat_tmp_lt)
 		wakeup_fg_algo(FG_INTR_BAT_TMP_LT);
 
-	fg_bat_new_ht = TempToBattVolt(tmp + 1, 1);
-	fg_bat_new_lt = TempToBattVolt(tmp - 1, 0);
+#ifdef CONFIG_OPLUS_CHARGER_MTK6853
+	if (prj_is_subboard_temp_support() == true){
+		fg_bat_new_ht = TempToBattVolt(tmp_internal + 1, 1);
+		fg_bat_new_lt = TempToBattVolt(tmp_internal - 1, 0);
+	} else {
+		fg_bat_new_ht = TempToBattVolt(tmp + 1, 1);
+		fg_bat_new_lt = TempToBattVolt(tmp - 1, 0);
+	}
+#else
+		fg_bat_new_ht = TempToBattVolt(tmp + 1, 1);
+		fg_bat_new_lt = TempToBattVolt(tmp - 1, 0);
+#endif
 
 	if (gm.fixed_bat_tmp == 0xffff) {
 		gauge_dev_enable_battery_tmp_lt_interrupt(
@@ -2248,12 +2357,12 @@ void fg_bat_temp_int_internal(void)
 		gauge_dev_enable_battery_tmp_ht_interrupt(
 			gm.gdev, true, fg_bat_new_ht);
 	}
-	bm_err("[%s][FG_TEMP_INT] T[%d] V[%d %d] C[%d %d] h[%d %d]\n",
+	bm_err("[%s][FG_TEMP_INT] T[%d] V[%d %d] C[%d %d] h[%d %d] internal[%d]\n",
 		__func__,
 		tmp, gm.fg_bat_tmp_ht,
 		gm.fg_bat_tmp_lt, gm.fg_bat_tmp_c_ht,
 		gm.fg_bat_tmp_c_lt,
-		fg_bat_new_lt, fg_bat_new_ht);
+		fg_bat_new_lt, fg_bat_new_ht, tmp_internal);
 
 #ifndef OPLUS_FEATURE_CHG_BASIC
 /* ChaoYing.Chen@EXP.BSP.CHG.basic, 2017/06/17, Remove for charge driver */
@@ -2949,7 +3058,7 @@ void fg_daemon_comm_INT_data(char *rcv, char *ret)
 	case FG_SET_AGING_FACTOR:
 		{
 			gm.aging_factor = prcv->input;
-#ifdef CONFIG_OPLUS_CHARGER_MTK6889
+#if defined(CONFIG_OPLUS_CHARGER_MTK6889) || defined(CONFIG_OPLUS_CHARGER_MTK6873)
 /* Yichun.Chen	PSW.BSP.CHG  2019-07-23  for aging issue */
 			bm_err("FG_SET_AGING_FACTOR aging=%d\n", gm.aging_factor);
 #endif
@@ -3164,7 +3273,7 @@ void bmd_ctrl_cmd_from_user(void *nl_data, struct fgd_nl_msg_t *ret_msg)
 			memcpy(&gm.init_flag,
 				&msg->fgd_data[0], sizeof(gm.init_flag));
 
-			#ifdef CONFIG_OPLUS_CHARGER_MTK6889
+			#if defined(CONFIG_OPLUS_CHARGER_MTK6889) || defined(CONFIG_OPLUS_CHARGER_MTK6873)
 			/* Baoquan.Lai@EXP.BSP.BaseDrv.CHG.Basic, 2020/03/19, Add for charging logo */
 			fgauge_is_start = 1;
 			#endif /* CONFIG_OPLUS_CHARGER_MTK6889 */
@@ -4245,7 +4354,7 @@ void bmd_ctrl_cmd_from_user(void *nl_data, struct fgd_nl_msg_t *ret_msg)
 		gm.proc_subcmd = msg->fgd_subcmd;
 		gm.proc_subcmd_para1 = msg->fgd_subcmd_para1;
 
-#ifdef CONFIG_OPLUS_CHARGER_MTK6889
+#if defined(CONFIG_OPLUS_CHARGER_MTK6889) || defined(CONFIG_OPLUS_CHARGER_MTK6873)
 /* Yichun.Chen  PSW.BSP.CHG  2019-07-29  for aging issue */
 		if (gm.proc_subcmd_para1 == 795) {
 			memset(gm.ag_log, 0, 2000);
@@ -4376,6 +4485,31 @@ void bmd_ctrl_cmd_from_user(void *nl_data, struct fgd_nl_msg_t *ret_msg)
 	}
 	break;
 
+	case FG_DAEMON_CMD_SET_BATTERY_CAPACITY:
+	{
+		struct fgd_cmd_param_t_8 param;
+
+		memcpy(&param, &msg->fgd_data[0],
+			sizeof(struct fgd_cmd_param_t_8));
+
+		gm.prev_batt_fcc = param.data[4];
+		gm.prev_batt_remaining_capacity = param.data[4] /10 * param.data[6] / 10000;
+
+		bm_debug(
+			"[fr] FG_DAEMON_CMD_SET_BATTERY_CAPACITY = %d %d %d %d %d %d %d %d %d %d RM:%d\n",
+			param.data[0],
+			param.data[1],
+			param.data[2],
+			param.data[3],
+			param.data[4],
+			param.data[5],
+			param.data[6],
+			param.data[7],
+			param.data[8],
+			param.data[9],
+			param.data[4] * param.data[6] / 10000);
+	}
+	break;
 	default:
 		bm_err("bad FG_DAEMON_CTRL_CMD_FROM_USER 0x%x\n", msg->fgd_cmd);
 		break;

@@ -1557,7 +1557,7 @@ firmware_class.path=/vendor/firmware loop.max_part=7";
 			<&gce_mbox 2 0 CMDQ_THR_PRIO_5>,
 			<&gce_mbox 3 0 CMDQ_THR_PRIO_4>,
 			<&gce_mbox 4 0 CMDQ_THR_PRIO_4>,
-			<&gce_mbox 5 0 CMDQ_THR_PRIO_4>,
+			<&gce_mbox 5 CMDQ_NO_TIMEOUT CMDQ_THR_PRIO_2>,
 			<&gce_mbox 6 0 CMDQ_THR_PRIO_3>,
 			<&gce_mbox 7 CMDQ_NO_TIMEOUT CMDQ_THR_PRIO_2>,
 #if defined(CONFIG_MTK_SEC_VIDEO_PATH_SUPPORT) || \
@@ -1888,11 +1888,35 @@ firmware_class.path=/vendor/firmware loop.max_part=7";
 		boost_period = <30>;
 	};
 
+//#ifdef OPLUS_BUG_COMPATIBILITY
+//Yongzhi.Zhang@MULTIMEDIA.AUDIODRIVER.CODEC, 2019/09/27, add for SIA PA ALGO
+	sia81xx_L: sia81xx@L {
+		compatible = "si,sia81xx";
+		si,sia81xx_type = "sia8108";
+		si,sia81xx_disable_pin = <1>;
+
+		/* the same value share a same task
+		 * valid value range : 0 ~ 7 */
+		timer_task_hdl = <0>;
+
+		channel_num = <0>;
+		owi_mode = <10>;
+		en_x_filter = <1>;
+		en_dynamic_updata_vdd = <0>;
+		dynamic_updata_vdd_port = <0x2>;
+   };
+//#endif
 	audio: audio@11220000 {
 		compatible = "mediatek,audio", "syscon";
 		reg = <0 0x11220000 0 0x1000>;
 		#clock-cells = <1>;
 		mediatek,btcvsd_snd = <&btcvsd_snd>;
+//#ifdef OPLUS_BUG_COMPATIBILITY
+//Yongzhi.Zhang@MULTIMEDIA.AUDIODRIVER.CODEC, 2019/09/27, add for SIA PA ALGO
+		si,sia81xx-max-num = <1>;
+		si,sia81xx-aux-devs = <&sia81xx_L>;
+		si,sia81xx-aux-devs-prefix = "SpkrLeft";
+//#endif
 	};
 
 	audgpio: mt_soc_dl1_pcm@11220000 {
@@ -3159,9 +3183,11 @@ firmware_class.path=/vendor/firmware loop.max_part=7";
 		interrupts = <GIC_SPI 264 IRQ_TYPE_LEVEL_LOW>;
 
 		clocks = <&camsys CAMSYS_CCU_CGPDN>,
-			 <&mmsys_config MMSYS_GALS_CCU2MM>;
+			<&mmsys_config MMSYS_GALS_CCU2MM>,
+			<&scpsys SCP_SYS_CAM>;
 		clock-names = "CCU_CLK_CAM_CCU",
-			      "CCU_CLK_MMSYS_CCU";
+			    "CCU_CLK_MMSYS_CCU",
+			    "CAM_PWR";
 	};
 
 	alc@60000000 {
@@ -4007,7 +4033,7 @@ firmware_class.path=/vendor/firmware loop.max_part=7";
 		compatible = "mediatek,mt_soc_pcm_hp_impedance";
 	};
 
-	mt_soc_codec_name {
+	mt_soc_codec_name: mt_soc_codec_name {
 		compatible = "mediatek,mt_soc_codec_63xx";
 		use_hp_depop_flow = <0>; /* select 1: use, 0: not use */
 		use_ul_260k = <0>; /* select 1: use, 0: not use */

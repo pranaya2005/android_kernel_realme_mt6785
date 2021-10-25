@@ -125,3 +125,10 @@ config TS3A225E_ACCDET
 config HSKEY_BLOCK
 	bool "Block hskey for 1s"
 	default n
+
+#ifdef OPLUS_ARCH_EXTENDS
+#Jingjing.Jiang@MULTIMEDIA.AUDIODRIVER.FEATURE, 2020/11/14, add for close internal eint resitance forP70
+config OPLUS_FEATURE_ACCDET_CLOSE_INTERNAL_EINT
+	bool "close internal eint resitance"
+	default n
+#endif /* OPLUS_ARCH_EXTENDS */

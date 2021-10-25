@@ -1350,7 +1350,7 @@ static char aw8697_rtp_name_19065_234Hz[][AW8697_RTP_NAME_MAX] = {
 #endif
     {"aw8697_rtp_lighthouse.bin"},
     {"aw8697_rtp_silk_19081.bin"},
-	{"aw8697_reserved_152.bin"},
+    {"aw8697_reserved_152.bin"},
     {"aw8697_reserved_153.bin"},
     {"aw8697_reserved_154.bin"},
     {"aw8697_reserved_155.bin"},
@@ -2815,6 +2815,7 @@ static int aw8697_haptic_rtp_init(struct aw8697 *aw8697)
 
     pr_info("%s enter\n", __func__);
     aw8697_pm_qos_enable(aw8697, true);
+    pm_qos_add_request(&pm_qos_req_vb, PM_QOS_CPU_DMA_LATENCY, PM_QOS_VALUE_VB);
     if(aw8697->ram.base_addr == 0) {
         aw8697_ram_update(aw8697);
     }

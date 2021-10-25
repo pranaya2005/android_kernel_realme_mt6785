@@ -170,7 +170,6 @@ VOID secInit(IN P_ADAPTER_T prAdapter, IN UINT_8 ucBssIndex)
 	prAdapter->rMib.dot11RSNAConfigPairwiseCiphersTable[9]
 		.dot11RSNAConfigPairwiseCipher = RSN_CIPHER_SUITE_GCMP_256;
 #endif
-
 	for (i = 0; i < MAX_NUM_SUPPORTED_CIPHER_SUITES; i++)
 		prAdapter->rMib.dot11RSNAConfigPairwiseCiphersTable[i].dot11RSNAConfigPairwiseCipherEnabled = FALSE;
 
@@ -207,7 +206,14 @@ VOID secInit(IN P_ADAPTER_T prAdapter, IN UINT_8 ucBssIndex)
 		.dot11RSNAConfigAuthenticationSuite
 		= RSN_AKM_SUITE_OWE;
 #endif
-
+	prAdapter->rMib.dot11RSNAConfigAuthenticationSuitesTable
+		[12].dot11RSNAConfigAuthenticationSuite
+		= RSN_AKM_SUITE_FT_802_1X;
+	prAdapter->rMib.dot11RSNAConfigAuthenticationSuitesTable
+		[13].dot11RSNAConfigAuthenticationSuite
+		= RSN_AKM_SUITE_FT_PSK;
+	prAdapter->rMib.dot11RSNAConfigAuthenticationSuitesTable
+		[14].dot11RSNAConfigAuthenticationSuite = RSN_AKM_SUITE_DPP;
 
 	for (i = 0; i < MAX_NUM_SUPPORTED_AKM_SUITES; i++) {
 		prAdapter->rMib.dot11RSNAConfigAuthenticationSuitesTable[i].dot11RSNAConfigAuthenticationSuiteEnabled =
@@ -1247,4 +1253,33 @@ void secPostUpdateAddr(IN P_ADAPTER_T prAdapter, IN P_BSS_INFO_T prBssInfo)
 			       prBssInfo->prStaRecOfAP->ucIndex);
 		}
 	}
+}
+
+/*----------------------------------------------------------------------------*/
+/*!
+* \brief Check if set key procedure is done or not
+*
+* \param[in] prStaRec which needs to be checked
+*
+* \note
+*/
+/*----------------------------------------------------------------------------*/
+BOOL secCheckSetKeyDone(IN P_STA_RECORD_T prStaRec)
+{
+	if (!prStaRec) {
+		DBGLOG(RSN, INFO, "prStaRec is NULL, return FALSE.\n");
+		return FALSE;
+	}
+
+	/* Check WEP flow */
+	if (prStaRec->fgIsTxPairwiseKeyReady == FALSE &&
+		prStaRec->fgIsTxGroupKeyReady == TRUE &&
+		prStaRec->ucGroupKeyCount == 2)
+		return TRUE;
+	/* Check TKIP/CCMP flow */
+	else if (prStaRec->fgIsTxPairwiseKeyReady == TRUE &&
+		prStaRec->fgIsTxGroupKeyReady == TRUE)
+		return TRUE;
+	else
+		return FALSE;
 }

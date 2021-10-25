@@ -823,7 +823,7 @@ static void set_shutter(kal_uint32 shutter)
  *
  *************************************************************************/
 static void set_shutter_frame_length(kal_uint16 shutter,
-				     kal_uint16 frame_length, kal_bool auto_extend_en)
+				     kal_uint16 frame_length)
 {
 	unsigned long flags;
 	kal_uint16 realtime_fps = 0;
@@ -895,11 +895,7 @@ static void set_shutter_frame_length(kal_uint16 shutter,
 
 	/* Update Shutter */
 	write_cmos_sensor_8(0x0104, 0x01);
-	/*wujun@camera 20210104 add for camera ccu error*/
-	if (auto_extend_en)
-		write_cmos_sensor_8(0x0350, 0x01); /* Enable auto extend */
-	else
-		write_cmos_sensor_8(0x0350, 0x00); /* Disable auto extend */
+	write_cmos_sensor_8(0x0350, 0x00); /* Disable auto extend */
 	write_cmos_sensor_8(0x0202, (shutter >> 8) & 0xFF);
 	write_cmos_sensor_8(0x0203, shutter  & 0xFF);
 	write_cmos_sensor_8(0x0104, 0x00);
@@ -4310,7 +4306,7 @@ static kal_uint32 feature_control(MSDK_SENSOR_FEATURE_ENUM feature_id,
 		break;
 	case SENSOR_FEATURE_SET_SHUTTER_FRAME_TIME:
 		set_shutter_frame_length((UINT16)(*feature_data),
-						(UINT16)(*(feature_data + 1)), (BOOL) (*(feature_data + 2)));
+						(UINT16)(*(feature_data + 1)));
 		break;
 	case SENSOR_FEATURE_SET_STREAMING_SUSPEND:
 		pr_debug("SENSOR_FEATURE_SET_STREAMING_SUSPEND\n");

@@ -316,6 +316,7 @@ VOID aaaFsmRunEventRxAuth(IN P_ADAPTER_T prAdapter, IN P_SW_RFB_T prSwRfb)
 			prStaRec->u2StatusCode = u2StatusCode;
 
 			prStaRec->ucAuthAlgNum = prAuthFrame->u2AuthAlgNum;
+			prStaRec->ucAuthTranNum = prAuthFrame->u2AuthTransSeqNo;
 
 		} else {
 			/* NOTE(Kevin): We should have STA_RECORD_T if the status code was successful */

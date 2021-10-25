@@ -37,6 +37,15 @@ extern void oplus_chg_set_chargerid_switch_val(int);
 extern bool oplus_vooc_get_fastchg_to_normal(void);
 extern bool oplus_vooc_get_fastchg_to_warm(void);
 extern void oplus_chg_set_charger_type_unknown(void);
+extern void oplus_wake_up_usbtemp_thread(void);
+void __attribute__((weak)) oplus_usbtemp_set_vbus_exist(bool exist)
+{
+	return ;
+}
+bool __attribute__((weak)) usbtemp_lowvbus_detect_support(void)
+{
+	return false;
+}
 int __attribute__((weak)) oplus_chg_get_mmi_status(void)
 {
 	return 1;
@@ -130,6 +139,12 @@ static irqreturn_t mt6360_pmu_irq_handler(int irq, void *data)
 								}
 							}
 							oplus_chg_wake_update_work();
+						}
+						if (usbtemp_lowvbus_detect_support() == true){
+							oplus_usbtemp_set_vbus_exist(vbus_status);
+							if (vbus_status) {
+								oplus_wake_up_usbtemp_thread();
+							}
 						}
 					} else {
 						dev_dbg(mpi->dev,

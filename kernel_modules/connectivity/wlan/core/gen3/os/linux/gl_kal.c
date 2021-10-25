@@ -138,6 +138,11 @@ static gid_t orgfsgid;
 static mm_segment_t orgfs;
 
 static PUINT_8 apucFwPath[] = {
+	//#ifdef OPLUS_FEATURE_WIFI_RUSUPGRADE
+	//JiaoBo@CONNECTIVITY.WIFI.BASIC.HARDWARE.2795386, 2020/02/20
+	//add for: support auto update function, include mtk fw, mtk wifi.cfg, qcom fw, qcom bdf, qcom ini
+        (PUINT_8) "/data/misc/firmware/active/",
+        //#endif /* OPLUS_FEATURE_WIFI_RUSUPGRADE */
 	(PUINT_8) "/storage/sdcard0/",
 	(PUINT_8) "/etc/firmware/",
 	(PUINT_8) "/vendor/firmware/",

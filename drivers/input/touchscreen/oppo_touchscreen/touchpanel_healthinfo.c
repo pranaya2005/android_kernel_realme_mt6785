@@ -127,7 +127,7 @@ int print_point_from_record(struct seq_file *s, struct points_record *points_rec
     }
 
     if (s) {
-        seq_printf(s, "%spoints count:%d\n", prefix ? prefix : "", points_record->count);
+        seq_printf(s, "%spoints_count:%d\n", prefix ? prefix : "", points_record->count);
     }
     TPD_DETAIL("%spoints count:%d\n", prefix ? prefix : "", points_record->count);
 
@@ -151,7 +151,7 @@ int print_swipe_from_record(struct seq_file *s, struct swipes_record *swipes_rec
     }
 
     if (s) {
-        seq_printf(s, "%sswipes count:%d\n", prefix ? prefix : "", swipes_record->count);
+        seq_printf(s, "%sswipes_count:%d\n", prefix ? prefix : "", swipes_record->count);
     }
     TPD_DETAIL("%sswipes count:%d\n", prefix ? prefix : "", swipes_record->count);
     for (i = 0; i < length; i++) {
@@ -439,7 +439,7 @@ void print_buffer_list(struct seq_file *s, struct list_head *list, char *prefix)
         vc = (struct health_value_count *)pos;
 
         if (s) {
-            seq_printf(s, "%slen=%d\n", prefix ? prefix : "", vc->count);
+            seq_printf(s, "%slen=%d, ", prefix ? prefix : "", vc->count);
         }
         print_as_matrix(s, vc->value, vc->count, DEFAULT_BUF_MATRIX_LINEBREAK, false);
     }
@@ -850,6 +850,19 @@ int tp_touch_healthinfo_handle(struct monitor_data_v2 *monitor_data, int obj_att
     return 0;
 }
 
+int tp_grip_up_healthinfo_handle(struct monitor_data_v2 *monitor_data, uint8_t up_id, int direction)
+{
+    int ret = 0;
+
+    if (!monitor_data) {
+        return 0;
+    }
+
+    point_state_up_handle(monitor_data, up_id, direction);
+
+    return ret;
+}
+
 int tp_gesture_healthinfo_handle(struct monitor_data_v2 *monitor_data, int gesture_type)
 {
     if (!monitor_data) {
@@ -1248,6 +1261,9 @@ int tp_healthinfo_report(void *tp_monitor_data, healthinfo_type type, void *valu
     case HEALTH_GRIP:
         ret = tp_grip_healthinfo_handle(monitor_data, grip_info);
         break;
+    case HEALTH_GRIP_UP:
+        ret = tp_grip_up_healthinfo_handle(monitor_data, *value_uint8, monitor_data->direction);
+        break;
     default:
         break;
     }
@@ -1346,7 +1362,7 @@ int tp_healthinfo_read(struct seq_file *s, void *tp_monitor_data)
         seq_printf(s, "max_point-jumping_times:%d\n", monitor_data->max_jumping_times);
         //print_point_from_record(s, &monitor_data->jumping_points, PREFIX_POINT_JUMPING);
         if (!is_delta_data_allzero(monitor_data->jumping_points_count_array, monitor_data->RX_NUM / 2, monitor_data->TX_NUM / 2)) {
-            seq_printf(s, "%spoint:\n", PREFIX_POINT_JUMPING);
+            seq_printf(s, "%spoint:", PREFIX_POINT_JUMPING);
             print_delta_data(s, monitor_data->jumping_points_count_array, monitor_data->RX_NUM / 2, monitor_data->TX_NUM / 2);
         }
         if (!is_delta_data_allzero(monitor_data->jumping_point_delta_data, monitor_data->TX_NUM, monitor_data->RX_NUM)) {
@@ -1376,48 +1392,58 @@ int tp_healthinfo_read(struct seq_file *s, void *tp_monitor_data)
     //print_swipe_from_record(s, &monitor_data->broken_swipes, PREFIX_SWIPE_BROKER);
     print_swipe_from_record(s, &monitor_data->long_swipes, PREFIX_SWIPE_SUDDNT_LONG);
 
+    if (monitor_data->smooth_level_chosen) {
+        seq_printf(s, "smooth_lv:%d\n", monitor_data->smooth_level_chosen);
+    }
+    if (monitor_data->sensitive_level_chosen) {
+        seq_printf(s, "sensitive_lv:%d\n", monitor_data->sensitive_level_chosen);
+    }
+
     vc_value = kzalloc(sizeof(int), GFP_KERNEL);
     if(vc_value) {
         //black gesture
         list_for_each(pos, &monitor_data->gesture_values_list) {
             vc = (struct health_value_count *)pos;
             memcpy(vc_value, &vc->value, sizeof(int));
-            seq_printf(s, "%s%s:%d\n", PREFIX_GESTURE, *vc_value == DouTap ? "double tap" :
-                       *vc_value == UpVee ? "up vee" :
-                       *vc_value == DownVee ? "down vee" :
+            seq_printf(s, "%s%s:%d\n", PREFIX_GESTURE, *vc_value == DouTap ? "double_tap" :
+                       *vc_value == UpVee ? "up_vee" :
+                       *vc_value == DownVee ? "down_vee" :
                        *vc_value == LeftVee ? "(>)" :
                        *vc_value == RightVee ? "(<)" :
                        *vc_value == Circle ? "circle" :
                        *vc_value == DouSwip ? "(||)" :
                        *vc_value == Left2RightSwip ? "(-->)" :
                        *vc_value == Right2LeftSwip ? "(<--)" :
-                       *vc_value == Up2DownSwip ? "up to down |" :
-                       *vc_value == Down2UpSwip ? "down to up |" :
+                       *vc_value == Up2DownSwip ? "up_to_down_|" :
+                       *vc_value == Down2UpSwip ? "down_to_up_|" :
                        *vc_value == Mgestrue ? "(M)" :
+                       *vc_value == Wgestrue ? "(W)" :
                        *vc_value == FingerprintDown ? "(fingerprintdown)" :
                        *vc_value == FingerprintUp ? "(fingerprintup)" :
-                       *vc_value == SingleTap ? "single tap" : "unknown", vc->count);
+                       *vc_value == SingleTap ? "single_tap" :
+                       *vc_value == Heart ? "heart" : "unknown", vc->count);
         }
 
         list_for_each(pos, &monitor_data->invalid_gesture_values_list) {
             vc = (struct health_value_count *)pos;
             memcpy(vc_value, &vc->value, sizeof(int));
-            seq_printf(s, "%s%s:%d\n", PREFIX_GESTURE_INVLID, *vc_value == DouTap ? "double tap" :
-                       *vc_value == UpVee ? "up vee" :
-                       *vc_value == DownVee ? "down vee" :
+            seq_printf(s, "%s%s:%d\n", PREFIX_GESTURE_INVLID, *vc_value == DouTap ? "double_tap" :
+                       *vc_value == UpVee ? "up_vee" :
+                       *vc_value == DownVee ? "down_vee" :
                        *vc_value == LeftVee ? "(>)" :
                        *vc_value == RightVee ? "(<)" :
                        *vc_value == Circle ? "circle" :
                        *vc_value == DouSwip ? "(||)" :
                        *vc_value == Left2RightSwip ? "(-->)" :
                        *vc_value == Right2LeftSwip ? "(<--)" :
-                       *vc_value == Up2DownSwip ? "up to down |" :
-                       *vc_value == Down2UpSwip ? "down to up |" :
+                       *vc_value == Up2DownSwip ? "up_to_down_|" :
+                       *vc_value == Down2UpSwip ? "down_to_up_|" :
                        *vc_value == Mgestrue ? "(M)" :
                        *vc_value == Wgestrue ? "(W)" :
                        *vc_value == FingerprintDown ? "(fingerprintdown)" :
                        *vc_value == FingerprintUp ? "(fingerprintup)" :
-                       *vc_value == SingleTap ? "single tap" : "unknown", vc->count);
+                       *vc_value == SingleTap ? "single_tap" :
+                       *vc_value == Heart ? "heart" : "unknown", vc->count);
         }
         kfree(vc_value);
     }

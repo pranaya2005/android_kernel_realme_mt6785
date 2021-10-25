@@ -235,6 +235,7 @@ static int mtk_usb_probe(struct usb_interface *intf, const struct usb_device_id 
 static void mtk_usb_disconnect(struct usb_interface *intf)
 {
 	P_GLUE_INFO_T prGlueInfo;
+	int i = 0;
 
 	DBGLOG(HAL, STATE, "mtk_usb_disconnect()\n");
 
@@ -250,6 +251,22 @@ static void mtk_usb_disconnect(struct usb_interface *intf)
 
 	usb_put_dev(interface_to_usbdev(intf));
 
+	for (i = 1; i < KAL_P2P_NUM; i++) {
+
+		if (gprP2pRoleWdev[i] == NULL)
+			continue;
+
+		DBGLOG(INIT, STATE,
+			"glP2pDestroyWirelessDevice[%d] (0x%p)\n",
+					i, gprP2pRoleWdev[i]->wiphy);
+		set_wiphy_dev(gprP2pRoleWdev[i]->wiphy, NULL);
+		wiphy_unregister(gprP2pRoleWdev[i]->wiphy);
+		wiphy_free(gprP2pRoleWdev[i]->wiphy);
+		kfree(gprP2pRoleWdev[i]);
+
+		gprP2pRoleWdev[i] = NULL;
+	}
+
 	DBGLOG(HAL, STATE, "mtk_usb_disconnect() done\n");
 }
 
@@ -259,7 +276,7 @@ static int mtk_usb_suspend(struct usb_interface *intf, pm_message_t message)
 	ADAPTER_T *prAdapter;
 	P_AIS_FSM_INFO_T prAisFsmInfo = NULL;
 	UINT_8 count = 1;
-	UINT_8 ret = 0;
+	int ret = 0;
 
 	DBGLOG(HAL, STATE, "mtk_usb_suspend()\n");
 
@@ -306,6 +323,7 @@ static int mtk_usb_suspend(struct usb_interface *intf, pm_message_t message)
 	glUsbSetState(&prGlueInfo->rHifInfo, USB_STATE_SUSPEND);
 	halDisableInterrupt(prGlueInfo->prAdapter);
 	halTxCancelAllSending(prGlueInfo->prAdapter);
+	prGlueInfo->rHifInfo.DriverFWStat = USB_STATE_SUSPEND;
 
 	DBGLOG(HAL, STATE, "mtk_usb_suspend() done!\n");
 
@@ -342,6 +360,7 @@ static int mtk_usb_resume(struct usb_interface *intf)
 	halEnableInterrupt(prGlueInfo->prAdapter);
 
 	wlanResumePmHandle(prGlueInfo);
+	prGlueInfo->rHifInfo.DriverFWStat = USB_STATE_LINK_UP;
 
 	DBGLOG(HAL, STATE, "mtk_usb_resume() done!\n");
 
@@ -395,7 +414,8 @@ int mtk_usb_vendor_request(IN P_GLUE_INFO_T prGlueInfo, IN UCHAR uEndpointAddres
 	}
 
 	if (unlikely(TransferBufferLength > prHifInfo->vendor_req_buf_sz)) {
-		DBGLOG(REQ, ERROR, "len %u exceeds limit %zu\n", TransferBufferLength,
+		DBGLOG(REQ, ERROR, "len %u exceeds limit %u\n",
+			TransferBufferLength,
 			prHifInfo->vendor_req_buf_sz);
 		return -E2BIG;
 	}
@@ -619,8 +639,9 @@ VOID glUnregisterBus(remove_card pfRemove)
 VOID glUdmaTxRxEnable(P_GLUE_INFO_T prGlueInfo, BOOLEAN enable)
 {
 	UINT_32 u4Value = 0;
+	BOOL ucRet;
 
-	kalDevRegRead(prGlueInfo, UDMA_WLCFG_0, &u4Value);
+	ucRet = kalDevRegRead(prGlueInfo, UDMA_WLCFG_0, &u4Value);
 
 	/* enable UDMA TX & RX */
 	if (enable)
@@ -628,15 +649,16 @@ VOID glUdmaTxRxEnable(P_GLUE_INFO_T prGlueInfo, BOOLEAN enable)
 	else
 		u4Value &= ~(UDMA_WLCFG_0_TX_EN(1) | UDMA_WLCFG_0_RX_EN(1));
 
-	kalDevRegWrite(prGlueInfo, UDMA_WLCFG_0, u4Value);
+	ucRet = kalDevRegWrite(prGlueInfo, UDMA_WLCFG_0, u4Value);
 }
 
 VOID glUdmaRxAggEnable(P_GLUE_INFO_T prGlueInfo, BOOLEAN enable)
 {
 	UINT_32 u4Value = 0;
+	BOOL ucRet;
 
 	if (enable) {
-		kalDevRegRead(prGlueInfo, UDMA_WLCFG_0, &u4Value);
+		ucRet = kalDevRegRead(prGlueInfo, UDMA_WLCFG_0, &u4Value);
 		/* enable UDMA TX & RX */
 		u4Value &= ~(UDMA_WLCFG_0_RX_AGG_EN_MASK |
 		    UDMA_WLCFG_0_RX_AGG_LMT_MASK |
@@ -644,16 +666,16 @@ VOID glUdmaRxAggEnable(P_GLUE_INFO_T prGlueInfo, BOOLEAN enable)
 		u4Value |= UDMA_WLCFG_0_RX_AGG_EN(1) |
 		    UDMA_WLCFG_0_RX_AGG_LMT(USB_RX_AGGREGTAION_LIMIT) |
 		    UDMA_WLCFG_0_RX_AGG_TO(USB_RX_AGGREGTAION_TIMEOUT);
-		kalDevRegWrite(prGlueInfo, UDMA_WLCFG_0, u4Value);
+		ucRet = kalDevRegWrite(prGlueInfo, UDMA_WLCFG_0, u4Value);
 
-		kalDevRegRead(prGlueInfo, UDMA_WLCFG_1, &u4Value);
+		ucRet = kalDevRegRead(prGlueInfo, UDMA_WLCFG_1, &u4Value);
 		u4Value &= ~UDMA_WLCFG_1_RX_AGG_PKT_LMT_MASK;
 		u4Value |= UDMA_WLCFG_1_RX_AGG_PKT_LMT(USB_RX_AGGREGTAION_PKT_LIMIT);
-		kalDevRegWrite(prGlueInfo, UDMA_WLCFG_1, u4Value);
+		ucRet = kalDevRegWrite(prGlueInfo, UDMA_WLCFG_1, u4Value);
 	} else {
-		kalDevRegRead(prGlueInfo, UDMA_WLCFG_0, &u4Value);
+		ucRet = kalDevRegRead(prGlueInfo, UDMA_WLCFG_0, &u4Value);
 		u4Value &= ~UDMA_WLCFG_0_RX_AGG_EN(1);
-		kalDevRegWrite(prGlueInfo, UDMA_WLCFG_0, u4Value);
+		ucRet = kalDevRegWrite(prGlueInfo, UDMA_WLCFG_0, u4Value);
 	}
 }
 
@@ -911,7 +933,7 @@ VOID glSetHifInfo(P_GLUE_INFO_T prGlueInfo, ULONG ulCookie)
 	mutex_init(&prHifInfo->vendor_req_sem);
 	prHifInfo->vendor_req_buf = kzalloc(VND_REQ_BUF_SIZE, GFP_KERNEL);
 	if (!prHifInfo->vendor_req_buf) {
-		DBGLOG(HAL, ERROR, "kzalloc vendor_req_buf %zu error\n",
+		DBGLOG(HAL, ERROR, "kzalloc vendor_req_buf %u error\n",
 			VND_REQ_BUF_SIZE);
 		goto error;
 	}

@@ -43,6 +43,11 @@
 #include<soc/oplus/system/oppo_project.h>
 #include <mt-plat/mtk_boot_common.h>
 #endif
+
+#ifdef OPLUS_FEATURE_CHG_BASIC
+#include <mt-plat/mtk_boot_common.h>
+#endif
+
 static struct i2c_dma_info g_dma_regs[I2C_MAX_CHANNEL];
 static struct mt_i2c *g_mt_i2c[I2C_MAX_CHANNEL];
 static struct mtk_i2c_compatible i2c_common_compat;
@@ -793,7 +798,6 @@ void i2c_gpio_dump_info(struct mt_i2c *i2c)
 	if (i2c->gpiobase) {
 		dev_info(i2c->dev, "%s +++++++++++++++++++\n", __func__);
 		//gpio_dump_regs_range(i2c->scl_gpio_id, i2c->sda_gpio_id);
-		gpio_dump_regs_range(i2c->scl_gpio_id-1, i2c->sda_gpio_id+1);
 		dev_info(i2c->dev, "I2C gpio structure:\n"
 		       I2CTAG "EH_CFG=0x%x,PU_CFG=0x%x,RSEL_CFG=0x%x\n",
 		       readl(i2c->gpiobase + i2c->offset_eh_cfg),
@@ -850,7 +854,7 @@ static void i2c_gpio_reset(struct mt_i2c *i2c)
 		pr_err("%s: no pinctrl setting! id=%d\n", __func__, i2c->id);
 		return;
 	}
-	 if (boot_mode == META_BOOT || boot_mode == FACTORY_BOOT
+	if (boot_mode == META_BOOT || boot_mode == FACTORY_BOOT
 		 || boot_mode == ADVMETA_BOOT || boot_mode == ATE_FACTORY_BOOT) {
 		pr_err("i2c_gpio_reset boot_mode:%d, return\n", boot_mode);
 		return;
@@ -1012,9 +1016,6 @@ static int mt_i2c_do_transfer(struct mt_i2c *i2c)
 	if (i2c->dev_comp->control_irq_sel == 1)
 		control_reg |= I2C_CONTROL_IRQ_SEL;
 	i2c_writew(control_reg, i2c, OFFSET_CONTROL);
-
-    if(7 == i2c->id)
-        i2c_writew(I2C_RECOVER_LOW, i2c,OFFSET_DEBUGCTRL);
 
 	/* set start condition */
 	if (speed_hz <= 100000)
@@ -1354,6 +1355,7 @@ static int mt_i2c_do_transfer(struct mt_i2c *i2c)
 		}
 #endif /*OPLUS_FEATURE_CHG_BASIC*/
 		return -EREMOTEIO;
+
 	}
 #ifdef OPLUS_FEATURE_CHG_BASIC
 /*Jianchao.Shi@PSW.BSP.CHG.Basic, 2019/07/01, sjc Add for zhongying fg ZY0602*/

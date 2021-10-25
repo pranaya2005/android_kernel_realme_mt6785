@@ -1331,6 +1331,7 @@ void shmem_set_file(struct vm_area_struct *vma, struct file *file);
 extern bool can_do_mlock(void);
 extern int user_shm_lock(size_t, struct user_struct *);
 extern void user_shm_unlock(size_t, struct user_struct *);
+extern void show_task_mem(void);
 
 /*
  * Parameter block passed down to zap_pte_range in exceptional cases.
@@ -2480,7 +2481,7 @@ void task_dirty_inc(struct task_struct *tsk);
 /* ZhiJie.Li@BSP.CHG.Basic, 2019/10/29, lzj Modify for increasing the default max readahead to speed-up reading */
 #define VM_MAX_READAHEAD	128	/* kbytes */
 #else
-#define VM_MAX_READAHEAD	512	/* kbytes */
+#define VM_MAX_READAHEAD	128	/* kbytes */
 #endif /*OPLUS_FEATURE_CHG_BASIC*/
 #define VM_MIN_READAHEAD	16	/* kbytes (includes current page) */
 

@@ -46,3 +46,8 @@ obj-$(CONFIG_OPPO_WAKELOCK_PROFILER)     +=  oppo_wakelock_profiler/
 #Hailong.Liu@BSP.MM 2019/03/18, Add for svelte
 obj-$(CONFIG_OPPO_SVELTE)     +=  oppo_svelte/
 #endifi /* OPLUS_FEATURE_MEMLEAK_DETECT */
+
+#ifdef OPLUS_FEATURE_NFC_CONSOFT
+#/* WangYukun@CONNECTIVITY.NFC.BASIC, 2020/03/24, Add for oppo nfc chipset */
+obj-$(CONFIG_OPPO_NFC)     +=  oppo_nfc/
+#endif /* OPLUS_FEATURE_NFC_CONSOFT */

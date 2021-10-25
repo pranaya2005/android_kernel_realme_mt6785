@@ -62,6 +62,8 @@ static int sec_reset(void *chip_data);
 static int sec_power_control(void *chip_data, bool enable);
 static int sec_get_verify_result(struct chip_data_s6d7at0 *chip_info);
 static void sec_reset_esd(struct chip_data_s6d7at0 *chip_info);
+static void sec_calibrate(struct seq_file *s, void *chip_data);
+
 //extern int set_lsi_tp_watchdog_state(int state);
 __attribute__((weak)) int set_lsi_tp_watchdog_state(int state) {return 1;}
 /**************************** end of function delcare*****************************************/
@@ -1580,6 +1582,8 @@ static struct oppo_touchpanel_operations sec_ops = {
     .esd_handle                 = sec_esd_handle,
     .set_touch_direction        = sec_set_touch_direction,
     .get_touch_direction        = sec_get_touch_direction,
+    .calibrate			= sec_calibrate,
+
 };
 /********* End of implementation of oppo_touchpanel_operations callbacks**********************/
 
@@ -2744,7 +2748,6 @@ static void sec_verify_calibration(struct seq_file *s, void *chip_data)
 
 static struct sec_proc_operations sec_proc_ops = {
     .auto_test          = sec_auto_test,
-    .calibrate          = sec_calibrate,
     .verify_calibration = sec_verify_calibration,
 };
 

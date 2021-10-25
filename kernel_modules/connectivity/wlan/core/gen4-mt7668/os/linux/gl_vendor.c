@@ -161,6 +161,18 @@ UINT_8 g_arGscanResultsIndicateNumber[MAX_BUFFERED_GSCN_RESULTS] = { 0, 0, 0, 0,
 UINT_8 g_GetResultsBufferedCnt;
 UINT_8 g_GetResultsCmdCnt;
 
+#if KERNEL_VERSION(3, 17, 0) <= CFG80211_VERSION_CODE
+
+static struct nla_policy nla_parse_offloading_policy[
+		 MKEEP_ALIVE_ATTRIBUTE_PERIOD_MSEC + 1] = {
+	[MKEEP_ALIVE_ATTRIBUTE_ID] = {.type = NLA_U8},
+	[MKEEP_ALIVE_ATTRIBUTE_IP_PKT] = {.type = NLA_UNSPEC},
+	[MKEEP_ALIVE_ATTRIBUTE_IP_PKT_LEN] = {.type = NLA_U16},
+	[MKEEP_ALIVE_ATTRIBUTE_SRC_MAC_ADDR] = {.type = NLA_UNSPEC},
+	[MKEEP_ALIVE_ATTRIBUTE_DST_MAC_ADDR] = {.type = NLA_UNSPEC},
+	[MKEEP_ALIVE_ATTRIBUTE_PERIOD_MSEC] = {.type = NLA_U32},
+};
+#endif
 /*******************************************************************************
 *                           P R I V A T E   D A T A
 ********************************************************************************
@@ -228,6 +240,178 @@ int mtk_cfg80211_vendor_set_tx_power_scenario(struct wiphy *wiphy,
 	return -EOPNOTSUPP;
 }
 
+int mtk_cfg80211_vendor_packet_keep_alive_start(
+	struct wiphy *wiphy, struct wireless_dev *wdev,
+	const void *data, int data_len)
+{
+	WLAN_STATUS rStatus = WLAN_STATUS_SUCCESS;
+	unsigned short u2IpPktLen = 0;
+	uint32_t u4BufLen = 0;
+	P_GLUE_INFO_T prGlueInfo = NULL;
+
+	int32_t i4Status = -EINVAL;
+	struct PARAM_PACKET_KEEPALIVE_T *prPkt = NULL;
+	struct nlattr *attr[MKEEP_ALIVE_ATTRIBUTE_PERIOD_MSEC + 1];
+	uint32_t i = 0;
+
+	ASSERT(wiphy);
+	ASSERT(wdev);
+	if ((data == NULL) || !data_len)
+		goto nla_put_failure;
+
+	DBGLOG(REQ, TRACE, "vendor command: data_len=%d\r\n",
+	       data_len);
+	prPkt = (struct PARAM_PACKET_KEEPALIVE_T *)
+		kalMemAlloc(sizeof(struct PARAM_PACKET_KEEPALIVE_T),
+			    VIR_MEM_TYPE);
+	if (!prPkt) {
+		DBGLOG(REQ, ERROR,
+		       "Can not alloc memory for struct PARAM_PACKET_KEEPALIVE_T\n");
+		return -ENOMEM;
+	}
+	kalMemZero(prPkt, sizeof(struct PARAM_PACKET_KEEPALIVE_T));
+	kalMemZero(attr, sizeof(struct nlattr *)
+		   * (MKEEP_ALIVE_ATTRIBUTE_PERIOD_MSEC + 1));
+
+	prPkt->enable = TRUE; /*start packet keep alive*/
+	if (NLA_PARSE_NESTED(attr,
+			     MKEEP_ALIVE_ATTRIBUTE_PERIOD_MSEC,
+			     (struct nlattr *)(data - NLA_HDRLEN),
+			     nla_parse_offloading_policy) < 0) {
+		DBGLOG(REQ, ERROR, "%s nla_parse_nested failed\n",
+		       __func__);
+		goto nla_put_failure;
+	}
+
+	for (i = MKEEP_ALIVE_ATTRIBUTE_ID;
+	     i <= MKEEP_ALIVE_ATTRIBUTE_PERIOD_MSEC; i++) {
+		if (attr[i]) {
+			switch (i) {
+			case MKEEP_ALIVE_ATTRIBUTE_ID:
+				prPkt->index = nla_get_u8(attr[i]);
+				break;
+			case MKEEP_ALIVE_ATTRIBUTE_IP_PKT_LEN:
+				prPkt->u2IpPktLen = nla_get_u16(attr[i]);
+				break;
+			case MKEEP_ALIVE_ATTRIBUTE_IP_PKT:
+				u2IpPktLen = prPkt->u2IpPktLen <= 256
+					? prPkt->u2IpPktLen : 256;
+				kalMemCopy(prPkt->pIpPkt, nla_data(attr[i]),
+					u2IpPktLen);
+				break;
+			case MKEEP_ALIVE_ATTRIBUTE_SRC_MAC_ADDR:
+				kalMemCopy(prPkt->ucSrcMacAddr,
+				   nla_data(attr[i]), sizeof(uint8_t) * 6);
+				break;
+			case MKEEP_ALIVE_ATTRIBUTE_DST_MAC_ADDR:
+				kalMemCopy(prPkt->ucDstMacAddr,
+				   nla_data(attr[i]), sizeof(uint8_t) * 6);
+				break;
+			case MKEEP_ALIVE_ATTRIBUTE_PERIOD_MSEC:
+				prPkt->u4PeriodMsec = nla_get_u32(attr[i]);
+				break;
+			}
+		}
+	}
+
+	DBGLOG(REQ, INFO,
+	       "enable=%d, index=%d, u2IpPktLen=%d u4PeriodMsec=%d\n",
+	       prPkt->enable, prPkt->index,
+	       prPkt->u2IpPktLen, prPkt->u4PeriodMsec);
+	DBGLOG(REQ, TRACE, "prPkt->pIpPkt=0x%02x%02x%02x%02x\n",
+	       prPkt->pIpPkt[0], prPkt->pIpPkt[1],
+	       prPkt->pIpPkt[2], prPkt->pIpPkt[3]);
+	DBGLOG(REQ, TRACE, "%02x%02x%02x%02x, %02x%02x%02x%02x\n",
+	       prPkt->pIpPkt[4], prPkt->pIpPkt[5],
+	       prPkt->pIpPkt[6], prPkt->pIpPkt[7],
+	       prPkt->pIpPkt[8], prPkt->pIpPkt[9],
+	       prPkt->pIpPkt[10], prPkt->pIpPkt[11]);
+	DBGLOG(REQ, TRACE, "%02x%02x%02x%02x\n",
+	       prPkt->pIpPkt[12], prPkt->pIpPkt[13],
+	       prPkt->pIpPkt[14], prPkt->pIpPkt[15]);
+	DBGLOG(REQ, TRACE,
+	       "prPkt->srcMAC=%02x:%02x:%02x:%02x:%02x:%02x\n",
+	       prPkt->ucSrcMacAddr[0], prPkt->ucSrcMacAddr[1],
+	       prPkt->ucSrcMacAddr[2], prPkt->ucSrcMacAddr[3],
+	       prPkt->ucSrcMacAddr[4], prPkt->ucSrcMacAddr[5]);
+	DBGLOG(REQ, TRACE, "dstMAC=%02x:%02x:%02x:%02x:%02x:%02x\n",
+	       prPkt->ucDstMacAddr[0], prPkt->ucDstMacAddr[1],
+	       prPkt->ucDstMacAddr[2], prPkt->ucDstMacAddr[3],
+	       prPkt->ucDstMacAddr[4], prPkt->ucDstMacAddr[5]);
+
+	prGlueInfo = (P_GLUE_INFO_T) wiphy_priv(wiphy);
+	ASSERT(prGlueInfo);
+
+	rStatus = kalIoctl(prGlueInfo,
+			   wlanoidPacketKeepAlive,
+			   prPkt, sizeof(struct PARAM_PACKET_KEEPALIVE_T),
+			   FALSE, FALSE, TRUE, &u4BufLen);
+	kalMemFree(prPkt, VIR_MEM_TYPE,
+		   sizeof(struct PARAM_PACKET_KEEPALIVE_T));
+	return rStatus;
+
+nla_put_failure:
+	if (prPkt != NULL)
+		kalMemFree(prPkt, VIR_MEM_TYPE,
+			   sizeof(struct PARAM_PACKET_KEEPALIVE_T));
+	return i4Status;
+}
+
+int mtk_cfg80211_vendor_packet_keep_alive_stop(
+	struct wiphy *wiphy, struct wireless_dev *wdev,
+	const void *data, int data_len)
+{
+	WLAN_STATUS rStatus = WLAN_STATUS_SUCCESS;
+	uint32_t u4BufLen = 0;
+	P_GLUE_INFO_T prGlueInfo = NULL;
+
+	int32_t i4Status = -EINVAL;
+	struct PARAM_PACKET_KEEPALIVE_T *prPkt = NULL;
+	struct nlattr *attr;
+
+	ASSERT(wiphy);
+	ASSERT(wdev);
+	if ((data == NULL) || !data_len)
+		goto nla_put_failure;
+
+	DBGLOG(REQ, TRACE, "vendor command: data_len=%d\r\n",
+	       data_len);
+	prPkt = (struct PARAM_PACKET_KEEPALIVE_T *)
+		kalMemAlloc(sizeof(struct PARAM_PACKET_KEEPALIVE_T),
+			    VIR_MEM_TYPE);
+	if (!prPkt) {
+		DBGLOG(REQ, ERROR,
+		       "Can not alloc memory for PARAM_PACKET_KEEPALIVE_T\n");
+		return -ENOMEM;
+	}
+	kalMemZero(prPkt, sizeof(struct PARAM_PACKET_KEEPALIVE_T));
+
+	prPkt->enable = FALSE;  /*stop packet keep alive*/
+	attr = (struct nlattr *)data;
+	if (attr->nla_type == MKEEP_ALIVE_ATTRIBUTE_ID)
+		prPkt->index = nla_get_u8(attr);
+
+	DBGLOG(REQ, INFO, "enable=%d, index=%d\r\n",
+	       prPkt->enable, prPkt->index);
+
+	prGlueInfo = (P_GLUE_INFO_T) wiphy_priv(wiphy);
+	ASSERT(prGlueInfo);
+
+	rStatus = kalIoctl(prGlueInfo,
+			   wlanoidPacketKeepAlive,
+			   prPkt, sizeof(struct PARAM_PACKET_KEEPALIVE_T),
+			   FALSE, FALSE, TRUE, &u4BufLen);
+	kalMemFree(prPkt, VIR_MEM_TYPE,
+		   sizeof(struct PARAM_PACKET_KEEPALIVE_T));
+	return rStatus;
+
+nla_put_failure:
+	if (prPkt != NULL)
+		kalMemFree(prPkt, VIR_MEM_TYPE,
+			   sizeof(struct PARAM_PACKET_KEEPALIVE_T));
+	return i4Status;
+}
+
 int mtk_cfg80211_vendor_get_version(struct wiphy *wiphy,
 				    struct wireless_dev *wdev,
 				    const void *data, int data_len)
@@ -278,7 +462,7 @@ int mtk_cfg80211_vendor_get_version(struct wiphy *wiphy,
 
 		snprintf(aucVersionBuf, 256, "%s-%u.%u.%u[DEC] (%s)",
 		aucBuf, (prVerInfo->u2FwOwnVersion >> 8),
-		(prVerInfo->u2FwOwnVersion & BITS(0, 7)),
+		(prVerInfo->u2FwOwnVersion & 0xff),
 		prVerInfo->ucFwBuildNumber, aucDate);
 		u2CopySize = strlen(aucVersionBuf);
 	}

@@ -833,8 +833,9 @@ page_owner=on loop.max_part=7";
 
 	pwrap: pwrap@10026000 {
 		compatible = "mediatek,mt6885-pwrap";
-		reg = <0 0x10026000 0 0x1000>;
-		reg-names = "pwrap";
+		reg = <0 0x10026000 0 0x1000>,
+		<0 0x10028000 0 0x1000>;
+		reg-names = "pwrap","spi_mst";
 		interrupts = <GIC_SPI 220 IRQ_TYPE_LEVEL_HIGH>;
 		clocks = <&infracfg_ao INFRACFG_AO_PMIC_CG_AP>,
 			 <&infracfg_ao INFRACFG_AO_PMIC_CG_TMR>,
@@ -4309,7 +4310,8 @@ page_owner=on loop.max_part=7";
 			"MTK_DRM_OPT_HBM",
 			"MTK_DRM_OPT_VDS_PATH_SWITCH",
 			"MTK_DRM_OPT_LAYER_REC",
-			"MTK_DRM_OPT_CLEAR_LAYER";
+			"MTK_DRM_OPT_CLEAR_LAYER",
+			"MTK_DRM_OPT_SF_PF";
 
 		helper-value = <0>, /*MTK_DRM_OPT_STAGE*/
 			<1>, /*MTK_DRM_OPT_USE_CMDQ*/
@@ -4348,7 +4350,8 @@ page_owner=on loop.max_part=7";
 			<1>, /*MTK_DRM_OPT_HBM*/
 			<0>, /*MTK_DRM_OPT_VDS_PATH_SWITCH*/
 			<0>, /*MTK_DRM_OPT_LAYER_REC*/
-			<1>; /*MTK_DRM_OPT_CLEAR_LAYER*/
+			<1>, /*MTK_DRM_OPT_CLEAR_LAYER*/
+			<1>; /*MTK_DRM_OPT_SF_PF*/
 	};
 
 	disp_mutex0: disp_mutex@14117000 {
@@ -5091,7 +5094,7 @@ page_owner=on loop.max_part=7";
 		reg = <0 0x1502c000 0 0x1000>;
 	};
 
-	camera_af_hw_node: camera_af_hw_node {
+	camera_af_node: camera_af_node {
 		compatible = "mediatek,camera_af_lens";
 	};
 
@@ -5101,17 +5104,18 @@ page_owner=on loop.max_part=7";
 
 	flashlights_mt6360: flashlights_mt6360 {
 		compatible = "mediatek,flashlights_mt6360";
-		decouple = <1>;
+		//Feiping.Li@Cam.Drv, 20190918, modify for single flashlight
+                decouple = <1>;
 		channel@1 {
 			type = <0>;
 			ct = <0>;
 			part = <0>;
 		};
-		channel@2 {
+		/*channel@2 {
 			type = <0>;
 			ct = <1>;
 			part = <0>;
-		};
+		};*/
 	};
 
 	smi_larb9: smi_larb9@1502e000 {
@@ -5534,7 +5538,8 @@ page_owner=on loop.max_part=7";
 		reg = <0 0x16000000 0 0x1000>,		/* VDEC_SYS */
 			 <0 0x16020000 0 0x1000>,		/* VDEC_VLD */
 			 <0 0x16025000 0 0x4000>,		/* VDEC_MISC */
-			 <0 0x16010000 0 0x7000>, /* VDEC_LAT_MISC */
+			 <0 0x16010000 0 0x1000>, /* VDEC_LAT_MISC */
+			 <0 0x16011000 0 0x400>, /* VDEC_LAT_VLD */
 			 <0 0x16004000 0 0x1000>; /* VDEC_RACING_CTRL */
 #ifdef CONFIG_MTK_IOMMU_V2
 		iommus = <&iommu0 M4U_PORT_L4_VDEC_MC_EXT_MDP>;
@@ -7555,7 +7560,12 @@ page_owner=on loop.max_part=7";
 		compatible = "mediatek,phy_tuning";
 		u2_vrt_ref = <6>;
 		u2_term_ref = <6>;
-		u2_enhance = <2>;
+                u2_enhance = <1>;
+//#ifdef VENDOR_EDIT/* LaiBaoquan@BSP.OTG.Basic, 2019/11/8, modify for OTG */
+                host_u2_vrt_ref = <6>;
+                host_u2_term_ref = <6>;
+                host_u2_enhance = <2>;
+//#endif
      };
 //#endif
 

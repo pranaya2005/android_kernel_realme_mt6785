@@ -560,10 +560,12 @@ static irqreturn_t kpd_irq_handler(int irq, void *dev_id)
 //#ifdef OPLUS_FEATURE_TP_BASIC
 /*xiongxing.@BSP.Kernel.Driver, 2019/01/26, Add for disable kpd irq handler*/
 /* yulianghan@bootloader.bootflow 2020/10/30, disable kpd irq handler for 20682*/
-	if(get_project() == 20682 || get_project() == 19661)
+	if(get_project() == 20682)
 		return IRQ_HANDLED;   //tanyang test
 //#endif /*OPLUS_FEATURE_TP_BASIC*/
 	/* use _nosync to avoid deadlock */
+	if(get_project() >= 20730 && get_project() <= 20732)
+		return IRQ_HANDLED;
 	disable_irq_nosync(kp_irqnr);
 	tasklet_schedule(&kpd_keymap_tasklet);
 	return IRQ_HANDLED;

@@ -27,6 +27,7 @@
 #include <linux/fs.h>
 #include <linux/atomic.h>
 #include <linux/types.h>
+#include <soc/oplus/system/oppo_project.h>
 
 #include "kd_camera_typedef.h"
 #include "kd_imgsensor.h"
@@ -453,7 +454,7 @@ static void set_shutter(kal_uint16 shutter)
 	write_shutter(shutter);
 }	/*	set_shutter */
 
-static void set_shutter_frame_length(kal_uint16 shutter, kal_uint16 frame_length, kal_bool auto_extend_en)
+static void set_shutter_frame_length(kal_uint16 shutter, kal_uint16 frame_length)
 {
 	unsigned long flags;
 	kal_uint16 realtime_fps = 0;
@@ -504,11 +505,6 @@ static void set_shutter_frame_length(kal_uint16 shutter, kal_uint16 frame_length
 
 	/* Update Shutter */
 	write_cmos_sensor_16_8(0x0104, 0x01);
-	/*wujun@camera 20210104 add for camera ccu error*/
-	if (auto_extend_en)
-		write_cmos_sensor_16_8(0x0350, 0x01); /* Enable auto extend */
-	else
-		write_cmos_sensor_16_8(0x0350, 0x00); /* Disable auto extend */
 	write_cmos_sensor_16_8(0x0202, (shutter >> 8) & 0xFF);
 	write_cmos_sensor_16_8(0x0203, shutter & 0xFF);
 	write_cmos_sensor_16_8(0x0104, 0x00);
@@ -1328,6 +1324,16 @@ static void read_dpc_data(void)
 }
 #endif
 
+static kal_uint32 check_board()
+{
+	kal_uint32 res = 0;
+	if (is_project(20730)||is_project(20731)||is_project(20732)) {
+		res = 0;
+	} else {
+		res = 1;
+	}
+	return res;
+}
 /*************************************************************************
 * FUNCTION
 *	get_imgsensor_id
@@ -1355,21 +1361,24 @@ static kal_uint32 get_imgsensor_id(UINT32 *sensor_id)
 	spin_unlock(&imgsensor_drv_lock);
 	do {
 		*sensor_id = return_sensor_id();
-		if (*sensor_id == imgsensor_info.sensor_id) {
-			printk("IMX471 get_imgsensor_id success: 0x%x\n", *sensor_id);
-			#if 0 //PHB
-			read_dpc_data();
-			#endif
-			#ifdef OPLUS_FEATURE_CAMERA_COMMON
-			/*Degao.Lan@Camera.DRV add for register device info 20191108*/
-			imgsensor_info.module_id = read_module_id();
-			if (deviceInfo_register_value == 0x00) {
-				Oplusimgsensor_Registdeviceinfo("Cam_f", sensor_name_golden_result, imgsensor_info.module_id);
-				deviceInfo_register_value=0x01;
-			}
-			#endif	//OPLUS_FEATURE_CAMERA_COMMON
+		if (*sensor_id == IMX471_SENSOR_ID1) {
+			if (check_board()) {
+				*sensor_id = imgsensor_info.sensor_id;
+				printk("IMX471 get_imgsensor_id success: 0x%x\n", *sensor_id);
+				#ifdef OPLUS_FEATURE_CAMERA_COMMON
+				/*Degao.Lan@Camera.DRV add for register device info 20191108*/
+				imgsensor_info.module_id = read_module_id();
+				if (deviceInfo_register_value == 0x00) {
+					Oplusimgsensor_Registdeviceinfo("Cam_f", sensor_name_golden_result, imgsensor_info.module_id);
+					deviceInfo_register_value=0x01;
+				}
+				#endif	//OPLUS_FEATURE_CAMERA_COMMON
 
-			return ERROR_NONE;
+				return ERROR_NONE;
+			} else {
+				*sensor_id = 0xFFFFFFFF;
+				printk("IMX471 check board fail(20730)\n");
+			}
 		}
 		retry--;
 	} while (retry > 0);
@@ -2495,8 +2504,7 @@ static kal_uint32 feature_control(MSDK_SENSOR_FEATURE_ENUM feature_id,
     #endif
 #endif
 	case SENSOR_FEATURE_SET_SHUTTER_FRAME_TIME:
-		set_shutter_frame_length((UINT16) *feature_data, (UINT16) *(feature_data + 1),
-								(BOOL) (*(feature_data + 2)));
+		set_shutter_frame_length((UINT16) *feature_data, (UINT16) *(feature_data + 1));
 		break;
 	case SENSOR_FEATURE_SET_STREAMING_SUSPEND:
 		LOG_INF("SENSOR_FEATURE_SET_STREAMING_SUSPEND\n");

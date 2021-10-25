@@ -335,6 +335,7 @@ static int max_sched_tunable_scaling = SCHED_TUNABLESCALING_END-1;
 // XieLiujie@BSP.KERNEL.PERFORMANCE, 2020/05/25, Add for UIFirst
 int sysctl_uifirst_enabled = 1;
 int sysctl_launcher_boost_enabled = 0;
+int sysctl_animation_type = 0;
 #endif /* OPLUS_FEATURE_UIFIRST */
 
 #if defined (CONFIG_SCHED_WALT) && defined (OPLUS_FEATURE_UIFIRST)
@@ -1453,6 +1454,13 @@ static struct ctl_table kern_table[] = {
 		.mode		= 0666,
 		.proc_handler = proc_dointvec,
 	},
+	{
+		.procname	= "animation_type",
+		.data		= &sysctl_animation_type,
+		.maxlen		= sizeof(int),
+		.mode		= 0666,
+		.proc_handler = proc_dointvec,
+	},
 #endif /* OPLUS_FEATURE_UIFIRST */
 #if defined (CONFIG_SCHED_WALT) && defined (OPLUS_FEATURE_UIFIRST)
 	{
@@ -1708,11 +1716,10 @@ static struct ctl_table vm_table[] = {
 		.data		= &sysctl_compact_memory,
 		.maxlen		= sizeof(int),
 #ifdef OPLUS_FEATURE_PERFORMANCE
-/*Huacai.Zhou@PSW.kernel.mm, 2018-08-20, modify permission for coloros.athena*/
+/*modify permission for coloros.athena*/
 		.mode		= 0222,
 #else
 		.mode		= 0200,
-
 #endif /*OPLUS_FEATURE_PERFORMANCE*/
 		.proc_handler	= sysctl_compaction_handler,
 	},

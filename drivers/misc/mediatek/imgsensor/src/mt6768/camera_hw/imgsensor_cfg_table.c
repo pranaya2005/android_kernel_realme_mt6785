@@ -184,7 +184,28 @@ struct IMGSENSOR_HW_CFG imgsensor_custom_config_monetx[] = {
 
 };
 
-struct IMGSENSOR_HW_CFG imgsensor_custom_config_pascalC[] = {
+int pascal_project(void){// pascalA 4. monetX 5
+	int projectvalue = 0;
+
+	if (get_Operator_Version() == 156 || get_Operator_Version() == 157) {
+		printk("This is pascalA board\n");
+		projectvalue = 4;
+	} else if (get_Operator_Version() == 121 || get_Operator_Version() == 122
+		|| get_Operator_Version() == 123 || get_Operator_Version() == 124
+		|| get_Operator_Version() == 125 || get_Operator_Version() == 126) {
+		printk("This is monetX board\n");
+		projectvalue = 5;
+	} else {
+		printk("This is default pascalA board\n");
+		projectvalue = 4;
+	}
+
+	printk("pascal_project projectvalue = %d\n",projectvalue);
+
+	return projectvalue;
+}
+
+struct IMGSENSOR_HW_CFG imgsensor_custom_config_even[] = {
 	{
 		IMGSENSOR_SENSOR_IDX_MAIN,
 		IMGSENSOR_I2C_DEV_0,
@@ -193,7 +214,7 @@ struct IMGSENSOR_HW_CFG imgsensor_custom_config_pascalC[] = {
 			{IMGSENSOR_HW_ID_GPIO, IMGSENSOR_HW_PIN_AVDD},
 			{IMGSENSOR_HW_ID_REGULATOR, IMGSENSOR_HW_PIN_DOVDD},
 			{IMGSENSOR_HW_ID_REGULATOR, IMGSENSOR_HW_PIN_DVDD},
-			{IMGSENSOR_HW_ID_REGULATOR, IMGSENSOR_HW_PIN_AFVDD},
+			{IMGSENSOR_HW_ID_REGULATOR,IMGSENSOR_HW_PIN_AFVDD},
 			{IMGSENSOR_HW_ID_GPIO, IMGSENSOR_HW_PIN_RST},
 			{IMGSENSOR_HW_ID_NONE, IMGSENSOR_HW_PIN_NONE},
 		},
@@ -208,30 +229,24 @@ struct IMGSENSOR_HW_CFG imgsensor_custom_config_pascalC[] = {
 			{IMGSENSOR_HW_ID_REGULATOR, IMGSENSOR_HW_PIN_DVDD},
 			{IMGSENSOR_HW_ID_GPIO, IMGSENSOR_HW_PIN_PDN},
 			{IMGSENSOR_HW_ID_GPIO, IMGSENSOR_HW_PIN_RST},
-			//#ifdef MIPI_SWITCH
-			//{IMGSENSOR_HW_ID_GPIO, IMGSENSOR_HW_PIN_MIPI_SWITCH_EN},
-			//{IMGSENSOR_HW_ID_GPIO, IMGSENSOR_HW_PIN_MIPI_SWITCH_SEL},
-			//#endif
 			{IMGSENSOR_HW_ID_NONE, IMGSENSOR_HW_PIN_NONE},
 		},
 	},
 	{
 		IMGSENSOR_SENSOR_IDX_MAIN2,
-		IMGSENSOR_I2C_DEV_0,
+		IMGSENSOR_I2C_DEV_2,
 		{
 			{IMGSENSOR_HW_ID_MCLK, IMGSENSOR_HW_PIN_MCLK},
 			{IMGSENSOR_HW_ID_REGULATOR, IMGSENSOR_HW_PIN_AVDD},
 			{IMGSENSOR_HW_ID_REGULATOR, IMGSENSOR_HW_PIN_DOVDD},
 			{IMGSENSOR_HW_ID_REGULATOR, IMGSENSOR_HW_PIN_DVDD},
 			{IMGSENSOR_HW_ID_GPIO, IMGSENSOR_HW_PIN_RST},
-			//{IMGSENSOR_HW_ID_GPIO, IMGSENSOR_HW_PIN_MIPI_SWITCH_EN},
-			//{IMGSENSOR_HW_ID_GPIO, IMGSENSOR_HW_PIN_MIPI_SWITCH_SEL},
 			{IMGSENSOR_HW_ID_NONE, IMGSENSOR_HW_PIN_NONE},
 		},
 	},
 	{
 		IMGSENSOR_SENSOR_IDX_SUB2,
-		IMGSENSOR_I2C_DEV_2,
+		IMGSENSOR_I2C_DEV_1,
 		{
 			{IMGSENSOR_HW_ID_MCLK, IMGSENSOR_HW_PIN_MCLK},
 			{IMGSENSOR_HW_ID_REGULATOR, IMGSENSOR_HW_PIN_AVDD},
@@ -244,43 +259,19 @@ struct IMGSENSOR_HW_CFG imgsensor_custom_config_pascalC[] = {
 		IMGSENSOR_SENSOR_IDX_MAIN3,
 		IMGSENSOR_I2C_DEV_2,
 		{
+			{IMGSENSOR_HW_ID_MCLK, IMGSENSOR_HW_PIN_MCLK},
+			{IMGSENSOR_HW_ID_GPIO, IMGSENSOR_HW_PIN_AVDD},
+			{IMGSENSOR_HW_ID_REGULATOR, IMGSENSOR_HW_PIN_DOVDD},
+			{IMGSENSOR_HW_ID_REGULATOR, IMGSENSOR_HW_PIN_DVDD},
+			{IMGSENSOR_HW_ID_GPIO, IMGSENSOR_HW_PIN_PDN},
+			{IMGSENSOR_HW_ID_GPIO, IMGSENSOR_HW_PIN_RST},
+			{IMGSENSOR_HW_ID_NONE, IMGSENSOR_HW_PIN_NONE},
 		},
 	},
 
 	{IMGSENSOR_SENSOR_IDX_NONE}
 };
 
-int pascal_project(void){// pascalA 4. monetX 5. monet6. monetZ 7. pascali 8.
-	int projectvalue = 0;
-
-	if (get_Operator_Version() == 156 || get_Operator_Version() == 157) {
-		printk("This is pascalA board\n");
-		projectvalue = 4;
-	} else if (get_Operator_Version() == 121 || get_Operator_Version() == 122
-		|| get_Operator_Version() == 123 || get_Operator_Version() == 124
-		|| get_Operator_Version() == 125 || get_Operator_Version() == 126) {
-		printk("This is monetX board\n");
-		projectvalue = 5;
-	} else if (get_Operator_Version() == 111 || get_Operator_Version() == 112
-		|| get_Operator_Version() == 113 || get_Operator_Version() == 115
-		|| get_Operator_Version() == 116) {
-		printk("This is monet board\n");
-		projectvalue = 6;
-	} else if (get_Operator_Version() == 101 || get_Operator_Version() == 114) {
-		printk("This is monetZ board\n");
-		projectvalue = 7;
-	} else if (get_Operator_Version() == 177 || get_Operator_Version() == 178) {
-		printk("This is pascali board\n");
-		projectvalue = 8;
-	} else {
-		printk("This is default pascalA board\n");
-		projectvalue = 4;
-	}
-
-	printk("pascal_project projectvalue = %d\n",projectvalue);
-
-	return projectvalue;
-}
 #endif
 
 struct IMGSENSOR_HW_POWER_SEQ platform_power_sequence[] = {
@@ -412,164 +403,53 @@ struct IMGSENSOR_HW_POWER_SEQ sensor_power_sequence[] = {
 		},
 	},
 #endif
-
-#if defined(MONET_HLT_DEPTH_OV02A1B)
-	{SENSOR_DRVNAME_MONET_HLT_DEPTH_OV02A1B,
+/*shaohanyue@vanyol.com, 20201219,  add for even sensor porting*/
+#if defined(EVEN_QTECH_MAIN_S5KGM1ST03)
+	{
+		SENSOR_DRVNAME_EVEN_QTECH_MAIN_S5KGM1ST03,
 		{
-			{RST, Vol_High, 1,Vol_Low,1},
-			{DOVDD, Vol_1800, 5,Vol_Low,5},
-			{AVDD, Vol_2800, 5,Vol_Low,5},
-			{RST, Vol_High, 1,Vol_High,1},
-			{SensorMCLK, Vol_High, 5,Vol_Low,5},
-			{RST, Vol_Low, 5,Vol_Low,5},
-		},
-	},
-#endif
-#if defined(MONET_HLT_MACRO_GC2375H)
-	{SENSOR_DRVNAME_MONET_HLT_MACRO_GC2375H,
-		{
-			{RST, Vol_High, 1,Vol_Low,1},
-			{DOVDD, Vol_1800, 5,Vol_Low,5},
-			{AVDD, Vol_2800, 5,Vol_Low,5},
-			{SensorMCLK, Vol_High, 5,Vol_Low,5},
-			{RST, Vol_Low, 5,Vol_High,5},
-		},
-	},
-#endif
-#if defined(MONET_LH_MACRO_GC2375H)
-	{SENSOR_DRVNAME_MONET_LH_MACRO_GC2375H,
-		{
-			{RST, Vol_High, 1,Vol_Low,1},
-			{DOVDD, Vol_1800, 5,Vol_Low,5},
-			{AVDD, Vol_2800, 5,Vol_Low,5},
-			{SensorMCLK, Vol_High, 5,Vol_Low,5},
-			{RST, Vol_Low, 5,Vol_High,5},
-		},
-	},
-#endif
-#if defined(MONET_HLT_FRONT_GC5035)
-	{SENSOR_DRVNAME_MONET_HLT_FRONT_GC5035,
-		{
-			{PDN, Vol_Low, 0},
-			{RST, Vol_Low, 3},
-			{DOVDD, Vol_1800, 1},
-			{DVDD, Vol_1200, 1},
-			{AVDD, Vol_2800, 1},
-			{RST, Vol_High, 1},
-			{PDN, Vol_High, 3},
-			{SensorMCLK, Vol_High, 3},
-		},
-	},
-#endif
-#if defined(MONET_TXD_FRONT_HI556)
-	{SENSOR_DRVNAME_MONET_TXD_FRONT_HI556,
-		{
-			{SensorMCLK, Vol_High, 5},
-			{AVDD, Vol_2800, 0},
+			{DVDD, Vol_1100, 0},
+			{AVDD, Vol_High, 0},
 			{DOVDD, Vol_1800, 0},
-			{DVDD, Vol_1200, 0},
-			{PDN, Vol_Low, 0},
-			{PDN, Vol_High, 3},
-			{RST, Vol_Low, 5},
-			{RST, Vol_High, 10},
+			{AFVDD, Vol_2800, 1},
+			{RST, Vol_Low, 1},
+			{RST, Vol_High, 1},
+			{SensorMCLK, Vol_High, 1},
 		},
 	},
 #endif
-#if defined(MONET_TRULY_MAIN_OV12A10)
-	{SENSOR_DRVNAME_MONET_TRULY_MAIN_OV12A10,
+#if defined(EVEN_QTECH_MAIN_OV13B10)
+	{
+		SENSOR_DRVNAME_EVEN_QTECH_MAIN_OV13B10,
 		{
 			{RST, Vol_Low, 0},
-			{AVDD, Vol_2800, 1},
 			{DOVDD, Vol_1800, 1},
-			{DVDD, Vol_High, 1},
+			{AVDD, Vol_2800, 1},
+			{DVDD, Vol_1200, 1},
 			{AFVDD, Vol_2800, 1},
-			{RST, Vol_High, 1},
-			{SensorMCLK, Vol_High, 0},
+			{RST, Vol_High, 6},
+			{SensorMCLK, Vol_High, 5},
 		},
 	},
 #endif
-#if defined(MONET_HLT_CUSTFRONT_GC5035)
-	{SENSOR_DRVNAME_MONET_HLT_CUSTFRONT_GC5035,
+#if defined(EVEN_HLT_FRONT_S5K4H7)
+	{
+		SENSOR_DRVNAME_EVEN_HLT_FRONT_S5K4H7,
 		{
 			{PDN, Vol_Low, 0},
 			{RST, Vol_Low, 3},
 			{DOVDD, Vol_1800, 1},
 			{DVDD, Vol_1200, 1},
 			{AVDD, Vol_2800, 1},
-			{RST, Vol_High, 1},
+			{RST, Vol_High, 3},
 			{PDN, Vol_High, 3},
 			{SensorMCLK, Vol_High, 3},
 		},
 	},
 #endif
-#if defined(MONET_HLT_FRONT_GC5035B)
-	{SENSOR_DRVNAME_MONET_HLT_FRONT_GC5035B,
-		{
-			{PDN, Vol_Low, 0},
-			{RST, Vol_Low, 3},
-			{DOVDD, Vol_1800, 1},
-			{DVDD, Vol_1200, 1},
-			{AVDD, Vol_2800, 1},
-			{RST, Vol_High, 1},
-			{PDN, Vol_High, 3},
-			{SensorMCLK, Vol_High, 3},
-		},
-	},
-#endif
-
-#if defined(MONETD_CXT_DEPTH_GC2375H)
-	{SENSOR_DRVNAME_MONETD_CXT_DEPTH_GC2375H,
-		{
-			{RST, Vol_High, 1,Vol_Low,1},
-			{DOVDD, Vol_1800, 5,Vol_Low,5},
-			{AVDD, Vol_2800, 5,Vol_Low,5},
-			{SensorMCLK, Vol_High, 5,Vol_Low,5},
-			{RST, Vol_Low, 5,Vol_High,5},
-		},
-	},
-#endif
-#if defined(MONETD_LH_DEPTH_GC2375H)
-	{SENSOR_DRVNAME_MONETD_LH_DEPTH_GC2375H,
-		{
-			{RST, Vol_High, 1,Vol_Low,1},
-			{DOVDD, Vol_1800, 5,Vol_Low,5},
-			{AVDD, Vol_2800, 5,Vol_Low,5},
-			{SensorMCLK, Vol_High, 5,Vol_Low,5},
-			{RST, Vol_Low, 5,Vol_High,5},
-		},
-	},
-#endif
-#if defined(MONETD_TRULY_MAIN_OV12A10)
-	{SENSOR_DRVNAME_MONETD_TRULY_MAIN_OV12A10,
-		{
-			{RST, Vol_Low, 3},
-			{AVDD, Vol_2800, 1},
-			{DOVDD, Vol_1800, 1},
-			{DVDD, Vol_High, 1},
-			{AFVDD, Vol_2800, 1},
-			{RST, Vol_High, 5},
-			{SensorMCLK, Vol_High, 0},
-		},
-	},
- #endif
-/* minyi@Cam.Drv, 20210304, sensor porting for pascali ov13b10 gc02m1b s5k4h7*/
-#if defined(PASCALI_QTECH_MAIN_OV13B10)
+#if defined(EVEN_HLT_DEPTH_GC02M1B)
     {
-        SENSOR_DRVNAME_PASCALI_QTECH_MAIN_OV13B10,
-        {
-            {RST, Vol_Low, 0},
-            {DOVDD, Vol_1800, 1},
-            {AVDD, Vol_2800, 1},
-            {DVDD, Vol_1200, 1},
-            {AFVDD, Vol_2800, 1},
-            {RST, Vol_High, 6},
-            {SensorMCLK, Vol_High, 10},
-        },
-    },
-#endif
-#if defined(PASCALI_HLT_DEPTH_GC02M1B)
-    {
-        SENSOR_DRVNAME_PASCALI_HLT_DEPTH_GC02M1B,
+        SENSOR_DRVNAME_EVEN_HLT_DEPTH_GC02M1B,
         {
             {RST, Vol_Low, 1},
             {DOVDD, Vol_1800, 5},
@@ -579,22 +459,88 @@ struct IMGSENSOR_HW_POWER_SEQ sensor_power_sequence[] = {
         },
     },
 #endif
-#if defined(PASCALI_HLT_FRONT_S5K4H7)
-    {
-        SENSOR_DRVNAME_PASCALI_HLT_FRONT_S5K4H7,
+#if defined(EVEN_SHENGTAI_MACRO_OV02B10)
+	{
+		SENSOR_DRVNAME_EVEN_SHENGTAI_MACRO_OV02B10,
+		{
+			{RST, Vol_Low, 1},
+			{DOVDD, Vol_1800, 0},
+			{AVDD, Vol_2800, 0},
+			{SensorMCLK, Vol_High, 5},
+			{RST, Vol_High, 4},
+		},
+	},
+#endif
+#if defined(EVENC_SHENGTAI_MACRO_OV02B10)
+	{
+		SENSOR_DRVNAME_EVENC_SHENGTAI_MACRO_OV02B10,
+		{
+			{RST, Vol_Low, 1},
+			{DOVDD, Vol_1800, 0},
+			{AVDD, Vol_2800, 0},
+			{SensorMCLK, Vol_High, 4},
+			{RST, Vol_High, 4},
+		},
+	},
+#endif
+/*jiangbin@vanyol.com, 20210113,  add for even sensor porting*/
+#if defined(EVEN_SHENGTAI_FRONT_OV8856)
+	{
+		SENSOR_DRVNAME_EVEN_SHENGTAI_FRONT_OV8856,
+		{
+			{PDN, Vol_Low, 0},
+			{RST, Vol_Low, 1},
+			{SensorMCLK, Vol_High, 1},
+			{DOVDD, Vol_1800, 1},
+			{AVDD, Vol_2800, 1},
+			{DVDD, Vol_1200, 0},
+			{RST, Vol_High, 5},
+			{PDN, Vol_High, 3},
+		},
+	},
+#endif
+#if defined(EVENC_SHENGTAI_FRONT_OV8856)
         {
-            {PDN, Vol_Low, 0},
-            {RST, Vol_Low, 0},
+               SENSOR_DRVNAME_EVENC_SHENGTAI_FRONT_OV8856,
+                {
+                         {PDN, Vol_Low, 0},
+                         {RST, Vol_Low, 1},
+                         {DOVDD, Vol_1800, 1},
+                         {AVDD, Vol_2800, 1},
+                         {DVDD, Vol_1200, 0},
+                         {SensorMCLK, Vol_High, 1},
+                         {RST, Vol_High, 5},
+                         {PDN, Vol_High, 3},
+                },
+         },
+#endif
+/*zhougongxiao@vanyol.com, 20210518,  add for even sensor porting*/
+#if defined(EVEN_SHINETECH_MAIN_S5KJN103)
+	{
+		SENSOR_DRVNAME_EVEN_SHINETECH_MAIN_S5KJN103,
+		{
+			{RST, Vol_Low, 0},
+			{DOVDD, Vol_1800, 1},
+			{DVDD, Vol_1100, 2},
+			{AVDD, Vol_2800, 1},
+			{AFVDD, Vol_2800, 1},
+			{RST, Vol_High, 6},
+			{SensorMCLK, Vol_High, 1},
+		},
+	},
+#endif
+#if defined(EVENC_SHINETECH_DEPTH_GC02M1B)
+    {
+        SENSOR_DRVNAME_EVENC_SHINETECH_DEPTH_GC02M1B,
+        {
+            {RST, Vol_Low, 1},
+            {DOVDD, Vol_1800, 5},
             {AVDD, Vol_2800, 0},
-            {DVDD, Vol_1200, 5},
-            {DOVDD, Vol_1800, 1},
-            {RST, Vol_High, 3},
-            {PDN, Vol_High, 3},
+            {RST, Vol_High, 5},
             {SensorMCLK, Vol_High, 3},
         },
     },
 #endif
-
 #endif //OPLUS_FEATURE_CAMERA_COMMON
 #if defined(IMX519_MIPI_RAW)
 	{
@@ -1237,9 +1183,9 @@ struct IMGSENSOR_HW_POWER_SEQ sensor_power_sequence[] = {
 		},
 	},
 #endif
-#if defined(VICTOR_S5K3P9SP_MIPI_RAW)
+#if defined(S5K3P9SP_MIPI_RAW)
 	{
-		SENSOR_DRVNAME_VICTOR_S5K3P9SP_MIPI_RAW,
+		SENSOR_DRVNAME_S5K3P9SP_MIPI_RAW,
 		{
 			{SensorMCLK, Vol_High, 0},
 			{PDN, Vol_Low,1},

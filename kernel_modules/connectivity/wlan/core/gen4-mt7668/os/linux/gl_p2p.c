@@ -177,7 +177,8 @@ static const struct wiphy_vendor_command mtk_p2p_vendor_ops[] = {
 			.subcmd = WIFI_SUBCMD_GET_CHANNEL_LIST
 		},
 		.flags = WIPHY_VENDOR_CMD_NEED_WDEV | WIPHY_VENDOR_CMD_NEED_NETDEV,
-		.doit = mtk_cfg80211_vendor_get_channel_list
+		.doit = mtk_cfg80211_vendor_get_channel_list,
+		VENDOR_OPS_SET_POLICY(VENDOR_CMD_RAW_DATA)
 	},
 	{
 		{
@@ -185,7 +186,8 @@ static const struct wiphy_vendor_command mtk_p2p_vendor_ops[] = {
 			.subcmd = WIFI_SUBCMD_SET_COUNTRY_CODE
 		},
 		.flags = WIPHY_VENDOR_CMD_NEED_WDEV | WIPHY_VENDOR_CMD_NEED_NETDEV,
-		.doit = mtk_cfg80211_vendor_set_country_code
+		.doit = mtk_cfg80211_vendor_set_country_code,
+		VENDOR_OPS_SET_POLICY(VENDOR_CMD_RAW_DATA)
 	},
 };
 
@@ -205,6 +207,12 @@ mtk_cfg80211_default_mgmt_stypes[NUM_NL80211_IFTYPES] = {
 	[NL80211_IFTYPE_AP] = {
 			       .tx = 0xffff,
 			       .rx = BIT(IEEE80211_STYPE_PROBE_REQ >> 4) | BIT(IEEE80211_STYPE_ACTION >> 4)
+#if CFG_SUPPORT_SOFTAP_WPA3
+					| BIT(IEEE80211_STYPE_REASSOC_REQ >> 4) |
+					BIT(IEEE80211_STYPE_DISASSOC >> 4) |
+					BIT(IEEE80211_STYPE_AUTH >> 4) |
+					BIT(IEEE80211_STYPE_DEAUTH >> 4)
+#endif
 			       },
 	[NL80211_IFTYPE_AP_VLAN] = {
 				    /* copy AP */
@@ -1543,7 +1551,7 @@ void mtk_p2p_wext_set_Multicastlist(P_GLUE_INFO_T prGlueInfo)
 
 	ASSERT(prDev);
 	ASSERT(prGlueInfo);
-	if (!prDev || !prGlueInfo) {
+	if (!prDev || !prGlueInfo || !prGlueInfo->prP2PDevInfo) {
 		DBGLOG(INIT, WARN, " abnormal dev or skb: prDev(0x%p), prGlueInfo(0x%p)\n", prDev, prGlueInfo);
 		return;
 	}

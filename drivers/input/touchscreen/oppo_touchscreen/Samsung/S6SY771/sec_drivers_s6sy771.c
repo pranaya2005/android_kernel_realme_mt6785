@@ -70,6 +70,9 @@ static int sec_set_no_handle_area(struct kernel_grip_info *grip_info);
 static int sec_set_condition_frame_limit(int frame_limit);
 static int sec_set_large_frame_limit(int frame_limit);
 static void sec_set_grip_touch_direction(uint8_t dir);
+static void sec_calibrate(struct seq_file *s, void *chip_data);
+static bool sec_get_cal_status(struct seq_file *s, void *chip_data);
+
 /**************************** end of function delcare*****************************************/
 
 /*************************** start of global variable delcare****************************************/
@@ -1748,6 +1751,9 @@ static struct oppo_touchpanel_operations sec_ops = {
     .screenon_fingerprint_info  = sec_get_fingerprint_info,
     .enable_gesture_mask        = sec_enable_gesture_mask,
     .smooth_lv_set              = sec_smooth_lv_set,
+    .calibrate			= sec_calibrate,
+    .get_cal_status 	= sec_get_cal_status,
+
 };
 /********* End of implementation of oppo_touchpanel_operations callbacks**********************/
 
@@ -3120,9 +3126,7 @@ static bool sec_get_cal_status(struct seq_file *s, void *chip_data)
 
 static struct sec_proc_operations sec_proc_ops = {
     .auto_test          = sec_auto_test,
-    .calibrate          = sec_calibrate,
     .verify_calibration = sec_verify_calibration,
-    .get_cal_status     = sec_get_cal_status,
 };
 
 /*********** Start of kernel grip callbacks*************************/

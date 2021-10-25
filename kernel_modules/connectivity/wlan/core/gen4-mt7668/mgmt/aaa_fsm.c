@@ -314,13 +314,21 @@ VOID aaaFsmRunEventRxAuth(IN P_ADAPTER_T prAdapter, IN P_SW_RFB_T prSwRfb)
 		if (prBssInfo && prBssInfo->fgIsNetActive) {
 
 			/* 4 <1.1> Validate Auth Frame by Auth Algorithm/Transation Seq */
+#if CFG_SUPPORT_SOFTAP_WPA3
+			if(WLAN_STATUS_SUCCESS ==
+			   authProcessRxAuthFrame(prAdapter,
+									  prSwRfb,
+									  prBssInfo,
+									  &u2StatusCode))
+#else
 			if (WLAN_STATUS_SUCCESS ==
 				authProcessRxAuth1Frame(prAdapter,
 					prSwRfb,
 					prBssInfo->aucBSSID,
 					AUTH_ALGORITHM_NUM_OPEN_SYSTEM,
-					AUTH_TRANSACTION_SEQ_1, &u2StatusCode)) {
-
+					AUTH_TRANSACTION_SEQ_1, &u2StatusCode))
+#endif
+			{
 				if (u2StatusCode == STATUS_CODE_SUCCESSFUL) {
 					DBGLOG(AAA, TRACE, "process RxAuth status success\n");
 					/* 4 <1.2> Validate Auth Frame for Network Specific Conditions */
@@ -400,10 +408,11 @@ bow_proc:
 					DBGLOG(AAA, WARN,
 					       "Previous AuthAssocState (%d) != IDLE.\n", prStaRec->eAuthAssocState);
 				}
+#if !CFG_SUPPORT_SOFTAP_WPA3
 				if (prStaRec->eAuthAssocState
 					== AAA_STATE_SEND_AUTH2)
 				return;
-
+#endif
 				prStaRec->eAuthAssocState = AAA_STATE_SEND_AUTH2;
 			} else {
 				prStaRec->eAuthAssocState = AA_STATE_IDLE;
@@ -415,10 +424,12 @@ bow_proc:
 			/* Update the record join time. */
 			GET_CURRENT_SYSTIME(&prStaRec->rUpdateTime);
 
+#if !CFG_SUPPORT_SOFTAP_WPA3
 			/* Update Station Record - Status/Reason Code */
 			prStaRec->u2StatusCode = u2StatusCode;
 
 			prStaRec->ucAuthAlgNum = AUTH_ALGORITHM_NUM_OPEN_SYSTEM;
+#endif
 		} else {
 			/* NOTE(Kevin): We should have STA_RECORD_T if the status code was successful */
 			ASSERT(!(u2StatusCode == STATUS_CODE_SUCCESSFUL));
@@ -426,9 +437,31 @@ bow_proc:
 
 		/* NOTE: Ignore the return status for AAA */
 		/* 4 <4> Reply  Auth */
-		authSendAuthFrame(prAdapter,
-				  prStaRec, prBssInfo->ucBssIndex, prSwRfb, AUTH_TRANSACTION_SEQ_2, u2StatusCode);
+#if CFG_SUPPORT_SOFTAP_WPA3
+		/* for SoftAP: indicate AUTH frame to hostapd; for P2P GO: driver handle it.
+		 * use wireless_dev->iftype to identify it is SoftAP or P2P GO.
+		 */
+#define IS_SOFTAP_MODE(role_index) \
+		((gprP2pRoleWdev[role_index]) \
+		&& (gprP2pRoleWdev[role_index]->iftype == NL80211_IFTYPE_AP))
 
+		if (IS_SOFTAP_MODE(prBssInfo->u4PrivateData)) {
+			kalP2PIndicateRxMgmtFrame(
+				prAdapter->prGlueInfo,
+				prSwRfb,
+				FALSE,
+				(uint8_t)prBssInfo->u4PrivateData);
+			return;
+		} else {
+#endif
+		if (WLAN_STATUS_SUCCESS !=
+			authSendAuthFrame(prAdapter,
+				  prStaRec, prBssInfo->ucBssIndex,
+				  prSwRfb, AUTH_TRANSACTION_SEQ_2, u2StatusCode))
+				DBGLOG(AAA, WARN, "authSendAuthFrame fail!\n");
+#if CFG_SUPPORT_SOFTAP_WPA3
+		}
+#endif
 
 		/*sta_rec might be removed when client list full, skip timer setting*/
 		if (prStaRec && prStaRec->fgIsInUse == TRUE) {

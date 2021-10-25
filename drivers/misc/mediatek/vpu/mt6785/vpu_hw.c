@@ -97,7 +97,7 @@ struct VPU_OPP_INFO vpu_power_table[VPU_OPP_NUM] = {
 
 #include <linux/ktime.h>
 
-#define CMD_WAIT_TIME_MS    (18 * 1000)
+#define CMD_WAIT_TIME_MS    (3 * 1000)
 #define OPP_WAIT_TIME_MS    (300)
 #define PWR_KEEP_TIME_MS    (2000)
 #define OPP_KEEP_TIME_MS    (3000)

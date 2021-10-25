@@ -72,6 +72,7 @@
 #ifdef VENDOR_EDIT
 /* LiYue@BSP.CHG.Basic, 2019/09/04 Add for charging */
 extern bool oplus_chg_wake_update_work(void);
+extern int is_vooc_support_single_batt_svooc(void);
 #endif
 #define MT6360_PMU_CHG_DRV_VERSION	"1.0.7_MTK"
 
@@ -699,7 +700,7 @@ static int mt6360_chgdet_pre_process(struct mt6360_pmu_chg_info *mpci)
 
 
 #ifdef VENDOR_EDIT
-/* LiYue@BSP.CHG.Basic, 2019/09/13, Add for OTG */
+/* LiYue@BSP.CHG.Basic, 2019/09/13, Add for oplus charging */
 bool is_mtksvooc_project = false;
 EXPORT_SYMBOL(is_mtksvooc_project);
 bool is_mtkvooc30_project = false;
@@ -818,14 +819,12 @@ static int mt6360_chgdet_post_process(struct mt6360_pmu_chg_info *mpci)
 		dev_err(mpci->dev, "%s: retry bc1.2 chg_type[%d]\n", __func__,mpci->chg_type);
 		__mt6360_enable_usbchgen(oplusmpci, false);
 		__mt6360_enable_usbchgen(oplusmpci, true);
-
 #ifdef OPLUS_FEATURE_CHG_BASIC
 /* WangMing@BSP.CHG.Basic, 2020/12/18, add for adapter detect */
 		if (mpci->bc12_retried == 1) {
 			goto force_inform;
 		}
 #endif
-
 		return 0;
 	}
 out:
@@ -857,7 +856,6 @@ out:
 		if (!inform_psy) {
 			return ret;
 		}
-
 #ifdef OPLUS_FEATURE_CHG_BASIC
 /* WangMing@BSP.CHG.Basic, 2020/12/18, add for adapter detect */
 force_inform:
@@ -1591,7 +1589,6 @@ static int mt6360_enable_power_path(struct charger_device *chg_dev,
 	if (true == is_mtksvooc_project) {
 		return mt6360_pmu_reg_update_bits(mpci->mpi, MT6360_PMU_CHG_CTRL1,
 				MT6360_MASK_FORCE_SLEEP, 0xff);
-
 	} else {
 		return mt6360_pmu_reg_update_bits(mpci->mpi, MT6360_PMU_CHG_CTRL1,
 						MT6360_MASK_FORCE_SLEEP, en ? 0 : 0xff);
@@ -1683,10 +1680,10 @@ static int mt6360_enable_otg(struct charger_device *chg_dev, bool en)
 	int ret = 0;
 #ifdef VENDOR_EDIT
 /* LiYue@BSP.CHG.Basic, 2019/09/13, Add for OTG */
-	static struct power_supply *battery_psy = NULL;
-	if (!battery_psy) {
-		battery_psy = power_supply_get_by_name("battery");
-		//dev_err(mpci->dev, "%s: battery_psy null\n", __func__);
+	static struct power_supply *usb_psy = NULL;
+	if (!usb_psy) {
+		usb_psy = power_supply_get_by_name("usb");
+		//dev_err(mpci->dev, "%s: usb_psy null\n", __func__);
 	}
 #endif /*VENDOR_EDIT*/
 
@@ -1699,8 +1696,8 @@ static int mt6360_enable_otg(struct charger_device *chg_dev, bool en)
 #ifdef VENDOR_EDIT
 /* LiYue@BSP.CHG.Basic, 2019/09/13, Add for OTG */
 	oplus_chg_set_otg_online(en ? true : false);
-	if (battery_psy)
-		power_supply_changed(battery_psy);
+	if (usb_psy)
+		power_supply_changed(usb_psy);
 #endif
 	return mt6360_pmu_reg_update_bits(mpci->mpi, MT6360_PMU_CHG_CTRL1,
 					  MT6360_MASK_OPA_MODE, en ? 0xff : 0);
@@ -3104,7 +3101,7 @@ static int mt6360_set_shipping_mode(struct mt6360_pmu_chg_info *mpci)
 		goto out;
 	}
 
-#if (defined(CONFIG_OPLUS_CHARGER_MTK6853) || defined(CONFIG_MACH_MT6785))
+#ifdef CONFIG_OPLUS_CHARGER_MTK6853
 /*Baoquan.Lai@@BSP.CHG.Basic, 2020/05/15, Add for delay 18s */
 	data = 0xC0;
 #else
@@ -3373,11 +3370,11 @@ void mt6360_enable_hvdcp_detect(void)
         int ret = 0;
 
 	if (!oplusmpci) {
-                printk(KERN_ERR "%s oplusmpci NULL\n", __func__);
-                return ;
-        }
+		printk(KERN_ERR "%s oplusmpci NULL\n", __func__);
+		return ;
+	}
 
-        dev_err(oplusmpci->dev, "%s\n", __func__);
+	dev_err(oplusmpci->dev, "%s\n", __func__);
 
 /*Lukaili@BSP.CHG.Basic, 2020/06/16, Add for qc compatible for vooc project*/
 	dev_err(oplusmpci->dev, "%s: enable hvdcp detect is_mtksvooc_project = %d %d\n",

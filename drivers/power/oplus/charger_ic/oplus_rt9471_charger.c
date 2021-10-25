@@ -259,13 +259,47 @@ enum power_supply_type charger_type = POWER_SUPPLY_TYPE_UNKNOWN;
 
 static int rt9471_read_device(void *client, u32 addr, int len, void *dst)
 {
-	return i2c_smbus_read_i2c_block_data(client, addr, len, dst);
+	int rc = 0;
+	int retry = 3;
+
+	rc = i2c_smbus_read_i2c_block_data(client, addr, len, dst);
+	
+	if (rc < 0) {
+		while(retry > 0) {
+			usleep_range(5000, 5000);
+			rc = i2c_smbus_read_i2c_block_data(client, addr, len, dst);
+			if (rc < 0) {
+				retry--;
+			} else {
+				break;
+			}
+		}
+	}
+
+	return rc;
 }
 
 static int rt9471_write_device(void *client, u32 addr, int len,
 			       const void *src)
 {
-	return i2c_smbus_write_i2c_block_data(client, addr, len, src);
+	int rc = 0;
+	int retry = 3;
+
+	rc = i2c_smbus_write_i2c_block_data(client, addr, len, src);
+
+	if (rc < 0) {
+		while(retry > 0) {
+			usleep_range(5000, 5000);
+			rc = i2c_smbus_write_i2c_block_data(client, addr, len, src);
+			if (rc < 0) {
+				retry--;
+			} else {
+				break;
+			}
+		}
+	}
+
+	return rc;
 }
 
 #if 0
@@ -1950,8 +1984,22 @@ static int rt9471_reset_register(struct rt9471_chip *chip)
 static bool rt9471_check_devinfo(struct rt9471_chip *chip)
 {
 	int ret = 0;
+	int retry = 3;
 
 	ret = i2c_smbus_read_byte_data(chip->client, RT9471_REG_INFO);
+
+	if (ret < 0) {
+		while(retry > 0) {
+			usleep_range(5000, 5000);
+			ret = i2c_smbus_read_byte_data(chip->client, RT9471_REG_INFO);
+			if (ret < 0) {
+				retry--;
+			} else {
+				break;
+			}
+		}
+	}
+
 	if (ret < 0) {
 		dev_notice(chip->dev, "%s get devinfo fail(%d)\n",
 				      __func__, ret);
@@ -2634,7 +2682,6 @@ int oplus_rt9471_set_aicr(int current_ma)
 	aicl_point_temp = aicl_point;
 	__rt9471_set_aicr(rt9471, usb_icl[i] * 1000);
 	msleep(90);
-	chg_vol = battery_meter_get_charger_voltage();
 	if (chg_vol < aicl_point_temp) {
 		i =  i - 2;//1.5
 		goto aicl_pre_step;
@@ -2684,18 +2731,14 @@ int oplus_rt9471_charging_disable(void)
 {
 
 #ifdef OPLUS_FEATURE_CHG_BASIC
-/*Liu.Yong@BSP.CHG.Basic, 2021/01/19,, Modify for subcharger*/
-   int ret = 0;
-
-   if (strcmp(rt9471->desc->chg_name, "secondary_chg") == 0){
+		//Junbo.Guo@ODM_WT.BSP.CHG, 2019/11/11, Modify for subcharger
+   if (strcmp(rt9471->desc->chg_name, "secondary_chg") == 0){ 
 	  __rt9471_enable_chip(rt9471,false);
-   }
-
+   	}
+ 
 	/* Disable WDT */
-   ret =  __rt9471_set_wdt(rt9471, 0);
-   if (ret < 0) {
-       dev_notice(rt9471->dev, "%s: en wdt fail\n", __func__);
-   }
+	 __rt9471_set_wdt(rt9471, 0);
+
 #endif
     rt9471->desc->pre_current_ma = -1;
 	return __rt9471_enable_charging(rt9471, false);

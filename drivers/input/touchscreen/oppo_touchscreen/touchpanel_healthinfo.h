@@ -73,6 +73,7 @@ typedef enum {
     HEALTH_FW_UPDATE,
     HEALTH_FW_UPDATE_COST,
     HEALTH_GRIP,
+    HEALTH_GRIP_UP,
 } healthinfo_type;
 
 void reset_healthinfo_time_counter(u64 *time_counter);

@@ -358,9 +358,10 @@ static ssize_t focal_esdcheck_show(struct device *dev, struct device_attribute *
     return count;
 }
 
+#define FOCAL_DUMP_REG_LEN    256
 static ssize_t focal_dump_reg_show(struct device *dev, struct device_attribute *attr, char *buf)
 {
-    char tmp[256];
+    char tmp[FOCAL_DUMP_REG_LEN];
     int count = 0;
     struct touchpanel_data *ts = dev_get_drvdata(dev);
     struct focal_debug_func *focal_debug_ops = (struct focal_debug_func *)ts->private_data;
@@ -373,7 +374,7 @@ static ssize_t focal_dump_reg_show(struct device *dev, struct device_attribute *
 
     mutex_lock(&ts->mutex);
     if (focal_debug_ops && focal_debug_ops->dump_reg_sate) {
-        count = focal_debug_ops->dump_reg_sate(ts->chip_data, tmp);
+        count = focal_debug_ops->dump_reg_sate(ts->chip_data, tmp, FOCAL_DUMP_REG_LEN);
     }
     mutex_unlock(&ts->mutex);
 
@@ -387,6 +388,32 @@ static ssize_t focal_dump_reg_show(struct device *dev, struct device_attribute *
     return count;
 }
 
+static ssize_t focal_prc_store(struct device *dev, struct device_attribute *attr, const char *buf, size_t count)
+{
+    struct touchpanel_data *ts = dev_get_drvdata(dev);
+    struct focal_debug_func *focal_debug_ops = (struct focal_debug_func *)ts->private_data;
+    TPD_INFO("%s:prc store(%s)", __func__, buf);
+    if (focal_debug_ops->prc_enable && focal_debug_ops->get_prc_flag) {
+        if ((memcmp(buf, "1", 1)  == 0) || (memcmp(buf, "on", 2) == 0)) {
+            focal_debug_ops->prc_enable(ts->chip_data, true);
+        } else if ((memcmp(buf, "0", 1)  == 0) || (memcmp(buf, "off", 3) == 0)) {
+            focal_debug_ops->prc_enable(ts->chip_data, false);
+        }
+    }
+    return count;
+}
+static ssize_t focal_prc_show(struct device *dev, struct device_attribute *attr, char *buf)
+{
+    int count = 0;
+    struct touchpanel_data *ts = dev_get_drvdata(dev);
+    struct focal_debug_func *focal_debug_ops = (struct focal_debug_func *)ts->private_data;
+    if (focal_debug_ops->prc_enable && focal_debug_ops->get_prc_flag) {
+        count = sprintf(buf, "prc is %s\n", focal_debug_ops->get_prc_flag(ts->chip_data) ? "Enabled" : "Disabled");
+    } else {
+        count = sprintf(buf, "prc is not supported\n");
+    }
+    return count;
+}
 static DEVICE_ATTR(fts_fw_version, S_IRUGO | S_IWUSR, focal_fw_version_show, NULL);
 /* read and write register
 *   read example: echo 88 > rw_reg ---read register 0x88
@@ -397,6 +424,7 @@ static DEVICE_ATTR(fts_dump_reg, S_IRUGO | S_IWUSR, focal_dump_reg_show, NULL);
 static DEVICE_ATTR(fts_hw_reset, S_IRUGO | S_IWUSR, focal_hw_reset_show, NULL);
 static DEVICE_ATTR(fts_irq, S_IRUGO | S_IWUSR, NULL, focal_irq_store);
 static DEVICE_ATTR(fts_esd_check, S_IRUGO | S_IWUSR, focal_esdcheck_show, focal_esdcheck_store);
+static DEVICE_ATTR(fts_prc, S_IRUGO|S_IWUSR, focal_prc_show, focal_prc_store);
 
 static struct attribute *focal_attributes[] = {
     &dev_attr_fts_fw_version.attr,
@@ -424,6 +452,31 @@ int focal_create_sysfs(struct i2c_client *client)
         TPD_INFO("[EX]: sysfs_create_group() succeeded!\n");
     }
     return err;
+}
+static struct attribute *fts_attributes[] = {
+    &dev_attr_fts_fw_version.attr,
+    &dev_attr_fts_dump_reg.attr,
+    &dev_attr_fts_hw_reset.attr,
+    &dev_attr_fts_irq.attr,
+    &dev_attr_fts_esd_check.attr,
+    &dev_attr_fts_prc.attr,
+    NULL
+};
+static struct attribute_group fts_attribute_group = {
+    .attrs = fts_attributes
+};
+int focal_create_sysfs_new(struct touchpanel_data *ts)
+{
+    int ret = 0;
+    ret = sysfs_create_group(&ts->dev->kobj, &fts_attribute_group);
+    if (ret) {
+        TPD_INFO("[EX]: sysfs_create_group() failed!!");
+        sysfs_remove_group(&ts->dev->kobj, &fts_attribute_group);
+        return -ENOMEM;
+    } else {
+        TPD_INFO("[EX]: sysfs_create_group() succeeded!!");
+    }
+    return ret;
 }
 /******************************* End of device attribute file******************************************/
 
@@ -693,7 +746,14 @@ static ssize_t fts_debug_write(struct file *filp, const char __user *buff, size_
     proc.opmode = writebuf[0];
     switch (proc.opmode) {
     case PROC_SET_TEST_FLAG:
-        TPD_DEBUG("[APK]: PROC_SET_TEST_FLAG = %x", writebuf[1]);
+        TPD_INFO("[APK]: PROC_SET_TEST_FLAG = %x!\n", writebuf[1]);
+        if (ts->esd_handle_support && !ts->is_suspended) {
+            if (writebuf[1] == 1) {
+                esd_handle_switch(&ts->esd_info, false);
+            } else {
+                esd_handle_switch(&ts->esd_info, true);
+            }
+        }
         break;
 
     case PROC_READ_REGISTER:
@@ -976,6 +1036,18 @@ int fts_create_proc(struct touchpanel_data *ts, struct fts_proc_operations *syna
     if (NULL == proc.proc_entry) {
         TPD_INFO("create proc entry fail");
         return -ENOMEM;
+    }
+    return ret;
+}
+int fts_create_proc_new(struct touchpanel_data *ts, struct fts_proc_operations *proc_ops)
+{
+    int ret = 0;
+    struct proc_dir_entry *prEntry_tmp = NULL;
+    g_syna_ops = proc_ops;
+    prEntry_tmp = proc_create_data("baseline_test", 0666, ts->prEntry_tp, &fts_auto_test_proc_fops, ts);
+    if (prEntry_tmp == NULL) {
+        ret = -ENOMEM;
+        TPD_INFO("%s: Couldn't create proc entry, %d\n", __func__, __LINE__);
     }
 
     return ret;

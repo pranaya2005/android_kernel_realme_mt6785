@@ -51,8 +51,13 @@
 #include "kd_imgsensor_errcode.h"
 #include "imgsensor_common.h"
 
+#include "imgsensor_eeprom.h"
 #include "ov48bmipiraw_Sensor.h"
 #include "ov48b_Sensor_setting.h"
+#include "ov48b_Sensor_setting_20151.h"
+#ifdef OPLUS_FEATURE_CAMERA_COMMON
+#include "soc/oppo/oppo_project.h"
+#endif
 
 #define LOG_INF(format, args...)    \
 	pr_debug(PFX "[%s] " format, __func__, ##args)
@@ -63,10 +68,13 @@
 
 #ifdef OPLUS_FEATURE_CAMERA_COMMON
 /*Wenjun.Wu@Camera.Driver add for 19131 ,20200211 */
-#define DEVICE_VERSION_OV48B     "ov48b2q"
-//extern void register_imgsensor_deviceinfo(char *name, char *version, u8 module_id);
-//static kal_uint8 deviceInfo_register_value = 0x00;
 //static kal_uint32 streaming_control(kal_bool enable);
+static bool IsProject_20151 = false ;
+//wangyang@CAMERA.DRV.2020/11/02,Modify for InSensorZoom
+#define _I2C_BUF_SIZE 4096
+kal_uint16 _i2c_data [_I2C_BUF_SIZE];
+static unsigned int _size_to_write;
+static bool _is_seamless = false;
 #endif
 static DEFINE_SPINLOCK(imgsensor_drv_lock);
 
@@ -140,15 +148,15 @@ static struct imgsensor_info_struct imgsensor_info = {
 	},
 	.slim_video = {
 		.pclk = 115200000,
-		.linelength = 1200,
-		.framelength = 3200,
+		.linelength = 1056,
+		.framelength = 3636,
 		.startx = 0,
 		.starty = 0,
 		.grabwindow_width = 4000,
 		.grabwindow_height = 2600,
 		.mipi_data_lp2hs_settle_dc = 120,
 		.max_framerate = 300,
-		.mipi_pixel_rate = 476000000,
+		.mipi_pixel_rate = 584000000,
 	},
   .custom1 = {
 		.pclk = 115200000,
@@ -200,15 +208,15 @@ static struct imgsensor_info_struct imgsensor_info = {
 	  },
 	.custom5 = {
 		.pclk = 115200000,
-		.linelength = 1056,
-		.framelength = 3636,
+		.linelength = 1152,
+		.framelength = 3333,
 		.startx = 0,
 		.starty = 0,
 		.grabwindow_width = 4000,
-		.grabwindow_height = 2600,
+		.grabwindow_height = 3000,
 		.mipi_data_lp2hs_settle_dc = 120,
 		.max_framerate = 300,
-		.mipi_pixel_rate = 584000000,
+		.mipi_pixel_rate = 476000000,
 	},
 
 	.margin = 22,					/* sensor framelength & shutter margin */
@@ -246,7 +254,7 @@ static struct imgsensor_info_struct imgsensor_info = {
 	.mclk = 24,//mclk value, suggest 24 or 26 for 24Mhz or 26Mhz
 	.mipi_lane_num = SENSOR_MIPI_4_LANE,//mipi lane num
 	.i2c_addr_table = {0x6d, 0xff},
-	.i2c_speed = 400,
+	.i2c_speed = 1000,
 };
 
 static struct imgsensor_struct imgsensor = {
@@ -275,10 +283,10 @@ static struct SENSOR_WINSIZE_INFO_STRUCT imgsensor_winsize_info[10] = {
 	{8000, 6000,  170,  840, 7680, 4320, 3840, 2160,  0,  0, 3840, 2160, 0, 0, 3840, 2160},    /* Custom2 */
 	{8000, 6000,    0,    0, 8000, 6000, 8000, 6000,  0,  0, 8000, 6000, 0, 0, 8000, 6000},     /* Custom3 */
 	{8000, 6000,    0,    0, 8000, 6000, 2000, 1500,  0,186, 2000, 1128, 0, 0, 2000, 1128},     /* Custom4 */
-	{8000, 6000,    0,  400, 8000, 5200, 4000, 2600,  0,  0, 4000, 2600, 0, 0, 4000, 2600},    /* Custom5 */
+	{8000, 6000, 2000, 1500, 4000, 3000, 4000, 3000,  0,  0, 4000, 3000, 0, 0, 4000, 3000},     /* Custom5 */
 };
 
-static struct SENSOR_VC_INFO_STRUCT SENSOR_VC_INFO[4] = {
+static struct SENSOR_VC_INFO_STRUCT SENSOR_VC_INFO[5] = {
     /* Preview,capture,custom1 mode setting 496(pxiel)*1496*/
     {
         0x03, 0x0a, 0x00, 0x08, 0x40, 0x00,
@@ -303,6 +311,12 @@ static struct SENSOR_VC_INFO_STRUCT SENSOR_VC_INFO[4] = {
         0x00, 0x2b, 0x0FA0, 0x08D0, 0x00, 0x00, 0x0280, 0x0001,
         0x01, 0x2b, 0x01E0, 0x0438, 0x03, 0x00, 0x0000, 0x0000
     },
+    /* custom5 mode setting 496(pxiel)*748*/
+    {
+        0x03, 0x0a, 0x00, 0x08, 0x40, 0x00,
+        0x00, 0x2b, 0x0FA0, 0x0BB8, 0x00, 0x00, 0x0280, 0x0001,
+        0x01, 0x2b, 0x01F0, 0x02EC, 0x03, 0x00, 0x0000, 0x0000
+    },
 };
 
 
@@ -326,22 +340,6 @@ static struct SET_PD_BLOCK_INFO_T imgsensor_pd_info = {
 	 .i4Crop = { {0, 0}, {0, 0}, {0, 372}, {1000, 936}, {0, 200},
 		{0, 0}, {80, 420}, {0, 0}, {1000, 936}, {0, 200} },
 };
-#endif
-
-#ifdef OPLUS_FEATURE_CAMERA_COMMON
-/*Caohua.Lin@Camera.Driver add for 18011/18311  board 20180723*/
-#define MODULE_ID_OFFSET 0x0000
-static kal_uint16 read_module_id(void)
-{
-	kal_uint16 get_byte=0;
-	char pusendcmd[2] = {(char)(MODULE_ID_OFFSET >> 8) , (char)(MODULE_ID_OFFSET & 0xFF) };
-	iReadRegI2C(pusendcmd , 2, (u8*)&get_byte,1,0xA0/*EEPROM_READ_ID*/);
-	if (get_byte == 0) {
-		iReadRegI2C(pusendcmd, 2, (u8 *)&get_byte, 1, 0xA0/*EEPROM_READ_ID*/);
-	}
-	return get_byte;
-
-}
 #endif
 
 #if MULTI_WRITE
@@ -404,13 +402,22 @@ static void write_cmos_sensor(kal_uint32 addr, kal_uint32 para)
 
 static void set_dummy(void)
 {
-	write_cmos_sensor(0x3208, 0x00);
-	write_cmos_sensor(0x380c, imgsensor.line_length >> 8);
-	write_cmos_sensor(0x380d, imgsensor.line_length & 0xFF);
-	write_cmos_sensor(0x380e, imgsensor.frame_length >> 8);
-	write_cmos_sensor(0x380f, imgsensor.frame_length & 0xFF);
-	write_cmos_sensor(0x3208, 0x10);
-	write_cmos_sensor(0x3208, 0xa0);
+	if(!_is_seamless) {
+		write_cmos_sensor(0x3208, 0x00);
+		write_cmos_sensor(0x380c, imgsensor.line_length >> 8);
+		write_cmos_sensor(0x380d, imgsensor.line_length & 0xFF);
+		write_cmos_sensor(0x380e, imgsensor.frame_length >> 8);
+		write_cmos_sensor(0x380f, imgsensor.frame_length & 0xFF);
+		write_cmos_sensor(0x3208, 0x10);
+		write_cmos_sensor(0x3208, 0xa0);
+	} else {
+		_i2c_data[_size_to_write++] = 0x3840;
+		_i2c_data[_size_to_write++] = imgsensor.frame_length >> 16;
+		_i2c_data[_size_to_write++] = 0x380e;
+		_i2c_data[_size_to_write++] = imgsensor.frame_length >> 8;
+		_i2c_data[_size_to_write++] = 0x380f;
+		_i2c_data[_size_to_write++] = imgsensor.frame_length & 0xFF;
+	}
 }
 
 static void set_max_framerate(UINT16 framerate, kal_bool min_framelength_en)
@@ -433,7 +440,11 @@ static void set_max_framerate(UINT16 framerate, kal_bool min_framelength_en)
 	if (min_framelength_en)
 	imgsensor.min_frame_length = imgsensor.frame_length;
 	spin_unlock(&imgsensor_drv_lock);
+}
 
+static void set_max_framerate_video(UINT16 framerate, kal_bool min_framelength_en)
+{
+	set_max_framerate(framerate, min_framelength_en);
 	set_dummy();
 }
 
@@ -474,35 +485,36 @@ static void write_shutter(kal_uint32 shutter)
 			realtime_fps = 146;
 			set_max_framerate(realtime_fps, 0);
 		}else{
-			//imgsensor.frame_length = (imgsensor.frame_length  >> 1) << 1;
-			write_cmos_sensor(0x3208, 0x00);
-			write_cmos_sensor(0x3840, imgsensor.frame_length >> 16);
-			write_cmos_sensor(0x380e, imgsensor.frame_length >> 8);
-			write_cmos_sensor(0x380f,imgsensor.frame_length & 0xFF);
-			write_cmos_sensor(0x3208, 0x10);
-			write_cmos_sensor(0x3208, 0xa0);
 		}
-	}else{
-		//imgsensor.frame_length = (imgsensor.frame_length  >> 1) << 1;
-		write_cmos_sensor(0x3208, 0x00);
+	}
+
+    /*Warning : shutter must be even. Odd might happen Unexpected Results */
+	if(!_is_seamless) {
+		write_cmos_sensor(0x3208, 0x01);
 		write_cmos_sensor(0x3840, imgsensor.frame_length >> 16);
 		write_cmos_sensor(0x380e, imgsensor.frame_length >> 8);
 		write_cmos_sensor(0x380f, imgsensor.frame_length & 0xFF);
-		write_cmos_sensor(0x3208, 0x10);
-		write_cmos_sensor(0x3208, 0xa0);
+		write_cmos_sensor(0x3500, (shutter >> 16) & 0xFF);
+		write_cmos_sensor(0x3501, (shutter >> 8) & 0xFF);
+		write_cmos_sensor(0x3502, (shutter)  & 0xFF);
+		write_cmos_sensor(0x3208, 0x11);
+		write_cmos_sensor(0x3208, 0xa1);
+	} else {
+		_i2c_data[_size_to_write++] = 0x3840;
+		_i2c_data[_size_to_write++] = imgsensor.frame_length >> 16;
+		_i2c_data[_size_to_write++] = 0x380e;
+		_i2c_data[_size_to_write++] = imgsensor.frame_length >> 8;
+		_i2c_data[_size_to_write++] = 0x380f;
+		_i2c_data[_size_to_write++] = imgsensor.frame_length & 0xFF;
+		_i2c_data[_size_to_write++] = 0x3500;
+		_i2c_data[_size_to_write++] = (shutter >> 16) & 0xFF;
+		_i2c_data[_size_to_write++] = 0x3501;
+		_i2c_data[_size_to_write++] = (shutter >> 8) & 0xFF;
+		_i2c_data[_size_to_write++] = 0x3502;
+		_i2c_data[_size_to_write++] = (shutter)  & 0xFF;
 	}
-	/*Warning : shutter must be even. Odd might happen Unexpected Results */
-	write_cmos_sensor(0x3208, 0x01);
-	write_cmos_sensor(0x3840, imgsensor.frame_length >> 16);
-	write_cmos_sensor(0x380e, imgsensor.frame_length >> 8);
-	write_cmos_sensor(0x380f, imgsensor.frame_length & 0xFF);
-	write_cmos_sensor(0x3500, (shutter >> 16) & 0xFF);
-	write_cmos_sensor(0x3501, (shutter >> 8) & 0xFF);
-	write_cmos_sensor(0x3502, (shutter)  & 0xFF);
-	write_cmos_sensor(0x3208, 0x11);
-	write_cmos_sensor(0x3208, 0xa1);
-	pr_debug("shutter =%d, framelength =%d, realtime_fps =%d\n",
-		shutter, imgsensor.frame_length, realtime_fps);
+	pr_debug("shutter =%d, framelength =%d, realtime_fps =%d _is_seamless %d\n",
+	        shutter, imgsensor.frame_length, realtime_fps, _is_seamless);
 }
 
 static void set_shutter(kal_uint32 shutter)  //should not be kal_uint16 -- can't reach long exp
@@ -535,8 +547,18 @@ static kal_uint16 gain2reg(const kal_uint16 gain)
 
 static kal_uint16 set_gain(kal_uint16 gain)
 {
-	kal_uint16 reg_gain;
+	kal_uint16 reg_gain, max_gain = imgsensor_info.max_gain;
 	unsigned long flags;
+
+
+	if (gain < imgsensor_info.min_gain || gain > max_gain) {
+		pr_debug("Error gain setting");
+
+		if (gain < imgsensor_info.min_gain)
+			gain = imgsensor_info.min_gain;
+		else if (gain > max_gain)
+			gain = max_gain;
+	}
 
 	reg_gain = gain2reg(gain);
 	spin_lock_irqsave(&imgsensor_drv_lock, flags);
@@ -544,6 +566,7 @@ static kal_uint16 set_gain(kal_uint16 gain)
 	spin_unlock_irqrestore(&imgsensor_drv_lock, flags);
 
 	printk("gain = %d , reg_gain = 0x%x\n ", gain, reg_gain);
+
 	if (reg_gain > 0xf00) {
 		//15xA gain with digital gain
 		write_cmos_sensor(0x03508, 0xf);
@@ -591,338 +614,348 @@ static void sensor_init(void)
 	write_cmos_sensor(0x0103, 0x01);//SW Reset, need delay
 	mdelay(5);
 	printk("sensor_init start\n");
-	ov48b2q_table_write_cmos_sensor(
-		addr_data_pair_init_ov48b2q,
-		sizeof(addr_data_pair_init_ov48b2q) / sizeof(kal_uint16));
-        printk("sensor_init end\n");
+	if(IsProject_20151){
+		ov48b2q_table_write_cmos_sensor(
+			addr_data_pair_init_ov48b2q_20151,
+			sizeof(addr_data_pair_init_ov48b2q_20151) / sizeof(kal_uint16));
+	}else{
+		ov48b2q_table_write_cmos_sensor(
+			addr_data_pair_init_ov48b2q,
+			sizeof(addr_data_pair_init_ov48b2q) / sizeof(kal_uint16));
+	}
+	printk("sensor_init end\n");
 }
 
 static void preview_setting(void)
 {
-	printk("preview_setting RES_4000x3000_30fps\n");
-	ov48b2q_table_write_cmos_sensor(
-		addr_data_pair_preview_ov48b2q,
-		sizeof(addr_data_pair_preview_ov48b2q) / sizeof(kal_uint16));
+    int _length = 0;
+    printk("preview_setting RES_4000x3000_30fps\n");
+    _length = sizeof(addr_data_pair_preview_ov48b2q_20151) / sizeof(kal_uint16);
+
+    if(!_is_seamless) {
+        if(IsProject_20151){
+            ov48b2q_table_write_cmos_sensor(
+                addr_data_pair_preview_ov48b2q_20151,
+                sizeof(addr_data_pair_preview_ov48b2q_20151) / sizeof(kal_uint16));
+        }else{
+            ov48b2q_table_write_cmos_sensor(
+                addr_data_pair_preview_ov48b2q,
+                sizeof(addr_data_pair_preview_ov48b2q) / sizeof(kal_uint16));
+        }
+    } else {
+        pr_debug("%s _is_seamless %d, _size_to_write %d\n",
+            __func__, _is_seamless, _size_to_write);
+
+        if (_size_to_write + _length > _I2C_BUF_SIZE) {
+            pr_err("_too much i2c data for fast siwtch %d\n",
+                _size_to_write + _length);
+            return;
+        }
+        memcpy((void *) (_i2c_data + _size_to_write),
+            addr_data_pair_preview_ov48b2q_20151,
+            sizeof(addr_data_pair_preview_ov48b2q_20151));
+        _size_to_write += _length;
+    }
+    pr_debug("preview_setting end\n");
 }
 
 static void capture_setting(kal_uint16 currefps)
 {
-	printk("capture_setting currefps = %d\n",currefps);
-	ov48b2q_table_write_cmos_sensor(
-		addr_data_pair_capture_ov48b2q,
-		sizeof(addr_data_pair_capture_ov48b2q) /
-		sizeof(kal_uint16));
+    int _length = 0;
+    printk("capture_setting currefps = %d\n",currefps);
+    _length = sizeof(addr_data_pair_capture_ov48b2q_20151) / sizeof(kal_uint16);
+
+    if(!_is_seamless) {
+        if(IsProject_20151){
+            ov48b2q_table_write_cmos_sensor(
+                addr_data_pair_capture_ov48b2q_20151,
+                sizeof(addr_data_pair_capture_ov48b2q_20151) / sizeof(kal_uint16));
+        }else{
+            ov48b2q_table_write_cmos_sensor(
+                addr_data_pair_capture_ov48b2q,
+                sizeof(addr_data_pair_capture_ov48b2q) / sizeof(kal_uint16));
+        }
+    } else {
+        pr_debug("%s _is_seamless %d, _size_to_write %d\n",
+            __func__, _is_seamless, _size_to_write);
+
+        if (_size_to_write + _length > _I2C_BUF_SIZE) {
+            pr_err("_too much i2c data for fast siwtch %d\n",
+                _size_to_write + _length);
+            return;
+        }
+        memcpy((void *) (_i2c_data + _size_to_write),
+            addr_data_pair_capture_ov48b2q_20151,
+            sizeof(addr_data_pair_capture_ov48b2q_20151));
+        _size_to_write += _length;
+    }
+    pr_debug("capture_setting end\n");
 }
 
 static void normal_video_setting(kal_uint16 currefps)
 {
-	printk("normal_video_setting RES_4000x3000_zsl_30fps\n");
-	ov48b2q_table_write_cmos_sensor(
-		addr_data_pair_video_ov48b2q,
-		sizeof(addr_data_pair_video_ov48b2q) /
-		sizeof(kal_uint16));
+    int _length = 0;
+    printk("normal_video_setting RES_4000x3000_zsl_30fps\n");
+    _length = sizeof(addr_data_pair_video_ov48b2q_20151) / sizeof(kal_uint16);
+
+    if(!_is_seamless) {
+        if(IsProject_20151){
+            ov48b2q_table_write_cmos_sensor(
+                addr_data_pair_video_ov48b2q_20151,
+                sizeof(addr_data_pair_video_ov48b2q_20151) / sizeof(kal_uint16));
+        }else{
+            ov48b2q_table_write_cmos_sensor(
+                addr_data_pair_video_ov48b2q,
+                sizeof(addr_data_pair_video_ov48b2q) / sizeof(kal_uint16));
+        }
+    } else {
+        pr_debug("%s _is_seamless %d, _size_to_write %d\n",
+            __func__, _is_seamless, _size_to_write);
+
+        if (_size_to_write + _length > _I2C_BUF_SIZE) {
+            pr_err("_too much i2c data for fast siwtch %d\n",
+                _size_to_write + _length);
+            return;
+        }
+        memcpy((void *) (_i2c_data + _size_to_write),
+            addr_data_pair_video_ov48b2q_20151,
+            sizeof(addr_data_pair_video_ov48b2q_20151));
+        _size_to_write += _length;
+    }
+    pr_debug("normal_video_setting end\n");
 }
 
 static void hs_video_setting(void)
 {
-	printk("hs_video_setting RES_1280x720_160fps\n");
-	ov48b2q_table_write_cmos_sensor(
-		addr_data_pair_hs_video_ov48b2q,
-		sizeof(addr_data_pair_hs_video_ov48b2q) /
-		sizeof(kal_uint16));
+    int _length = 0;
+    printk("hs_video_setting RES_1280x720_160fps\n");
+    _length = sizeof(addr_data_pair_hs_video_ov48b2q_20151) / sizeof(kal_uint16);
+
+    if(!_is_seamless) {
+        if(IsProject_20151){
+            ov48b2q_table_write_cmos_sensor(
+                addr_data_pair_hs_video_ov48b2q_20151,
+                sizeof(addr_data_pair_hs_video_ov48b2q_20151) / sizeof(kal_uint16));
+        }else{
+            ov48b2q_table_write_cmos_sensor(
+                addr_data_pair_hs_video_ov48b2q,
+                sizeof(addr_data_pair_hs_video_ov48b2q) / sizeof(kal_uint16));
+        }
+    } else {
+        pr_debug("%s _is_seamless %d, _size_to_write %d\n",
+            __func__, _is_seamless, _size_to_write);
+
+        if (_size_to_write + _length > _I2C_BUF_SIZE) {
+            pr_err("_too much i2c data for fast siwtch %d\n",
+                _size_to_write + _length);
+            return;
+        }
+        memcpy((void *) (_i2c_data + _size_to_write),
+            addr_data_pair_hs_video_ov48b2q_20151,
+            sizeof(addr_data_pair_hs_video_ov48b2q_20151));
+        _size_to_write += _length;
+    }
+    pr_debug("hs_video_setting end\n");
 }
 
 static void slim_video_setting(void)
 {
-	printk("slim_video_setting RES_3840x2160_30fps\n");
-	ov48b2q_table_write_cmos_sensor(
-		addr_data_pair_slim_video_ov48b2q,
-		sizeof(addr_data_pair_slim_video_ov48b2q) /
-		sizeof(kal_uint16));
+    int _length = 0;
+    printk("slim_video_setting RES_3840x2160_30fps\n");
+    _length = sizeof(addr_data_pair_slim_video_ov48b2q_20151) / sizeof(kal_uint16);
+
+    if(!_is_seamless) {
+        if(IsProject_20151){
+            ov48b2q_table_write_cmos_sensor(
+                addr_data_pair_slim_video_ov48b2q_20151,
+                sizeof(addr_data_pair_slim_video_ov48b2q_20151) / sizeof(kal_uint16));
+        }else{
+            ov48b2q_table_write_cmos_sensor(
+                addr_data_pair_slim_video_ov48b2q,
+                sizeof(addr_data_pair_slim_video_ov48b2q) / sizeof(kal_uint16));
+        }
+    } else {
+        pr_debug("%s _is_seamless %d, _size_to_write %d\n",
+            __func__, _is_seamless, _size_to_write);
+
+        if (_size_to_write + _length > _I2C_BUF_SIZE) {
+            pr_err("_too much i2c data for fast siwtch %d\n",
+                _size_to_write + _length);
+            return;
+        }
+        memcpy((void *) (_i2c_data + _size_to_write),
+            addr_data_pair_slim_video_ov48b2q_20151,
+            sizeof(addr_data_pair_slim_video_ov48b2q_20151));
+        _size_to_write += _length;
+    }
+    pr_debug("slim_video_setting end\n");
 }
 
 /* ITD: Modify Dualcam By Jesse 190924 Start */
 static void custom1_setting(void)
 {
-  printk("E\n");
-  ov48b2q_table_write_cmos_sensor(addr_data_pair_custom1,
-		sizeof(addr_data_pair_custom1) / sizeof(kal_uint16));
+    int _length = 0;
+    printk("custom1_setting start\n");
+    _length = sizeof(addr_data_pair_custom1_20151) / sizeof(kal_uint16);
+
+    if(!_is_seamless) {
+        if(IsProject_20151){
+            ov48b2q_table_write_cmos_sensor(
+                addr_data_pair_custom1_20151,
+                sizeof(addr_data_pair_custom1_20151) / sizeof(kal_uint16));
+        }else{
+            ov48b2q_table_write_cmos_sensor(
+                addr_data_pair_custom1,
+                sizeof(addr_data_pair_custom1) / sizeof(kal_uint16));
+        }
+    } else {
+        pr_debug("%s _is_seamless %d, _size_to_write %d\n",
+            __func__, _is_seamless, _size_to_write);
+
+        if (_size_to_write + _length > _I2C_BUF_SIZE) {
+            pr_err("_too much i2c data for fast siwtch %d\n",
+                _size_to_write + _length);
+            return;
+        }
+        memcpy((void *) (_i2c_data + _size_to_write),
+            addr_data_pair_custom1_20151,
+            sizeof(addr_data_pair_custom1_20151));
+        _size_to_write += _length;
+    }
+    pr_debug("custom1_setting end\n");
 }	/*	custom1_setting  */
 
 static void custom2_setting(void)
 {
-  printk("E\n");
-  ov48b2q_table_write_cmos_sensor(addr_data_pair_custom2,
-		sizeof(addr_data_pair_custom2) / sizeof(kal_uint16));
+    int _length = 0;
+    printk("custom2_setting start\n");
+    _length = sizeof(addr_data_pair_custom2_20151) / sizeof(kal_uint16);
+
+    if(!_is_seamless) {
+        if(IsProject_20151){
+            ov48b2q_table_write_cmos_sensor(
+                addr_data_pair_custom2_20151,
+                sizeof(addr_data_pair_custom2_20151) / sizeof(kal_uint16));
+        }else{
+            ov48b2q_table_write_cmos_sensor(
+                addr_data_pair_custom2,
+                sizeof(addr_data_pair_custom2) / sizeof(kal_uint16));
+        }
+    } else {
+        pr_debug("%s _is_seamless %d, _size_to_write %d\n",
+            __func__, _is_seamless, _size_to_write);
+
+        if (_size_to_write + _length > _I2C_BUF_SIZE) {
+            pr_err("_too much i2c data for fast siwtch %d\n",
+                _size_to_write + _length);
+            return;
+        }
+        memcpy((void *) (_i2c_data + _size_to_write),
+            addr_data_pair_custom2_20151,
+            sizeof(addr_data_pair_custom2_20151));
+        _size_to_write += _length;
+    }
+    pr_debug("custom2_setting end\n");
 }	/*	custom2_setting  */
 
 static void custom3_setting(void)
 {
-  printk("E\n");
-  ov48b2q_table_write_cmos_sensor(addr_data_pair_custom3,
-		sizeof(addr_data_pair_custom3) / sizeof(kal_uint16));
+    int _length = 0;
+    printk("custom3_setting start\n");
+    _length = sizeof(addr_data_pair_custom3_20151) / sizeof(kal_uint16);
+
+    if(!_is_seamless) {
+        if(IsProject_20151){
+            ov48b2q_table_write_cmos_sensor(
+                addr_data_pair_custom3_20151,
+                sizeof(addr_data_pair_custom3_20151) / sizeof(kal_uint16));
+        }else{
+            ov48b2q_table_write_cmos_sensor(
+                addr_data_pair_custom3,
+                sizeof(addr_data_pair_custom3) / sizeof(kal_uint16));
+        }
+    } else {
+        pr_debug("%s _is_seamless %d, _size_to_write %d\n",
+            __func__, _is_seamless, _size_to_write);
+
+        if (_size_to_write + _length > _I2C_BUF_SIZE) {
+            pr_err("_too much i2c data for fast siwtch %d\n",
+                _size_to_write + _length);
+            return;
+        }
+        memcpy((void *) (_i2c_data + _size_to_write),
+            addr_data_pair_custom3_20151,
+            sizeof(addr_data_pair_custom3_20151));
+        _size_to_write += _length;
+    }
+    pr_debug("custom3_setting end\n");
 }	/*	custom3_setting  */
 
 static void custom4_setting(void)
 {
-  printk("E\n");
-  ov48b2q_table_write_cmos_sensor(addr_data_pair_custom4,
-		sizeof(addr_data_pair_custom4) / sizeof(kal_uint16));
+    int _length = 0;
+    printk("custom4_setting start\n");
+    _length = sizeof(addr_data_pair_custom4_20151) / sizeof(kal_uint16);
+
+    if(!_is_seamless) {
+        if(IsProject_20151){
+            ov48b2q_table_write_cmos_sensor(
+                addr_data_pair_custom4_20151,
+                sizeof(addr_data_pair_custom4_20151) / sizeof(kal_uint16));
+        }else{
+            ov48b2q_table_write_cmos_sensor(
+                addr_data_pair_custom4,
+                sizeof(addr_data_pair_custom4) / sizeof(kal_uint16));
+        }
+    } else {
+        pr_debug("%s _is_seamless %d, _size_to_write %d\n",
+            __func__, _is_seamless, _size_to_write);
+
+        if (_size_to_write + _length > _I2C_BUF_SIZE) {
+            pr_err("_too much i2c data for fast siwtch %d\n",
+                _size_to_write + _length);
+            return;
+        }
+        memcpy((void *) (_i2c_data + _size_to_write),
+            addr_data_pair_custom4_20151,
+            sizeof(addr_data_pair_custom4_20151));
+        _size_to_write += _length;
+    }
+    pr_debug("custom4_setting end\n");
 }	/*	custom4_setting  */
 
 static void custom5_setting(void)
 {
-  printk("E\n");
-  ov48b2q_table_write_cmos_sensor(addr_data_pair_custom5,
-		sizeof(addr_data_pair_custom5) / sizeof(kal_uint16));
+    int _length = 0;
+    printk("custom5_setting start\n");
+    _length = sizeof(addr_data_pair_custom5_20151) / sizeof(kal_uint16);
+
+    if(!_is_seamless) {
+        if(IsProject_20151){
+            ov48b2q_table_write_cmos_sensor(
+                addr_data_pair_custom5_20151,
+                sizeof(addr_data_pair_custom5_20151) / sizeof(kal_uint16));
+        }else{
+            ov48b2q_table_write_cmos_sensor(
+                addr_data_pair_custom5,
+                sizeof(addr_data_pair_custom5) / sizeof(kal_uint16));
+        }
+    } else {
+        pr_debug("%s _is_seamless %d, _size_to_write %d\n",
+            __func__, _is_seamless, _size_to_write);
+
+        if (_size_to_write + _length > _I2C_BUF_SIZE) {
+            pr_err("_too much i2c data for fast siwtch %d\n",
+                _size_to_write + _length);
+            return;
+        }
+        memcpy((void *) (_i2c_data + _size_to_write),
+            addr_data_pair_custom5_20151,
+            sizeof(addr_data_pair_custom5_20151));
+        _size_to_write += _length;
+    }
+    pr_debug("custom5_setting end\n");
 }	/*	custom5_setting  */
-
-/* ITD: Modify Dualcam By Jesse 190924 End */
-
-#ifdef OPLUS_FEATURE_CAMERA_COMMON
-/*Henry.Chang@Camera.Driver add for 18531 ModuleSN*/
-static kal_uint8 gOV48B_SN[CAMERA_MODULE_SN_LENGTH];
-static void read_eeprom_SN(void)
-{
-	kal_uint16 idx = 0;
-	kal_uint8 *get_byte= &gOV48B_SN[0];
-	for (idx = 0; idx <CAMERA_MODULE_SN_LENGTH; idx++) {
-		char pusendcmd[2] = {0x00 , (char)((0xB0 + idx) & 0xFF) };
-		iReadRegI2C(pusendcmd , 2, (u8*)&get_byte[idx],1, 0xA0);
-		printk("OV48B_SN[%d]: 0x%x  0x%x\n", idx, get_byte[idx], gOV48B_SN[idx]);
-	}
-}
-
-#define  CAMERA_MODULE_INFO_LENGTH  (8)
-static kal_uint8 gOV48B_CamInfo[CAMERA_MODULE_INFO_LENGTH];
-/*Henry.Chang@Camera.Driver add for google ARCode Feature verify 20190531*/
-static void read_eeprom_CamInfo(void)
-{
-	kal_uint16 idx = 0;
-	kal_uint8 get_byte[12];
-	for (idx = 0; idx <12; idx++) {
-		char pusendcmd[2] = {0x00 , (char)((0x00 + idx) & 0xFF) };
-		iReadRegI2C(pusendcmd , 2, (u8*)&get_byte[idx],1, 0xA0);
-		printk("OV48B_info[%d]: 0x%x\n", idx, get_byte[idx]);
-	}
-
-	gOV48B_CamInfo[0] = get_byte[0];
-	gOV48B_CamInfo[1] = get_byte[1];
-	gOV48B_CamInfo[2] = get_byte[6];
-	gOV48B_CamInfo[3] = get_byte[7];
-	gOV48B_CamInfo[4] = get_byte[8];
-	gOV48B_CamInfo[5] = get_byte[9];
-	gOV48B_CamInfo[6] = get_byte[10];
-	gOV48B_CamInfo[7] = get_byte[11];
-}
-
-/*Henry.Chang@camera.driver 20181129, add for sensor Module SET*/
-#define   WRITE_DATA_MAX_LENGTH     (16)
-static kal_int32 table_write_eeprom_30Bytes(kal_uint16 addr, kal_uint8 *para, kal_uint32 len)
-{
-	kal_int32 ret = IMGSENSOR_RETURN_SUCCESS;
-	char pusendcmd[WRITE_DATA_MAX_LENGTH+2];
-	pusendcmd[0] = (char)(addr >> 8);
-	pusendcmd[1] = (char)(addr & 0xFF);
-
-	memcpy(&pusendcmd[2], para, len);
-
-	ret = iBurstWriteReg((kal_uint8 *)pusendcmd , (len + 2), 0xA0);
-
-	return ret;
-}
-
-static kal_uint16 read_cmos_eeprom_8(kal_uint16 addr)
-{
-	kal_uint16 get_byte=0;
-	char pusendcmd[2] = {(char)(addr >> 8) , (char)(addr & 0xFF) };
-	iReadRegI2C(pusendcmd , 2, (u8*)&get_byte, 1, 0xA0);
-	return get_byte;
-}
-
-static kal_int32 write_eeprom_protect(kal_uint16 enable)
-{
-	kal_int32 ret = IMGSENSOR_RETURN_SUCCESS;
-	char pusendcmd[3];
-	pusendcmd[0] = 0x80;
-	pusendcmd[1] = 0x00;
-	if (enable)
-		pusendcmd[2] = 0xE0;
-	else
-		pusendcmd[2] = 0x00;
-
-	ret = iBurstWriteReg((kal_uint8 *)pusendcmd , 3, 0xA0);
-
-	return ret;
-}
-
-/*Henry.Chang@camera.driver 20181129, add for sensor Module SET*/
-static kal_int32 write_Module_data(ACDK_SENSOR_ENGMODE_STEREO_STRUCT * pStereodata)
-{
-	kal_int32  ret = IMGSENSOR_RETURN_SUCCESS;
-	kal_uint16 data_base, data_length;
-	kal_uint32 idx, idy;
-	kal_uint8 *pData;
-	UINT32 i = 0;
-	if(pStereodata != NULL) {
-		pr_debug("RENM0 SET_SENSOR_OTP: 0x%x %d 0x%x %d\n",
-                       pStereodata->uSensorId,
-                       pStereodata->uDeviceId,
-                       pStereodata->baseAddr,
-                       pStereodata->dataLength);
-
-		data_base = pStereodata->baseAddr;
-		data_length = pStereodata->dataLength;
-		pData = pStereodata->uData;
-		if ((pStereodata->uSensorId == OV48B_SENSOR_ID)
-				&& ((data_base == OV48B_STEREO_START_ADDR_WIDE)|| (data_base == OV48B_STEREO_START_ADDR_TELE))
-				&& ((data_length == DUALCAM_CALI_DATA_LENGTH) || (data_length == DUALCAM_CALI_DATA_LENGTH_QCOM_MAIN))) {
-			pr_debug("ov48b Write: %x %x %x %x %x %x %x %x\n", pData[0], pData[39], pData[40], pData[1556],
-					pData[1557], pData[1558], pData[1559], pData[1560]);
-			idx = data_length/WRITE_DATA_MAX_LENGTH;
-			idy = data_length%WRITE_DATA_MAX_LENGTH;
-			// close write protect
-			write_eeprom_protect(0);
-			msleep(6);
-			for (i = 0; i < idx; i++ ) {
-				ret = table_write_eeprom_30Bytes((data_base+WRITE_DATA_MAX_LENGTH*i),
-					    &pData[WRITE_DATA_MAX_LENGTH*i], WRITE_DATA_MAX_LENGTH);
-				if (ret != IMGSENSOR_RETURN_SUCCESS) {
-				    pr_err("write_eeprom error: i= %d\n", i);
-					// open write protect
-					write_eeprom_protect(1);
-					msleep(6);
-					return IMGSENSOR_RETURN_ERROR;
-				}
-				msleep(6);
-			}
-			ret = table_write_eeprom_30Bytes((data_base+WRITE_DATA_MAX_LENGTH*idx),
-				      &pData[WRITE_DATA_MAX_LENGTH*idx], idy);
-			if (ret != IMGSENSOR_RETURN_SUCCESS) {
-				pr_err("write_eeprom error: idx= %d idy= %d\n", idx, idy);
-				// open write protect
-				write_eeprom_protect(1);
-				msleep(6);
-				return IMGSENSOR_RETURN_ERROR;
-			}
-			msleep(6);
-			// open write protect
-			write_eeprom_protect(1);
-			msleep(6);
-			if (data_base == OV48B_STEREO_START_ADDR_TELE) {
-				pr_debug("com_0:0x%x\n", read_cmos_eeprom_8(OV48B_STEREO_START_ADDR_TELE));
-				msleep(6);
-				pr_debug("com_39:0x%x\n", read_cmos_eeprom_8(OV48B_STEREO_START_ADDR_TELE+39));
-				msleep(6);
-				pr_debug("innal_40:0x%x\n", read_cmos_eeprom_8(OV48B_STEREO_START_ADDR_TELE+40));
-				msleep(6);
-				pr_debug("innal_1556:0x%x\n", read_cmos_eeprom_8(OV48B_STEREO_START_ADDR_TELE+1556));
-				msleep(6);
-				pr_debug("tail1_1557:0x%x\n", read_cmos_eeprom_8(OV48B_STEREO_START_ADDR_TELE+1557));
-				msleep(6);
-				pr_debug("tail2_1558:0x%x\n", read_cmos_eeprom_8(OV48B_STEREO_START_ADDR_TELE+1558));
-				msleep(6);
-				pr_debug("tail3_1559:0x%x\n", read_cmos_eeprom_8(OV48B_STEREO_START_ADDR_TELE+1559));
-				msleep(6);
-				pr_debug("tail4_1560:0x%x\n", read_cmos_eeprom_8(OV48B_STEREO_START_ADDR_TELE+1560));
-				msleep(6);
-			} else {
-				pr_debug("com_0:0x%x\n", read_cmos_eeprom_8(OV48B_STEREO_START_ADDR_WIDE));
-				msleep(6);
-				pr_debug("com_39:0x%x\n", read_cmos_eeprom_8(OV48B_STEREO_START_ADDR_WIDE+39));
-				msleep(6);
-				pr_debug("innal_40:0x%x\n", read_cmos_eeprom_8(OV48B_STEREO_START_ADDR_WIDE+40));
-				msleep(6);
-				pr_debug("innal_1556:0x%x\n", read_cmos_eeprom_8(OV48B_STEREO_START_ADDR_WIDE+1556));
-				msleep(6);
-				pr_debug("tail1_1557:0x%x\n", read_cmos_eeprom_8(OV48B_STEREO_START_ADDR_WIDE+1557));
-				msleep(6);
-				pr_debug("tail2_1558:0x%x\n", read_cmos_eeprom_8(OV48B_STEREO_START_ADDR_WIDE+1558));
-				msleep(6);
-				pr_debug("tail3_1559:0x%x\n", read_cmos_eeprom_8(OV48B_STEREO_START_ADDR_WIDE+1559));
-				msleep(6);
-				pr_debug("tail4_1560:0x%x\n", read_cmos_eeprom_8(OV48B_STEREO_START_ADDR_WIDE+1560));
-				msleep(6);
-			}
-			pr_debug("ov48b write_Module_data Write end\n");
-		}else if ((pStereodata->uSensorId == OV48B_SENSOR_ID)
-			&& (data_base == OV48B_AESYNC_START_ADDR)
-			&& (data_length < AESYNC_DATA_LENGTH_TOTAL)){
-			pr_debug("write main aesync: %x %x %x %x %x %x %x %x\n", pData[0], pData[1],
-				pData[2], pData[3], pData[4], pData[5], pData[6], pData[7]);
-			/* close write protect */
-			write_eeprom_protect(0);
-			msleep(6);
-			idx = data_length/WRITE_DATA_MAX_LENGTH;
-			idy = data_length%WRITE_DATA_MAX_LENGTH;
-			for (i = 0; i < idx; i++ ) {
-				ret = table_write_eeprom_30Bytes((data_base+WRITE_DATA_MAX_LENGTH*i), &pData[WRITE_DATA_MAX_LENGTH*i], WRITE_DATA_MAX_LENGTH);
-				if (ret != IMGSENSOR_RETURN_SUCCESS) {
-					pr_err("write_eeprom error: i= %d\n", i);
-					/* open write protect */
-					write_eeprom_protect(1);
-					msleep(6);
-					return IMGSENSOR_RETURN_ERROR;
-				}
-				msleep(6);
-			}
-			ret = table_write_eeprom_30Bytes((data_base+WRITE_DATA_MAX_LENGTH*idx),
-					&pData[WRITE_DATA_MAX_LENGTH*idx], idy);
-			if (ret != IMGSENSOR_RETURN_SUCCESS) {
-				pr_err("write_eeprom error: idx= %d idy= %d\n", idx, idy);
-				/* open write protect */
-				write_eeprom_protect(1);
-				msleep(6);
-				return IMGSENSOR_RETURN_ERROR;
-			}
-			/* open write protect */
-			write_eeprom_protect(1);
-			msleep(6);
-			if (ret != IMGSENSOR_RETURN_SUCCESS) {
-				pr_err("write_aesync_eeprom error\n");
-				return IMGSENSOR_RETURN_ERROR;
-			}
-			pr_debug("readback main aesync: %x %x %x %x %x %x %x %x\n"
-				, read_cmos_eeprom_8(OV48B_AESYNC_START_ADDR)
-				, read_cmos_eeprom_8(OV48B_AESYNC_START_ADDR+1)
-				, read_cmos_eeprom_8(OV48B_AESYNC_START_ADDR+2)
-				, read_cmos_eeprom_8(OV48B_AESYNC_START_ADDR+3)
-				, read_cmos_eeprom_8(OV48B_AESYNC_START_ADDR+4)
-				, read_cmos_eeprom_8(OV48B_AESYNC_START_ADDR+5)
-				, read_cmos_eeprom_8(OV48B_AESYNC_START_ADDR+6)
-				, read_cmos_eeprom_8(OV48B_AESYNC_START_ADDR+7));
-		}else {
-			pr_err("Invalid Sensor id:0x%x write_gm1 eeprom\n", pStereodata->uSensorId);
-			return IMGSENSOR_RETURN_ERROR;
-		}
-	} else {
-		pr_err("ov48bwrite_Module_data pStereodata is null\n");
-		return IMGSENSOR_RETURN_ERROR;
-	}
-	return ret;
-}
-
-static kal_uint16 ov48b_PDC_setting[8*2];
-static kal_uint16 ov48b_PDC_setting_burst[720*2];
-
-static void read_sensor_Cali(void)
-{
-	kal_uint16 idx = 0, eeprom_PDC_addr = 0x24A4, sensor_PDC_addr1 = 0x5C0E, sensor_PDC_addr2 = 0x5900;
-	for (idx = 0; idx <8; idx++) {
-		eeprom_PDC_addr = 0x24A4 + idx;
-		sensor_PDC_addr1 = 0x5C0E + idx;
-		ov48b_PDC_setting[2*idx] = sensor_PDC_addr1;
-		ov48b_PDC_setting[2*idx + 1] = read_cmos_eeprom_8(eeprom_PDC_addr);
-	}
-	for (idx = 8; idx < 728; idx++) {
-		eeprom_PDC_addr = 0x24A4 + idx;
-		sensor_PDC_addr2 = 0x5900 + idx - 8;
-		//ov48b_PDC_setting[2*idx] = sensor_PDC_addr2;
-		//ov48b_PDC_setting[2*idx + 1] = read_cmos_eeprom_8(eeprom_PDC_addr);
-		ov48b_PDC_setting_burst[2*(idx-8)] = sensor_PDC_addr2;
-		ov48b_PDC_setting_burst[2*(idx-8) + 1] = read_cmos_eeprom_8(eeprom_PDC_addr);
-	}
-}
 
 static kal_uint16 ov48b2q_burst_write_cmos_sensor(
 					kal_uint16 *para, kal_uint32 len)
@@ -964,16 +997,96 @@ static kal_uint16 ov48b2q_burst_write_cmos_sensor(
 	return 0;
 }
 
+/*OVPD-1:720Bytes & Crosstalk 288Bytes*/
+static kal_uint16 ov48b_QSC_OVPD_setting[8*2];
+static kal_uint16 ov48b_QSC_OVPD_setting_burst[720*2];
+static kal_uint16 ov48b_QSC_CT_setting[288*2];
+static kal_uint8 ct_qsc_flag = 0;
+static kal_uint8 crossTalk_flag = 0;
 
-static void write_sensor_PDC(void)
+static void read_EepromQSC(void)
 {
-	ov48b2q_table_write_cmos_sensor(ov48b_PDC_setting,
-		sizeof(ov48b_PDC_setting)/sizeof(kal_uint16));
-	ov48b2q_burst_write_cmos_sensor(ov48b_PDC_setting_burst,
-		sizeof(ov48b_PDC_setting_burst)/sizeof(kal_uint16));
+    kal_uint16 addr_ovpd = 0x24A4, sensor_PDC_addr1 = 0x5C0E, sensor_PDC_addr2 = 0x5900;
+    kal_uint16 addr_crotalk = 0x0D00, senaddr_crotalk = 0x53c0;
+    kal_uint16 i = 0;
+    kal_uint32 Dac_master = 0, Dac_mac = 0, Dac_inf = 0;
+    /*Read OVPD*/
+    for (i = 0; i < 8; i ++) {
+        ov48b_QSC_OVPD_setting[2*i] = sensor_PDC_addr1+i;
+        ov48b_QSC_OVPD_setting[2*i+1] = Eeprom_1ByteDataRead((addr_ovpd+i), 0xA0);
+    }
+    for (i = 0; i < 720; i ++) {
+        ov48b_QSC_OVPD_setting_burst[2*i] = sensor_PDC_addr2+i;
+        ov48b_QSC_OVPD_setting_burst[2*i+1] = Eeprom_1ByteDataRead((addr_ovpd+8+i), 0xA0);
+    }
+    /*Read crosstalk*/
+    for (i = 0; i < 288; i ++) {
+        ov48b_QSC_CT_setting[2*i] = senaddr_crotalk+i;
+        ov48b_QSC_CT_setting[2*i+1] = Eeprom_1ByteDataRead((addr_crotalk+i), 0xA0);
+    }
+    /*Read normal eeprom data*/
+    gImgEepromInfo.camNormdata[0][0] = Eeprom_1ByteDataRead(0x00, 0xA0);
+    gImgEepromInfo.camNormdata[0][1] = Eeprom_1ByteDataRead(0x01, 0xA0);
+    imgsensor_info.module_id = Eeprom_1ByteDataRead(0x00, 0xA0);
+    Oplusimgsensor_Registdeviceinfo(gImgEepromInfo.pCamModuleInfo[0].name,
+                                    gImgEepromInfo.pCamModuleInfo[0].version,
+                                    imgsensor_info.module_id);
+    for(i = 2; i < 8; i++) {
+       gImgEepromInfo.camNormdata[0][i] = Eeprom_1ByteDataRead(0x04+i, 0xA0);
+    }
+    for (i = 0; i < OPPO_CAMERASN_LENS; i ++) {
+       gImgEepromInfo.camNormdata[0][8+i] = Eeprom_1ByteDataRead(0xB0+i, 0xA0);
+    }
+    Dac_mac = (Eeprom_1ByteDataRead(0x93, 0xA0) << 8) | Eeprom_1ByteDataRead(0x92, 0xA0);
+    Dac_inf = (Eeprom_1ByteDataRead(0x95, 0xA0) << 8) | Eeprom_1ByteDataRead(0x94, 0xA0);
+    Dac_master = (5*Dac_mac+36*Dac_inf)/41;
+    pr_info("Dac_inf:%d Dac_Mac:%d Dac_master:%d\n", Dac_inf, Dac_mac, Dac_master);
+    memcpy(&gImgEepromInfo.camNormdata[2][28], &Dac_master, 4);
+    /*Read stereo eeprom data*/
+    for (i = 0; i < CALI_DATA_MASTER_LENGTH; i ++) {
+       gImgEepromInfo.stereoMWdata[i] = Eeprom_1ByteDataRead(OV48B_STEREO_START_ADDR+i, 0xA0);
+    }
+    gImgEepromInfo.i4CurSensorIdx = 0;
+    gImgEepromInfo.i4CurSensorId = imgsensor_info.sensor_id;
 }
 
-#endif
+static void write_sensor_OVPD_QSC(void)
+{
+    pr_info("%s start\n", __func__);
+
+    ov48b2q_table_write_cmos_sensor(ov48b_QSC_OVPD_setting,
+        sizeof(ov48b_QSC_OVPD_setting) / sizeof(kal_uint16));
+    ov48b2q_burst_write_cmos_sensor(ov48b_QSC_OVPD_setting_burst,
+        sizeof(ov48b_QSC_OVPD_setting_burst) / sizeof(kal_uint16));
+
+    pr_info("%s end\n", __func__);
+}
+
+static void write_sensor_CT_QSC(void)
+{
+    pr_info("%s start\n", __func__);
+
+    if( !ct_qsc_flag ) {
+        ov48b2q_table_write_cmos_sensor(ov48b_QSC_CT_setting,
+            sizeof(ov48b_QSC_CT_setting) / sizeof(kal_uint16));
+        ct_qsc_flag = 1;
+    }
+
+    pr_info("%s end\n", __func__);
+}
+
+static void write_sensor_crossTalk_data(void)
+{
+    pr_info("%s start\n", __func__);
+
+    if( !crossTalk_flag ) {
+        ov48b2q_burst_write_cmos_sensor(addr_data_pair_crossTalk_ov48b2q_20151,
+            sizeof(addr_data_pair_crossTalk_ov48b2q_20151) / sizeof(kal_uint16));
+        crossTalk_flag = 1;
+    }
+
+    pr_info("%s end\n", __func__);
+}
 
 static kal_uint32 return_sensor_id(void)
 {
@@ -983,45 +1096,36 @@ static kal_uint32 return_sensor_id(void)
 
 static kal_uint32 get_imgsensor_id(UINT32 *sensor_id)
 {
-	kal_uint8 i = 0;
-	kal_uint8 retry = 2;
+    kal_uint8 i = 0;
+    kal_uint8 retry = 2;
 
-	while (imgsensor_info.i2c_addr_table[i] != 0xff) {
-	spin_lock(&imgsensor_drv_lock);
-	imgsensor.i2c_write_id = imgsensor_info.i2c_addr_table[i];
-	spin_unlock(&imgsensor_drv_lock);
-	do {
-		*sensor_id = return_sensor_id();
-	if (*sensor_id == imgsensor_info.sensor_id) {
-		printk("i2c write id: 0x%x, sensor id: 0x%x\n",
-			imgsensor.i2c_write_id, *sensor_id);
-			#ifdef OPLUS_FEATURE_CAMERA_COMMON
-			imgsensor_info.module_id = read_module_id();
-			read_eeprom_SN();
-			read_eeprom_CamInfo();
-			read_sensor_Cali();
-			printk("RENM0_module_id=%d\n",imgsensor_info.module_id);
-		        /*
-                        if(deviceInfo_register_value == 0x00){
-					register_imgsensor_deviceinfo("Cam_r0", DEVICE_VERSION_OV48B, imgsensor_info.module_id);
-					deviceInfo_register_value = 0x01;
-			}
-                        */
-			#endif
-		return ERROR_NONE;
-	}
-		retry--;
-	} while (retry > 0);
-	i++;
-	retry = 1;
-	}
-	if (*sensor_id != imgsensor_info.sensor_id) {
-		printk("get_imgsensor_id: 0x%x fail\n", *sensor_id);
-		*sensor_id = 0xFFFFFFFF;
-		return ERROR_SENSOR_CONNECT_FAIL;
-	}
+    while (imgsensor_info.i2c_addr_table[i] != 0xff) {
+    spin_lock(&imgsensor_drv_lock);
+    imgsensor.i2c_write_id = imgsensor_info.i2c_addr_table[i];
+    spin_unlock(&imgsensor_drv_lock);
+    do {
+        *sensor_id = return_sensor_id();
+        if (*sensor_id == imgsensor_info.sensor_id) {
+            printk("i2c write id: 0x%x, sensor id: 0x%x\n",
+                imgsensor.i2c_write_id, *sensor_id);
+            #ifdef OPLUS_FEATURE_CAMERA_COMMON
+            read_EepromQSC();
+            printk("RENM0_module_id=%d\n",imgsensor_info.module_id);
+            #endif
+            return ERROR_NONE;
+        }
+        retry--;
+    } while (retry > 0);
+    i++;
+    retry = 1;
+    }
+    if (*sensor_id != imgsensor_info.sensor_id) {
+        printk("get_imgsensor_id: 0x%x fail\n", *sensor_id);
+        *sensor_id = 0xFFFFFFFF;
+        return ERROR_SENSOR_CONNECT_FAIL;
+    }
 
-	return ERROR_NONE;
+    return ERROR_NONE;
 }
 
 static kal_uint32 open(void)
@@ -1052,10 +1156,15 @@ static kal_uint32 open(void)
 		printk("Open sensor id: 0x%x fail\n", sensor_id);
 		return ERROR_SENSOR_CONNECT_FAIL;
 	}
+	#ifdef OPLUS_FEATURE_CAMERA_COMMON
+	if(is_project(20151)||is_project(20301)||is_project(20302)){
+		IsProject_20151 = true;
+	}
+	#endif
 	sensor_init();
 	#ifdef OPLUS_FEATURE_CAMERA_COMMON
 	/*Wenjun.Wu@Camera.Driver add for writing PDC data ,20200226*/
-	write_sensor_PDC();
+	write_sensor_OVPD_QSC();
 	#endif
 	spin_lock(&imgsensor_drv_lock);
 	imgsensor.autoflicker_en = KAL_FALSE;
@@ -1078,6 +1187,9 @@ static kal_uint32 open(void)
 
 static kal_uint32 close(void)
 {
+	ct_qsc_flag = 0;
+	crossTalk_flag = 0;
+
 	return ERROR_NONE;
 }   /*  close  */
 
@@ -1222,6 +1334,8 @@ static kal_uint32 Custom3(MSDK_SENSOR_EXPOSURE_WINDOW_STRUCT *image_window,
 	imgsensor.min_frame_length = imgsensor_info.custom3.framelength;
 	imgsensor.autoflicker_en = KAL_FALSE;
 	spin_unlock(&imgsensor_drv_lock);
+	write_sensor_crossTalk_data();
+	write_sensor_CT_QSC();
 	custom3_setting();
 	return ERROR_NONE;
 }   /*  Custom3*/
@@ -1257,6 +1371,9 @@ static kal_uint32 Custom5(MSDK_SENSOR_EXPOSURE_WINDOW_STRUCT *image_window,
 	imgsensor.min_frame_length = imgsensor_info.custom5.framelength;
 	imgsensor.autoflicker_en = KAL_FALSE;
 	spin_unlock(&imgsensor_drv_lock);
+	//wangyang@CAMERA.DRV.2020/11/02,Modify for InSensorZoom
+	write_sensor_crossTalk_data();
+	write_sensor_CT_QSC();
 	custom5_setting();
 	return ERROR_NONE;
 }/*	Custom5 */
@@ -1560,7 +1677,7 @@ static kal_uint32 set_video_mode(UINT16 framerate)
 	imgsensor.current_fps = framerate;
 	spin_unlock(&imgsensor_drv_lock);
 
-	set_max_framerate(imgsensor.current_fps, 1);
+	set_max_framerate_video(imgsensor.current_fps, 1);
 
 	return ERROR_NONE;
 }
@@ -1875,6 +1992,88 @@ static kal_uint32 get_sensor_temperature(void)
 	//return temperature_convert;
 }
 
+static kal_uint32 seamless_switch(enum MSDK_SCENARIO_ID_ENUM scenario_id,
+	kal_uint32 shutter, kal_uint32 gain,
+	kal_uint32 shutter_2ndframe, kal_uint32 gain_2ndframe)
+{
+	int _length = 0;
+//	int k = 0;
+	_is_seamless = true;
+	memset(_i2c_data, 0x0, sizeof(_i2c_data));
+	_size_to_write = 0;
+
+	pr_err("seamless_switch %d, %d, %d, %d, %d sizeof(_i2c_data) %d\n",
+		scenario_id, shutter, gain, shutter_2ndframe, gain_2ndframe, sizeof(_i2c_data));
+
+	_length = sizeof(addr_data_pair_seamless_switch_step1_ov48b2q) / sizeof(kal_uint16);
+
+	if (_length> _I2C_BUF_SIZE) {
+		pr_err("_too much i2c data for fast siwtch\n");
+		return ERROR_NONE;
+	}
+
+	memcpy((void *)(_i2c_data + _size_to_write),
+		addr_data_pair_seamless_switch_step1_ov48b2q,
+		sizeof(addr_data_pair_seamless_switch_step1_ov48b2q));
+	_size_to_write += _length;
+
+	control(scenario_id, NULL, NULL);
+	if(shutter != 0)
+		set_shutter(shutter);
+	if(gain != 0)
+		set_gain(gain);
+
+	_length = sizeof(addr_data_pair_seamless_switch_step2_ov48b2q) / sizeof(kal_uint16);
+
+	if (_size_to_write + _length > _I2C_BUF_SIZE) {
+		pr_err("_too much i2c data for fast siwtch\n");
+		return ERROR_NONE;
+	}
+
+	memcpy((void *)(_i2c_data + _size_to_write),
+		addr_data_pair_seamless_switch_step2_ov48b2q,
+		sizeof(addr_data_pair_seamless_switch_step2_ov48b2q));
+	_size_to_write += _length;
+
+	if(shutter_2ndframe != 0)
+		set_shutter(shutter_2ndframe);
+	if(gain_2ndframe != 0)
+		set_gain(gain_2ndframe);
+
+	_length = sizeof(addr_data_pair_seamless_switch_step3_ov48b2q) / sizeof(kal_uint16);
+	if (_size_to_write + _length > _I2C_BUF_SIZE) {
+		pr_err("_too much i2c data for fast siwtch\n");
+		return ERROR_NONE;
+	}
+	memcpy((void *)(_i2c_data + _size_to_write),
+		addr_data_pair_seamless_switch_step3_ov48b2q,
+		sizeof(addr_data_pair_seamless_switch_step3_ov48b2q));
+	_size_to_write += _length;
+
+	pr_debug("%s _is_seamless %d, _size_to_write %d\n",
+			__func__, _is_seamless, _size_to_write);
+#if 0
+	for (k = 0; k <_size_to_write; k+=2) {
+		pr_debug( "k = %d, 0x%x , 0x%x \n", k,  _i2c_data[k], _i2c_data[k+1]);
+	}
+#endif
+
+	ov48b2q_table_write_cmos_sensor(
+		_i2c_data,
+		_size_to_write);
+
+#if 0
+	pr_debug("===========================================\n");
+
+	for (k = 0; k <_size_to_write; k+=2) {
+		pr_debug( "k = %d, 0x%x , 0x%x \n", k,  _i2c_data[k], read_cmos_sensor(_i2c_data[k]));
+	}
+#endif
+	_is_seamless = false;
+	pr_err("exit\n");
+	return ERROR_NONE;
+}
+
 static kal_uint32 streaming_control(kal_bool enable)
 {
 	printk("streaming_enable(0=Sw Standby,1=streaming): %d\n", enable);
@@ -1896,6 +2095,8 @@ static kal_uint32 feature_control(MSDK_SENSOR_FEATURE_ENUM feature_id,
 	unsigned long long *feature_data = (unsigned long long *) feature_para;
 
 	struct SENSOR_WINSIZE_INFO_STRUCT *wininfo;
+	UINT32 *pAeCtrls = NULL;
+	UINT32 *pScenarios = NULL;
 	struct SENSOR_VC_INFO_STRUCT *pvcinfo;
 	MSDK_SENSOR_REG_INFO_STRUCT *sensor_reg_data =
 		(MSDK_SENSOR_REG_INFO_STRUCT *) feature_para;
@@ -1906,6 +2107,36 @@ static kal_uint32 feature_control(MSDK_SENSOR_FEATURE_ENUM feature_id,
 	if (!((feature_id == 3040) || (feature_id == 3058)))
 		printk("feature_id = %d\n", feature_id);
 	switch (feature_id) {
+	case SENSOR_FEATURE_GET_SEAMLESS_SCENARIOS:
+		pScenarios = (MUINT32 *)((uintptr_t)(*(feature_data+1)));
+		switch (*feature_data) {
+		case MSDK_SCENARIO_ID_CAMERA_PREVIEW:
+			*pScenarios = MSDK_SCENARIO_ID_CUSTOM5;
+			break;
+		case MSDK_SCENARIO_ID_CUSTOM5:
+			*pScenarios = MSDK_SCENARIO_ID_CAMERA_PREVIEW;
+			break;
+		case MSDK_SCENARIO_ID_CAMERA_CAPTURE_JPEG:
+		case MSDK_SCENARIO_ID_VIDEO_PREVIEW:
+		case MSDK_SCENARIO_ID_SLIM_VIDEO:
+		case MSDK_SCENARIO_ID_HIGH_SPEED_VIDEO:
+		case MSDK_SCENARIO_ID_CUSTOM2:
+		case MSDK_SCENARIO_ID_CUSTOM4:
+		case MSDK_SCENARIO_ID_CUSTOM1:
+		case MSDK_SCENARIO_ID_CUSTOM3:
+		default:
+			*pScenarios = 0xff;
+			break;
+		}
+		pr_debug("SENSOR_FEATURE_GET_SEAMLESS_SCENARIOS %d %d\n", *feature_data, *pScenarios);
+		break;
+	case SENSOR_FEATURE_SEAMLESS_SWITCH:
+		pAeCtrls = (MUINT32 *)((uintptr_t)(*(feature_data+1)));
+		if (pAeCtrls)
+			seamless_switch((*feature_data),*pAeCtrls,*(pAeCtrls+1),*(pAeCtrls+4),*(pAeCtrls+5));
+		else
+			seamless_switch((*feature_data), 0, 0, 0, 0);
+		break;
 	case SENSOR_FEATURE_GET_GAIN_RANGE_BY_SCENARIO:
 		*(feature_data + 1) = imgsensor_info.min_gain;
 		*(feature_data + 2) = imgsensor_info.max_gain;
@@ -1936,33 +2167,12 @@ static kal_uint32 feature_control(MSDK_SENSOR_FEATURE_ENUM feature_id,
 		}
 		break;
 #ifdef OPLUS_FEATURE_CAMERA_COMMON
-		/*Henry.Chang@Camera.Driver add for google ARCode Feature verify 20190531*/
-		case SENSOR_FEATURE_GET_MODULE_INFO:
-			printk("OV48B GET_MODULE_CamInfo:%d %d\n", *feature_para_len, *feature_data_32);
-			*(feature_data_32 + 1) = (gOV48B_CamInfo[1] << 24)
-						| (gOV48B_CamInfo[0] << 16)
-						| (gOV48B_CamInfo[3] << 8)
-						| (gOV48B_CamInfo[2] & 0xFF);
-			*(feature_data_32 + 2) = (gOV48B_CamInfo[5] << 24)
-						| (gOV48B_CamInfo[4] << 16)
-						| (gOV48B_CamInfo[7] << 8)
-						| (gOV48B_CamInfo[6] & 0xFF);
-			break;
-		/*Henry.Chang@Camera.Driver add for 18531 ModuleSN*/
-		case SENSOR_FEATURE_GET_MODULE_SN:
-			printk("OV48B GET_MODULE_SN:%d %d\n", *feature_para_len, *feature_data_32);
-			if (*feature_data_32 < CAMERA_MODULE_SN_LENGTH/4)
-				*(feature_data_32 + 1) = (gOV48B_SN[4*(*feature_data_32) + 3] << 24)
-							| (gOV48B_SN[4*(*feature_data_32) + 2] << 16)
-							| (gOV48B_SN[4*(*feature_data_32) + 1] << 8)
-							| (gOV48B_SN[4*(*feature_data_32)] & 0xFF);
-			break;
 		/*Henry.Chang@camera.driver 20181129, add for sensor Module SET*/
 		case SENSOR_FEATURE_SET_SENSOR_OTP:
 		{
 			kal_int32 ret = IMGSENSOR_RETURN_SUCCESS;
 			printk("SENSOR_FEATURE_SET_SENSOR_OTP length :%d\n", (UINT32)*feature_para_len);
-			ret = write_Module_data((ACDK_SENSOR_ENGMODE_STEREO_STRUCT *)(feature_para));
+			ret = Eeprom_CallWriteService((ACDK_SENSOR_ENGMODE_STEREO_STRUCT *)(feature_para));
 			if (ret == ERROR_NONE)
 				return ERROR_NONE;
 			else
@@ -1970,9 +2180,14 @@ static kal_uint32 feature_control(MSDK_SENSOR_FEATURE_ENUM feature_id,
 		}
 		/*Caohua.Lin@Camera.Driver , 20190318, add for ITS--sensor_fusion*/
 		case SENSOR_FEATURE_GET_OFFSET_TO_START_OF_EXPOSURE:
-			*(MUINT32 *)(uintptr_t)(*(feature_data + 1)) = -5222000;
+			//yinyuting@CAMERA.DRV, 2020/11/19, Add for 20151/20301/20302 ITS fail
+			if (IsProject_20151) {
+				*(MUINT32 *)(uintptr_t)(*(feature_data + 1)) = -7320000;
+			} else {
+				*(MUINT32 *)(uintptr_t)(*(feature_data + 1)) = -5222000;
+			}
 			break;
-#endif	
+#endif
 	case SENSOR_FEATURE_GET_PIXEL_CLOCK_FREQ_BY_SCENARIO:
 		switch (*feature_data) {
 		case MSDK_SCENARIO_ID_CAMERA_CAPTURE_JPEG:
@@ -2096,8 +2311,10 @@ static kal_uint32 feature_control(MSDK_SENSOR_FEATURE_ENUM feature_id,
 	case SENSOR_FEATURE_SET_ISP_MASTER_CLOCK_FREQ:
 	break;
 	case SENSOR_FEATURE_SET_REGISTER:
-	    write_cmos_sensor(sensor_reg_data->RegAddr,
-			sensor_reg_data->RegData);
+		if(sensor_reg_data->RegAddr == 0xff )
+			seamless_switch(sensor_reg_data->RegData, 1920, 369, 960, 369);
+		else
+			write_cmos_sensor(sensor_reg_data->RegAddr, sensor_reg_data->RegData);
 	break;
 	case SENSOR_FEATURE_GET_REGISTER:
 	    sensor_reg_data->RegData =
@@ -2291,12 +2508,15 @@ static kal_uint32 feature_control(MSDK_SENSOR_FEATURE_ENUM feature_id,
 			       sizeof(struct SENSOR_VC_INFO_STRUCT));
 			break;
 		case MSDK_SCENARIO_ID_SLIM_VIDEO:
-		case MSDK_SCENARIO_ID_CUSTOM5:
 			memcpy((void *)pvcinfo, (void *)&SENSOR_VC_INFO[2],
 			       sizeof(struct SENSOR_VC_INFO_STRUCT));
 			break;
 		case MSDK_SCENARIO_ID_CUSTOM2:
 			memcpy((void *)pvcinfo, (void *)&SENSOR_VC_INFO[3],
+					sizeof(struct SENSOR_VC_INFO_STRUCT));
+				break;
+		case MSDK_SCENARIO_ID_CUSTOM5:
+			memcpy((void *)pvcinfo, (void *)&SENSOR_VC_INFO[4],
 					sizeof(struct SENSOR_VC_INFO_STRUCT));
 				break;
 		case MSDK_SCENARIO_ID_CAMERA_PREVIEW:
@@ -2319,7 +2539,7 @@ static kal_uint32 feature_control(MSDK_SENSOR_FEATURE_ENUM feature_id,
 			case MSDK_SCENARIO_ID_SLIM_VIDEO:
 			case MSDK_SCENARIO_ID_CUSTOM1:
 			case MSDK_SCENARIO_ID_CUSTOM2:
-			case MSDK_SCENARIO_ID_CUSTOM5:
+			//case MSDK_SCENARIO_ID_CUSTOM5:
 				*(MUINT32 *)(uintptr_t)(*(feature_data+1)) = 1;
 				break;
 			default:
@@ -2347,7 +2567,7 @@ static kal_uint32 feature_control(MSDK_SENSOR_FEATURE_ENUM feature_id,
 				sizeof(struct SET_PD_BLOCK_INFO_T));
 			break;
 		case MSDK_SCENARIO_ID_SLIM_VIDEO:
-		case MSDK_SCENARIO_ID_CUSTOM5:
+		//case MSDK_SCENARIO_ID_CUSTOM5:
 			imgsensor_pd_info.i4BlockNumX = 248; //4000*2600
 			imgsensor_pd_info.i4BlockNumY = 162;
 			memcpy((void *)PDAFinfo, (void *)&imgsensor_pd_info,

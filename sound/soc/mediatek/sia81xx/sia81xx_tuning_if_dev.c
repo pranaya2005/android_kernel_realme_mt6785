@@ -12,7 +12,7 @@
  */
 
 #define DEBUG
-#define LOG_FLAG	"sia81xx_tuning"
+#define LOG_FLAG	"gift_tuning"
 
 
 #include <linux/kernel.h>
@@ -26,13 +26,12 @@
 #include <linux/cdev.h>
 #include <linux/delay.h>
 #include <linux/uaccess.h>
-#include <asm/uaccess.h>
 #include "sia81xx_tuning_if.h"
 
 
 #define DEVICE_NAME "sia81xx_tuning_if"
 
-#define TIMEOUT_MS				(200)	// longer than sixth_tuning thread sleep
+#define TIMEOUT_MS				(200)
 #define MAX_CMD_LEN				(4096)
 #define MAX_FILE_MAP_NUM		(16)
 

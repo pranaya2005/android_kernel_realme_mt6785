@@ -419,7 +419,8 @@
                 <inpull_selhigh>false</inpull_selhigh>
                 <def_dir>OUT</def_dir>
                 <out_high>false</out_high>
-                <smt>false</smt>
+                <varName0>GPIO_SMARTPA_LRCK_PIN</varName0>
+                <smt>true</smt>
                 <ies>true</ies>
             </gpio34>
             <gpio35>

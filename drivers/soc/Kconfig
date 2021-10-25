@@ -44,6 +44,12 @@ source "drivers/soc/oplus/oplus_midas/Kconfig"
 #endif /*OPLUS_FEATURE_MIDAS*/
 
 #ifdef OPLUS_FEATURE_LOWMEM_DBG
+
+#Hailong.Liu@BSP.Kernel.MM, 2020/06/19, Add for dump memory usage when lowmmem occurs.
 source "drivers/soc/oplus/lowmem_dbg/Kconfig"
 ##endif /* OPLUS_FEATURE_LOWMEM_DBG */
+
+#Add for NandSwap
+source "drivers/soc/oplus/oplus_nandswap/Kconfig"
+
 endmenu

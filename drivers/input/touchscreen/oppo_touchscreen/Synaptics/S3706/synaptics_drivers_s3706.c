@@ -1627,8 +1627,8 @@ static int synaptics_auto_test_rt100(struct seq_file *s, struct chip_data_s3706 
 
         rx_assignment = kzalloc(syna_testdata->RX_NUM * (sizeof(uint8_t)), GFP_KERNEL);
         rx_physical = kzalloc(syna_testdata->RX_NUM * (sizeof(uint8_t)), GFP_KERNEL);
-        minRX = kzalloc((syna_testdata->RX_NUM + 1) * (sizeof(uint8_t)), GFP_KERNEL);
-        maxRX = kzalloc((syna_testdata->RX_NUM + 1) * (sizeof(uint8_t)), GFP_KERNEL);
+        minRX = kzalloc((syna_testdata->RX_NUM + 1) * (sizeof(short)), GFP_KERNEL);
+        maxRX = kzalloc((syna_testdata->RX_NUM + 1) * (sizeof(short)), GFP_KERNEL);
 
         //step 5:check RT100 for pin 0,1,32,33
         TPD_INFO("step 5:check RT100 for pin 0,1,32,33\n");
@@ -1674,7 +1674,7 @@ static int synaptics_auto_test_rt100(struct seq_file *s, struct chip_data_s3706 
         }
 
         for(i = 0; i < 4; i++) {
-                for(j = 0; j < 34; j++) {
+                for(j = 0; j < syna_testdata->RX_NUM; j++) {
             minRX[j] = 5000;
             maxRX[j] = 0;
                 }

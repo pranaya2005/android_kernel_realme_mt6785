@@ -16,11 +16,11 @@
 #include <linux/platform_data/spi-mt65xx.h>
 #endif
 #include "../himax_common.h"
-#ifdef CONFIG_TOUCHPANEL_MTK_PLATFORM
-#include "mtk_gpio.h"
-#else
+//#ifdef CONFIG_TOUCHPANEL_MTK_PLATFORM
+//#include "mtk_gpio.h"
+//#else
 #include "oppo_spi.h"
-#endif
+//#endif
 
 #define HX_ZERO_FLASH
 #define HX_ENTER_ALGORITHM_NUMBER		/*Support calculation enter algorithm number*/

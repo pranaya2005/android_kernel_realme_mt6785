@@ -23,10 +23,17 @@
 #include <linux/huge_mm.h>
 #include <asm/tlb.h>
 #include <asm/tlbflush.h>
-#ifdef  CONFIG_FG_TASK_UID
-#include <linux/oppo_healthinfo/oppo_fg.h>
-#endif
-
+extern bool is_fg(int uid);
+static inline int task_is_fg(struct task_struct *tsk)
+{	int cur_uid;
+	cur_uid = task_uid(tsk).val;
+	if (is_fg(cur_uid))
+		return 1;
+	return 0;
+}
+/* Kui.Zhang@PSW.BSP.Kernel.Performance, 2018-12-25, check current need
+ * cancel reclaim or not, please check task not NULL first.
+ * If the reclaimed task has goto foreground, cancel reclaim immediately*/
 /* 
  * check current need cancel reclaim or not, please check task not NULL first.
  * If the reclaimed task has goto foreground, cancel reclaim immediately

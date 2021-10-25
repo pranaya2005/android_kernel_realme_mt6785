@@ -47,7 +47,7 @@
 #include <linux/hardware_info.h>
 #include "ov8856mipiraw_Sensor.h"
 /* Zhen.Quan@Camera.Driver, 2019/10/17, add for [otp bringup] */
-#include "imgsensor_read_eeprom.h"
+//#include "imgsensor_read_eeprom.h"
 #define ENABLE_OV8856_OTP 1
 
 #define PFX "OV8856"
@@ -1230,12 +1230,12 @@ static kal_uint32 get_imgsensor_id(UINT32 *sensor_id)
 			*sensor_id = ((read_cmos_sensor(0x300B) << 8) | read_cmos_sensor(0x300C));
 			if (*sensor_id == imgsensor_info.sensor_id) {
 				/* Zhen.Quan@Camera.Driver, 2019/10/17, add for [otp bringup] */
-#if 1
+#if 0
 				if(!check_otp_data(&monetx_shengtai_wide_ov8856_eeprom_data, monetx_shengtai_wide_ov8856_checksum, sensor_id)){
 					break;
 				} else {
 					/*xiaojun.Pu@Camera.Driver, 2019/10/15, add for [add hardware_info for factory]*/
-					//hardwareinfo_set_prop(HARDWARE_WIDE_ANGLE_CAM_MOUDULE_ID, "ShengTai");
+					hardwareinfo_set_prop(HARDWARE_WIDE_ANGLE_CAM_MOUDULE_ID, "ShengTai");
 				}
 #endif
 				LOG_INF("i2c write id: 0x%x, sensor id: 0x%x, ver = 0x%x<0xB1=r2a,0xB0=r1a>\n",

@@ -43,7 +43,6 @@
 #include <linux/of_reserved_mem.h>
 #include <linux/pinctrl/consumer.h>
 #include <linux/of_gpio.h>
-#include <linux/syscore_ops.h>
 #include <connectivity_build_in_adapter.h>
 #include "wmt_lib.h"
 
@@ -74,8 +73,8 @@
 */
 static INT32 mtk_wmt_probe(struct platform_device *pdev);
 static INT32 mtk_wmt_remove(struct platform_device *pdev);
-static INT32 mtk_wmt_suspend(VOID);
-static void mtk_wmt_resume(VOID);
+static INT32 mtk_wmt_suspend(struct device *dev);
+static INT32 mtk_wmt_resume(struct device *dev);
 
 /*******************************************************************************
 *                            P U B L I C   D A T A
@@ -139,6 +138,11 @@ const struct of_device_id apwmt_of_ids[] = {
 struct CONSYS_BASE_ADDRESS conn_reg;
 #endif
 
+static const struct dev_pm_ops wmt_drv_pm_ops = {
+	.suspend_noirq = mtk_wmt_suspend,
+	.resume_noirq = mtk_wmt_resume,
+};
+
 static struct platform_driver mtk_wmt_dev_drv = {
 	.probe = mtk_wmt_probe,
 	.remove = mtk_wmt_remove,
@@ -148,12 +152,8 @@ static struct platform_driver mtk_wmt_dev_drv = {
 #ifdef CONFIG_OF
 		   .of_match_table = apwmt_of_ids,
 #endif
+		   .pm = &wmt_drv_pm_ops,
 		   },
-};
-
-static struct syscore_ops wmt_dbg_syscore_ops = {
-	.suspend = mtk_wmt_suspend,
-	.resume = mtk_wmt_resume,
 };
 
 /* GPIO part */
@@ -438,7 +438,7 @@ static INT32 mtk_wmt_remove(struct platform_device *pdev)
 	return 0;
 }
 
-static INT32 mtk_wmt_suspend(VOID)
+static INT32 mtk_wmt_suspend(struct device *dev)
 {
 	WMT_PLAT_PR_INFO(" mtk_wmt_suspend !!");
 	WMT_STEP_DO_ACTIONS_FUNC(STEP_TRIGGER_POINT_WHEN_AP_SUSPEND);
@@ -492,10 +492,12 @@ static void plat_resume_handler(struct work_struct *work)
 	}
 }
 
-static void mtk_wmt_resume(VOID)
+static INT32 mtk_wmt_resume(struct device *dev)
 {
 	WMT_PLAT_PR_INFO(" mtk_wmt_resume !!");
 	schedule_work(&plt_resume_worker);
+
+	return 0;
 }
 
 INT32 mtk_wcn_consys_sleep_info_read_all_ctrl(P_CONSYS_STATE state)
@@ -643,7 +645,7 @@ INT32 mtk_wcn_consys_hw_reg_ctrl(UINT32 on, UINT32 co_clock_type)
 
 		if (wmt_consys_ic_ops->polling_consys_ic_chipid &&
 			wmt_consys_ic_ops->polling_consys_ic_chipid() < 0)
-			return -1;
+			return -WMT_ERRCODE_POLL_CHIPID_FAIL;
 
 		if (wmt_consys_ic_ops->consys_ic_set_access_emi_hw_mode)
 			wmt_consys_ic_ops->consys_ic_set_access_emi_hw_mode();
@@ -665,9 +667,15 @@ INT32 mtk_wcn_consys_hw_reg_ctrl(UINT32 on, UINT32 co_clock_type)
 			wmt_consys_ic_ops->consys_ic_bus_timeout_config();
 		if (wmt_consys_ic_ops->consys_ic_hw_reset_bit_set)
 			wmt_consys_ic_ops->consys_ic_hw_reset_bit_set(DISABLE);
+
+		if (wmt_consys_ic_ops->consys_ic_polling_goto_idle &&
+			wmt_consys_ic_ops->consys_ic_polling_goto_idle())
+			return -WMT_ERRCODE_POLL_NOT_GOTO_IDLE;
+
+		if (wmt_consys_ic_ops->consys_ic_wifi_ctrl_switch_conn_mode)
+			wmt_consys_ic_ops->consys_ic_wifi_ctrl_switch_conn_mode();
 		if (wmt_consys_ic_ops->consys_ic_hw_vcn_ctrl_after_idle)
 			wmt_consys_ic_ops->consys_ic_hw_vcn_ctrl_after_idle();
-
 		msleep(20);
 
 	} else {
@@ -771,6 +779,11 @@ INT32 mtk_wcn_consys_detect_adie_chipid(UINT32 co_clock_type)
 	if (wmt_consys_ic_ops == NULL)
 		wmt_consys_ic_ops = mtk_wcn_get_consys_ic_ops();
 
+	if (co_clock_type) {
+		if (wmt_consys_ic_ops->consys_ic_clock_buffer_ctrl)
+			wmt_consys_ic_ops->consys_ic_clock_buffer_ctrl(ENABLE);
+	}
+
 	if (wmt_consys_ic_ops && wmt_consys_ic_ops->consys_ic_adie_chipid_detect) {
 		WMT_PLAT_PR_INFO("CONSYS A-DIE DETECT start\n");
 		chipid = wmt_consys_ic_ops->consys_ic_adie_chipid_detect();
@@ -780,6 +793,11 @@ INT32 mtk_wcn_consys_detect_adie_chipid(UINT32 co_clock_type)
 		} else
 			WMT_PLAT_PR_INFO("Detect a-die chipid = %x failed!\n", chipid);
 		WMT_PLAT_PR_INFO("CONSYS A-DIE DETECT finish\n");
+	}
+
+	if (co_clock_type) {
+		if (wmt_consys_ic_ops->consys_ic_clock_buffer_ctrl)
+			wmt_consys_ic_ops->consys_ic_clock_buffer_ctrl(DISABLE);
 	}
 
 	osal_unlock_sleepable_lock(&g_adie_chipid_lock);
@@ -799,7 +817,6 @@ INT32 mtk_wcn_consys_hw_gpio_ctrl(UINT32 on)
 	WMT_PLAT_PR_DBG("CONSYS-HW-GPIO-CTRL(0x%08x), start\n", on);
 
 	if (on) {
-
 		if (wmt_consys_ic_ops->consys_ic_need_gps) {
 			if (wmt_consys_ic_ops->consys_ic_need_gps() == MTK_WCN_BOOL_TRUE) {
 				/*if external modem used,GPS_SYNC still needed to control */
@@ -819,9 +836,7 @@ INT32 mtk_wcn_consys_hw_gpio_ctrl(UINT32 on)
 		iRet += wmt_plat_eirq_ctrl(PIN_BGF_EINT, PIN_STA_INIT);
 		iRet += wmt_plat_eirq_ctrl(PIN_BGF_EINT, PIN_STA_EINT_DIS);
 		WMT_PLAT_PR_DBG("CONSYS-HW, BGF IRQ registered and disabled\n");
-
 	} else {
-
 		/* set bgf eint/all eint to deinit state, namely input low state */
 		iRet += wmt_plat_eirq_ctrl(PIN_BGF_EINT, PIN_STA_EINT_DIS);
 		iRet += wmt_plat_eirq_ctrl(PIN_BGF_EINT, PIN_STA_DEINIT);
@@ -841,8 +856,9 @@ INT32 mtk_wcn_consys_hw_gpio_ctrl(UINT32 on)
 			iRet += wmt_plat_gpio_ctrl(PIN_GPS_LNA, PIN_STA_DEINIT);
 		}
 	}
-	WMT_PLAT_PR_DBG("CONSYS-HW-GPIO-CTRL(0x%08x), finish\n", on);
-	return iRet;
+	WMT_PLAT_PR_DBG("CONSYS-HW-GPIO-CTRL(0x%08x),iRet(%d) finish\n", on, iRet);
+
+	return (iRet) ? -WMT_ERRCODE_GPIO_CTRL_FAIL : 0;
 
 }
 
@@ -854,13 +870,18 @@ INT32 mtk_wcn_consys_hw_pwr_on(UINT32 co_clock_type)
 	WMT_STEP_DO_ACTIONS_FUNC(STEP_TRIGGER_POINT_POWER_ON_START);
 	if (!gConEmiPhyBase) {
 		WMT_PLAT_PR_ERR("EMI base address is invalid, CONNSYS can not be powered on!");
-		return -1;
+		return -WMT_ERRCODE_EMI_NOT_READY;
 	}
-	iRet += mtk_wcn_consys_hw_reg_ctrl(1, co_clock_type);
-	iRet += mtk_wcn_consys_hw_gpio_ctrl(1);
+	iRet = mtk_wcn_consys_hw_reg_ctrl(1, co_clock_type);
+	if (iRet) {
+		WMT_PLAT_PR_ERR("CONSYS-HW-PWR-ON, failed!(%d)\n", iRet);
+		return iRet;
+	}
+	iRet = mtk_wcn_consys_hw_gpio_ctrl(1);
 	mtk_wcn_consys_jtag_set_for_mcu();
 
 	WMT_PLAT_PR_INFO("CONSYS-HW-PWR-ON, finish(%d)\n", iRet);
+
 	return iRet;
 }
 
@@ -871,8 +892,12 @@ INT32 mtk_wcn_consys_hw_pwr_off(UINT32 co_clock_type)
 	WMT_PLAT_PR_INFO("CONSYS-HW-PWR-OFF, start\n");
 	WMT_STEP_DO_ACTIONS_FUNC(STEP_TRIGGER_POINT_BEFORE_POWER_OFF);
 
-	iRet += mtk_wcn_consys_hw_reg_ctrl(0, co_clock_type);
-	iRet += mtk_wcn_consys_hw_gpio_ctrl(0);
+	iRet = mtk_wcn_consys_hw_reg_ctrl(0, co_clock_type);
+	if (iRet) {
+		WMT_PLAT_PR_ERR("CONSYS-HW-PWR-OFF, failed!(%d)\n", iRet);
+		return iRet;
+	}
+	iRet = mtk_wcn_consys_hw_gpio_ctrl(0);
 
 	WMT_PLAT_PR_INFO("CONSYS-HW-PWR-OFF, finish(%d)\n", iRet);
 	return iRet;
@@ -953,7 +978,6 @@ INT32 mtk_wcn_consys_hw_init(VOID)
 			retry++;
 			WMT_PLAT_PR_INFO("g_probe_called = 0, retry = %d\n", retry);
 		}
-		register_syscore_ops(&wmt_dbg_syscore_ops);
 	}
 
 	return iRet;
@@ -972,7 +996,6 @@ INT32 mtk_wcn_consys_hw_deinit(VOID)
 #endif
 
 	platform_driver_unregister(&mtk_wmt_dev_drv);
-	unregister_syscore_ops(&wmt_dbg_syscore_ops);
 
 	if (wmt_consys_ic_ops)
 		wmt_consys_ic_ops = NULL;

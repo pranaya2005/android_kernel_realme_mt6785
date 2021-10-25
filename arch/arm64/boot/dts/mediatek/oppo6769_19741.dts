@@ -91,7 +91,7 @@
 	};
 	vibrator0:vibrator@0 {
 		compatible = "mediatek,vibrator";
-		vib_timer = <50>;
+		vib_timer = <25>;
 		vib_limit = <9>;
 		vib_vol= <9>;
 	};
@@ -191,10 +191,6 @@
 		status = "okay";
 		new-arch-supported = <0>;
 	};
-	mtk_cali: mtk_cali {
-		status = "okay";
-		mtk-cali-supported = <1>;
-	};
 /* sensor end */
 /*VNDOR_EDIT oppo project start */
 /*Kun.Wang@BSP.Kernel.Debug, 2019/10/09, Add for oppo project & devinfo*/
@@ -278,51 +274,11 @@
 //#endif /* OPLUS_FEATURE_NFC_BRINGUP */
 
 //#ifdef OPLUS_FEATURE_CHG_BASIC
-/*Liu.Yong@BSP.CHG.Basic, 2020/02/12, Add for uart0*/
-&apuart0 {
-	pinctrl-names = "uart0_rx_gpio",
-			"uart0_tx_gpio";
-	pinctrl-0 = <&uart0_rx_gpio_input>;
-	pinctrl-1 = <&uart0_tx_gpio_input>;
-	status = "okay";
-};
-
-&pio {
-	uart0_rx_gpio_input:uart0_rx_gpio@gpio95 {
-		pins_cmd_dat {
-			pinmux = <PINMUX_GPIO95__FUNC_GPIO95>;
-			input-enable;
-			slew-rate = <0>;
-			bias-pull-down;
-		};
-	};
-	uart0_tx_gpio_input:uart0_tx_gpio@gpio96 {
-		pins_cmd_dat {
-			pinmux = <PINMUX_GPIO96__FUNC_GPIO96>;
-			input-enable;
-			slew-rate = <0>;
-			bias-pull-down;
-		};
-	};
-};
-
-//#ifdef OPLUS_FEATURE_CHG_BASIC
 &mt_charger {
 	mtk,usb-type = <1> ;
 	/* 0 "Mini-USB"  */
 	/* 1 "Micro-USB" */
 	/* 2 "TypeC-USB" */
-};
-
-/*liu.yong@RM.CM.BSP.CHG 2020/10/30,Modify lk charge config*/
-&lk_charger{
-	fast_charge_voltage = <3100000>;
-	ac_charger_current = <500000>;
-	ac_charger_input_current = <500000>;
-	ta_ac_charger_current = <500000>;
-	temp_t4_threshold = <53>;
-	temp_t3_threshold = <44>;
-	temp_t1_threshold = <0>;
 };
 
 /*liu.yong@RM.CM.BSP.CHG 2020/08/24,add oppo charge bring up*/
@@ -394,7 +350,7 @@
         qcom,qc_temp_little_cool_fastchg_current_ma = <3400>;
 
 	qcom,normal_bat_decidegc = <160>;	/* 16C ~ 45C */
-	qcom,temp_normal_fastchg_current_ma = <2000>;
+	qcom,temp_normal_fastchg_current_ma = <2200>;
 	qcom,temp_normal_usbchg_current_ma = <550>;
 	qcom,temp_normal_vfloat_mv = <4435>;
 	qcom,pd_temp_normal_fastchg_current_ma = <3000>;
@@ -402,7 +358,7 @@
 
 	qcom,warm_bat_decidegc = <440>;		/* 44C ~ 53C */ /*8pin Bat Vooc project need add 3 degree C*/
 	qcom,temp_warm_vfloat_mv = <4130>;
-	qcom,temp_warm_fastchg_current_ma = <1200>;
+	qcom,temp_warm_fastchg_current_ma = <1350>;
 	qcom,temp_warm_usbchg_current_ma = <550>;
 	qcom,temp_warm_fastchg_current_ma_led_on = <500>;
         qcom,qc_temp_warm_fastchg_current_ma = <1350>;
@@ -436,21 +392,21 @@
 
         qcom,normal_phase3_bat_decidegc = <340>;       /* 34 ~ 37C */
         qcom,temp_normal_phase3_vfloat_mv = <4435>;
-        qcom,temp_normal_phase3_fastchg_current_ma_high = <1500>;
-        qcom,temp_normal_phase3_fastchg_current_ma_low = <1500>;
+        qcom,temp_normal_phase3_fastchg_current_ma_high = <2000>;
+        qcom,temp_normal_phase3_fastchg_current_ma_low = <2000>;
 
         qcom,normal_phase4_bat_decidegc = <370>;       /* 37C ~ 40C */
         qcom,temp_normal_phase4_vfloat_mv = <4435>;
-        qcom,temp_normal_phase4_fastchg_current_ma_high = <1250>;
-        qcom,temp_normal_phase4_fastchg_current_ma_low = <1250>;
+        qcom,temp_normal_phase4_fastchg_current_ma_high = <2000>;
+        qcom,temp_normal_phase4_fastchg_current_ma_low = <2000>;
 
         qcom,normal_phase5_bat_decidegc = <400>;       /* 40C ~ 42C */
         qcom,temp_normal_phase5_vfloat_mv = <4435>;
-        qcom,temp_normal_phase5_fastchg_current_ma = <1250>;
+        qcom,temp_normal_phase5_fastchg_current_ma = <1850>;
 
         qcom,normal_phase6_bat_decidegc = <420>;       /* 42C ~ 45C */
         qcom,temp_normal_phase6_vfloat_mv = <4435>;
-        qcom,temp_normal_phase6_fastchg_current_ma = <1200>;
+        qcom,temp_normal_phase6_fastchg_current_ma = <1650>;
 
 	qcom,max_chg_time_sec = <36000>;
 	qcom,charger_hv_thr = <5800>;
@@ -492,7 +448,7 @@
 	qcom,ffc_normal_vfloat_over_sw_limit = <4500>;
 
 	qcom,default_iterm_ma = <265>;
-	qcom,default_temp_normal_fastchg_current_ma = <2000>;
+	qcom,default_temp_normal_fastchg_current_ma = <2200>;
 	qcom,default_normal_vfloat_sw_limit = <4380>;
 	qcom,default_temp_normal_vfloat_mv = <4435>;
 	qcom,default_normal_vfloat_over_sw_limit = <4450>;
@@ -545,6 +501,14 @@
 	//qcom,chargerid_switch-gpio = <&pio 97 0x00>;
 	//qcom,ship-gpio = <&pio 155 0x00>;
 	//qcom,shortc-gpio = <&pio 77 0x00>;
+
+	io-channels = <&auxadc 3>, <&auxadc 4>;
+	io-channel-names = "usbtemp-ch3", "usbtemp-ch4";
+
+	qcom,dischg-gpio = <&pio 166 0x00>;
+	pinctrl-names = "dischg_disable", "dischg_enable";
+	pinctrl-0 = <&mtk_pins_usb_burn_en0>;
+	pinctrl-1 = <&mtk_pins_usb_burn_en1>;
 	status = "okay";
 };
 
@@ -739,6 +703,7 @@
 };
 
 &egis_fp {
+	egis,spi_cs_mode = <1>;
 	pinctrl-names = "default", "rst-low", "rst-high",
 	                "irq-init", "power_high","power_low";
 	pinctrl-0 = <&silfp_default>;
@@ -823,13 +788,7 @@
 		vendor-chip = <18>; /* please refer to the struct fp_vendor_t in oppo_fp_commmon.n */
 		eng-menu = "-1,-1"; /* represents SNR, inclination test item in engineer menu, and 0/1 means off/on */
 		chip-name = "E_520";  /* /proc/fp_id, will be displayed in engineer menu  */
-        };
-	silead_6150 {
-                oplus,fp-id = <0>; /* fp id mapping table */
-                vendor-chip = <21>; /* please refer to the struct fp_vendor_t in oppo_fp_commmon.n */
-                eng-menu = "-1,-1"; /* represents SNR, inclination test item in engineer menu, and 0/1 means off/on */
-                chip-name = "S_gsl6150";  /* /proc/fp_id, will be displayed in engineer menu  */
-        };
+	};
 };
 //Qi.zhang@BSP.Biometrics.Fingerprint 2020/09/08 add  fingerprint driver end
 //#endif //OPLUS_FEATURE_FINGERPRINT
@@ -899,7 +858,7 @@
 /* accdet start */
 &accdet {
 	/* accdet micbias voltage: 0x07,2.7v;0x05,2.5v;0x02,1.9v */
-	accdet-mic-vol = <7>;
+	accdet-mic-vol = <6>;
 	headset-mode-setting = <0x500 0x500 1 0x1f0 0x800 0x800 0x20 0x44>;
 	accdet-plugout-debounce = <1>;
 	/*1:ACC mode, 2:low cost without in bias, 6:low cost with in bias*/
@@ -1043,9 +1002,8 @@
 	//pinctrl-6 = <&mtkfb_pins_lcd_vddio18_en0>;
 	//pinctrl-7 = <&mtkfb_pins_lcd_vddio18_en1>;
         status = "okay";
-	oplus_display_elevenbits_support;
-	oplus_display_cabc_cmdq_support;
-	oplus_display_panelnum_support;
+	oplus_display_twelvebits_support;
+	oplus_display_cabc_support;
 };
 
 
@@ -1157,8 +1115,27 @@
         };
     };
 };
+/*Liu.Yong@BSP.CHG.Basic 2020/12/11, charger bringup end*/
+
+&pio {
+		mtk_pins_usb_burn_en0: dischg_disable{
+                pins_cmd_dat {
+                        pinmux = <PINMUX_GPIO166__FUNC_GPIO166>;
+                        slew-rate = <1>;
+                        output-low;
+                };
+		};
+
+		mtk_pins_usb_burn_en1: dischg_enable{
+                pins_cmd_dat {
+                        pinmux = <PINMUX_GPIO166__FUNC_GPIO166>;
+                        slew-rate = <1>;
+                        output-high;
+                };
+		};
+};
 
 #include <oppo6769_19741/cust.dtsi>
-#include "mediatek/cust_mt6768_19741_camera.dtsi"
+#include "mediatek/cust_mt6768_camera_pascal.dtsi"
 //#include "mediatek/cust_mt6768_touch_1080x2160.dtsi"
 /*End of this file, DO NOT ADD ANYTHING HERE*/

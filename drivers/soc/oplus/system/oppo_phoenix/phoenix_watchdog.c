@@ -176,7 +176,11 @@ static int phx_pet(void)
 {
     if(phx_is_long_time())
     {
+    #ifdef OPPO_MT6765_PLATFORM
+        schedule_timeout_interruptible(phx_hlos_wd_pet_time * 2 * HZ);
+    #else
         schedule_timeout_interruptible(phx_hlos_wd_pet_time * HZ);
+    #endif
     }
 
     PHX_KLOG_INFO("phoenix watchdog pet!\n");

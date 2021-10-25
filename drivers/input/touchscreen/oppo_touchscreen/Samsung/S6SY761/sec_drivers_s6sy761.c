@@ -59,6 +59,8 @@ static int sec_read_mutual(struct chip_data_s6sy761 *chip_info, u8 type, char *d
 static bool check_calibration(struct chip_data_s6sy761 *chip_info);
 /**************************** end of function delcare*****************************************/
 
+static void sec_calibrate(struct seq_file *s, void *chip_data);
+static bool sec_get_cal_status(struct seq_file *s, void *chip_data);
 
 /****** Start of other functions that work for oppo_touchpanel_operations callbacks***********/
 static int sec_enable_black_gesture(struct chip_data_s6sy761 *chip_info, bool enable)
@@ -1413,6 +1415,9 @@ static struct oppo_touchpanel_operations sec_ops = {
 //    .get_usb_state              = sec_get_usb_state,
     .set_touch_direction        = sec_set_touch_direction,
     .get_touch_direction        = sec_get_touch_direction,
+    .calibrate			= sec_calibrate,
+    .get_cal_status 	= sec_get_cal_status,
+
 };
 /********* End of implementation of oppo_touchpanel_operations callbacks**********************/
 
@@ -2760,9 +2765,7 @@ static void sec_set_grip_handle(void *chip_data, int para_num, char *buf)
 
 static struct sec_proc_operations sec_proc_ops = {
     .auto_test          = sec_auto_test,
-    .calibrate          = sec_calibrate,
     .verify_calibration = sec_verify_calibration,
-    .get_cal_status     = sec_get_cal_status,
     .set_curved_rejsize = sec_set_curved_rejsize,
     .get_curved_rejsize = sec_get_curved_rejsize,
     .set_grip_handle   = sec_set_grip_handle,

@@ -22,20 +22,21 @@ static enum EEPROM_I2C_DEV_IDX gi2c_dev_sel[IMGSENSOR_SENSOR_IDX_MAX_NUM] = {
 	I2C_DEV_IDX_3, /* main3 */
 };
 
-static enum EEPROM_I2C_DEV_IDX gi2c_dev_monetx[IMGSENSOR_SENSOR_IDX_MAX_NUM] = {
+static enum EEPROM_I2C_DEV_IDX gi2c_dev_sel_even[IMGSENSOR_SENSOR_IDX_MAX_NUM] = {
 	I2C_DEV_IDX_1, /* main */
 	I2C_DEV_IDX_2, /* sub */
-	I2C_DEV_IDX_2, /* main2 */
+	I2C_DEV_IDX_1, /* main2 */
 	I2C_DEV_IDX_2, /* sub2 */
-	I2C_DEV_IDX_2, /* main3 */
+	I2C_DEV_IDX_3, /* main3 */
 };
-
 enum EEPROM_I2C_DEV_IDX get_i2c_dev_sel(enum IMGSENSOR_SENSOR_IDX idx)
 {
 	if (idx >= IMGSENSOR_SENSOR_IDX_MIN_NUM &&
-		idx < IMGSENSOR_SENSOR_IDX_MAX_NUM) {
-		if(is_project(19747) || is_project(19746) || is_project(19748) || is_project(19741) || is_project(19678) || is_project(19677))
-			return gi2c_dev_monetx[idx];
+		idx < IMGSENSOR_SENSOR_IDX_MAX_NUM){
+		if (is_project(20761) || is_project(20762) || is_project(20764) || is_project(20766) || is_project(20767) ||
+		    is_project(0x2167A) || is_project(0x2167B) || is_project(0x2167C) || is_project(0x2167D) ||
+		    is_project(0x216AF) || is_project(0x216B0) || is_project(0x216B1))
+			return gi2c_dev_sel_even[idx];
 		else
 			return gi2c_dev_sel[idx];
 	}

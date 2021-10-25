@@ -1,19 +1,7 @@
-/************************************************************************************
-** File: - MSM8953_LA_1_0\android\kernel\include\soc\oppo\oppo_secure_common.h
-** VENDOR_EDIT
-** Copyright (C), 2008-2016, OPPO Mobile Comm Corp., Ltd
-**
-** Description:
-**          fingerprint compatibility configuration
-**
-** Version: 1.0
-** Date created: 18:03:11,23/07/2016
-** Author: Ziqing.guo@Prd.BaseDrv
-**
-** --------------------------- Revision History: --------------------------------
-**  <author>                 <data>                        <desc>
-**  Bin.Li       2017/11/17       create the file
-************************************************************************************/
+/* SPDX-License-Identifier: GPL-2.0-only */
+/*
+ * Copyright (C) 2020 Oplus. All rights reserved.
+ */
 
 #ifndef _OPPO_SECURE_COMMON_H_
 #define _OPPO_SECURE_COMMON_H_

@@ -20,13 +20,21 @@
 
 #include <linux/videodev2.h>
 #include <linux/i2c.h>
+#include <linux/platform_device.h>
 #include <linux/delay.h>
+#include <linux/cdev.h>
 #include <linux/uaccess.h>
 #include <linux/fs.h>
+#include <linux/atomic.h>
 #include <linux/types.h>
-#include "imgsensor_eeprom.h"
-#include "hi846mipiraw_Sensor.h"
 
+#include "kd_imgsensor.h"
+#include "kd_imgsensor_define.h"
+#include "kd_imgsensor_errcode.h"
+#include "kd_camera_typedef.h"
+#include "hi846mipiraw_Sensor.h"
+#include "imgsensor_common.h"
+#include "imgsensor_eeprom.h"
 
 #define PFX "HI846_camera_sensor"
 #define LOG_INF(format, args...)    pr_debug(PFX "[%s] " format, __FUNCTION__, ##args)
@@ -251,6 +259,22 @@ static struct SENSOR_WINSIZE_INFO_STRUCT imgsensor_winsize_info[7] =
   { 3264, 2448,   0, 684, 3264, 1080, 3264, 1080, 672, 0, 1920, 1080, 0, 0, 1920, 1080}  // custom2
 };
 
+#ifdef VENDOR_EDIT
+/*Shounan.Yang@Camera.Driver add for 18011/18311  board 20190620*/
+static kal_uint16 read_module_id(void)
+{
+	kal_uint16 get_byte=0;
+	char pusendcmd[2] = {(char)(MODULE_ID_OFFSET >> 8) , (char)(MODULE_ID_OFFSET & 0xFF) };
+
+	iReadRegI2C(pusendcmd , 2, (u8*)&get_byte,1,0xA0/*EEPROM_READ_ID*/);
+	if (get_byte == 0)
+		iReadRegI2C(pusendcmd, 2, (u8 *)&get_byte, 1, 0xA0/*EEPROM_READ_ID*/);
+
+	return get_byte;
+}
+#endif
+
+
 static kal_uint16 read_cmos_sensor(kal_uint32 addr)
 {
 	kal_uint16 get_byte=0;
@@ -277,33 +301,22 @@ static void write_cmos_sensor_8(kal_uint32 addr, kal_uint32 para)
 	iWriteRegI2C(pu_send_cmd, 3, imgsensor.i2c_write_id);
 }
 #ifdef VENDOR_EDIT
-/*wenhui.chen@Camera.Driver 20201222 add for 20645 ModuleSN*/
-static void read_module_data(void)
+/*Henry.Chang@Camera.Driver add for 18531 ModuleSN*/
+static kal_uint8 gHi846_SN[CAMERA_MODULE_SN_LENGTH];
+static void read_eeprom_SN(void)
 {
-    int i = 0;
-    /*Read normal eeprom data*/
-    gImgEepromInfo.camNormdata[2][0] = Eeprom_1ByteDataRead(0x00, 0xA2);
-    gImgEepromInfo.camNormdata[2][1] = Eeprom_1ByteDataRead(0x01, 0xA2);
-    imgsensor_info.module_id = Eeprom_1ByteDataRead(0x00, 0xA2);
-    Oplusimgsensor_Registdeviceinfo(gImgEepromInfo.pCamModuleInfo[2].name,
-                                    gImgEepromInfo.pCamModuleInfo[2].version,
-                                    imgsensor_info.module_id);
-    for(i = 2; i < 8; i++) {
-       gImgEepromInfo.camNormdata[2][i] = Eeprom_1ByteDataRead(0x04+i, 0xA2);
-    }
-
-    for (i = 0; i < OPPO_CAMERASN_LENS; i ++) {
-       gImgEepromInfo.camNormdata[2][8+i] = Eeprom_1ByteDataRead(0xB0+i, 0xA2);
-    }
-    gImgEepromInfo.camNormdata[2][39] = 2;
-    /*Read stereo eeprom data*/
-    for (i = 0; i < CALI_DATA_SLAVE_LENGTH; i ++) {
-        gImgEepromInfo.stereoMWdata[CALI_DATA_MASTER_LENGTH+i] =
-                    Eeprom_1ByteDataRead(HI846_STEREO_START_ADDR_20645+i, 0xA2);
-    }
-    gImgEepromInfo.i4CurSensorIdx = 2;
-    gImgEepromInfo.i4CurSensorId = imgsensor_info.sensor_id;
+	kal_uint16 idx = 0;
+	kal_uint8 *get_byte= &gHi846_SN[0];
+	for (idx = 0; idx <CAMERA_MODULE_SN_LENGTH; idx++) {
+		char pusendcmd[2] = {0x00 , (char)((0xB0 + idx) & 0xFF) };
+		iReadRegI2C(pusendcmd , 2, (u8*)&get_byte[idx],1, 0xA0);
+		LOG_INF("gHi846_SN[%d]: 0x%x  0x%x\n", idx, get_byte[idx], gHi846_SN[idx]);
+	}
 }
+
+
+
+
 #endif
 
 static void set_dummy(void)
@@ -2631,11 +2644,18 @@ static kal_uint32 get_imgsensor_id(UINT32 *sensor_id)
 			spin_unlock(&imgsensor_drv_lock);
 			do {
 				*sensor_id =return_sensor_id();
-				LOG_INF("hi846 [get_imgsensor_id] sensor_id = 0x%x",*sensor_id);
+				LOG_INF("weisaholun hi846 [get_imgsensor_id] sensor_id = 0x%x",*sensor_id);
 				if (*sensor_id == 0x846) {
 					*sensor_id = imgsensor_info.sensor_id;
                     #ifdef VENDOR_EDIT
-                    	read_module_data();
+                    read_eeprom_SN();
+                    /*zhengjiang.zhu@Camera.Drv, 2017/10/18 add for register device info*/
+                    imgsensor_info.module_id = read_module_id();
+                   // if (deviceInfo_register_value == 0x00) {
+                  //      Oplusimgsensor_Registdeviceinfo("Cam_r1", DEVICE_VERSION_HI846,
+					//		imgsensor_info.module_id);
+                  //      deviceInfo_register_value=0x01;
+                  //  }
                     #endif
 					LOG_INF("i2c write id  : 0x%x, sensor id: 0x%x\n", imgsensor.i2c_write_id,*sensor_id);
 					return ERROR_NONE;
@@ -3344,6 +3364,15 @@ static kal_uint32 feature_control(MSDK_SENSOR_FEATURE_ENUM feature_id,
 		case SENSOR_FEATURE_GET_MIN_SHUTTER_BY_SCENARIO:
 			*(feature_data + 1) = imgsensor_info.min_shutter;
 			break;
+        /*Henry.Chang@Camera.Driver add for 18531 ModuleSN*/
+        case SENSOR_FEATURE_GET_MODULE_SN:
+        LOG_INF("gc5035 GET_MODULE_SN:%d %d\n", *feature_para_len, *feature_data_32);
+        if (*feature_data_32 < CAMERA_MODULE_SN_LENGTH/4)
+            *(feature_data_32 + 1) = (gHi846_SN[4*(*feature_data_32) + 3] << 24)
+                        | (gHi846_SN[4*(*feature_data_32) + 2] << 16)
+                        | (gHi846_SN[4*(*feature_data_32) + 1] << 8)
+                        | (gHi846_SN[4*(*feature_data_32)] & 0xFF);
+        break;
         /*Henry.Chang@camera.driver 20181129, add for sensor Module SET*/
         case SENSOR_FEATURE_SET_SENSOR_OTP:
         {

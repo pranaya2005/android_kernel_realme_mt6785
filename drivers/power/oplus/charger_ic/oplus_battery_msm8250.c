@@ -40,8 +40,6 @@
 #include <linux/proc_fs.h>
 #include <linux/iio/consumer.h>
 #include <linux/kthread.h>
-#include <linux/usb/typec.h>
-#include <linux/usb/usbpd.h>
 //#include <soc/oplus/system/boot_mode.h>
 //#include <soc/oppo/device_info.h>
 #include <soc/oplus/system/oplus_project.h>
@@ -89,13 +87,6 @@ int oplus_tbatt_power_off_task_init(struct oplus_chg_chip *chip);
 //static bool oplus_usb_or_otg_is_present(void);
 static void oplus_set_otg_switch_status(bool value);
 int oplus_chg_enable_qc_detect(void);
-int oplus_check_is_pd_svooc(void);
-static void register_oplus_pdsvooc_svid(struct work_struct *work) ;
-static bool oplus_check_pdphy_ready(void) ;
-//extern int usbpd_send_vdm(struct usbpd *pd, u32 vdm_hdr, const u32 *vdos, int num_vdos);
-bool oplus_check_pd_state_ready(void);
-bool oplus_usbtemp_condition(void);
-
 
 #define OPLUS_CHG_MONITOR_INTERVAL round_jiffies_relative(msecs_to_jiffies(5000))
 #define OPLUS_HVDCP_DISABLE_INTERVAL round_jiffies_relative(msecs_to_jiffies(15000))
@@ -3181,10 +3172,7 @@ int smblib_vbus_regulator_disable(struct regulator_dev *rdev)
 
 	smblib_dbg(chg, PR_OTG, "disabling OTG\n");
 
-#ifdef OPLUS_FEATURE_CHG_BASIC
-	/* Shengyang.Zhuo@BSP.CHG.Basic, 2020/11/20, sjc Add for usb temperature monitor */
-	if (g_oplus_chip)
-		g_oplus_chip->usbtemp_check = oplus_usbtemp_condition();
+#ifdef OPLUS_FEATURE_CHG_BASIC//Fanhong.Kong@ProDrv.CHG,add 2018/06/02 for SVOOC OTG
 	if (chip->vbatt_num == 2) {
 		smblib_err(chg, "disabling OTG\n");
 		if (chip->wireless_support) {
@@ -6687,13 +6675,7 @@ void smblib_usb_plugin_hard_reset_locked(struct smb_charger *chg)
 	
 #ifdef OPLUS_FEATURE_CHG_BASIC
 /* Jianchao.Shi@BSP.CHG.Basic, 2017/01/22, sjc Add for charging */
-		if (g_oplus_chip) {
-			if (g_oplus_chip->charger_type != POWER_SUPPLY_TYPE_USB) {
-				oplus_vooc_reset_fastchg_after_usbout();
-			} else {
-				pr_info("charger_type: %d not reset mcu\n", g_oplus_chip->charger_type);
-			}
-		}
+		oplus_vooc_reset_fastchg_after_usbout();
 		if (oplus_vooc_get_fastchg_started() == false && g_oplus_chip) {
 			//smbchg_set_chargerid_switch_val(0);
 			cancel_work_sync(&chg->chargerid_switch_work);
@@ -6737,11 +6719,6 @@ void smblib_usb_plugin_hard_reset_locked(struct smb_charger *chg)
 		oplus_force_panic();
 #endif
 	} else {
-#ifdef OPLUS_FEATURE_CHG_BASIC
-/* Shengyang.Zhuo@BSP.CHG.Basic, 2020/11/20, sjc Add for usb temperature monitor */
-		if (g_oplus_chip)
-			g_oplus_chip->usbtemp_check = oplus_usbtemp_condition();
-#endif
     	fg_oplus_set_input_current = false;
 		cancel_delayed_work_sync(&chg->chg_monitor_work);
 	}
@@ -6867,13 +6844,7 @@ void smblib_usb_plugin_locked(struct smb_charger *chg)
 			return;
 		}
 
-		if (g_oplus_chip) {
-			if (g_oplus_chip->charger_type != POWER_SUPPLY_TYPE_USB) {
-				oplus_vooc_reset_fastchg_after_usbout();
-			} else {
-				pr_info("charger_type: %d not reset mcu\n", g_oplus_chip->charger_type);
-			}
-		}
+		oplus_vooc_reset_fastchg_after_usbout();
 		if (oplus_vooc_get_fastchg_started() == false && g_oplus_chip) {
 			///smbchg_set_chargerid_switch_val(0);
 			cancel_work_sync(&chg->chargerid_switch_work);
@@ -6962,11 +6933,6 @@ void smblib_usb_plugin_locked(struct smb_charger *chg)
 		oplus_force_panic();
 #endif
 	} else {
-#ifdef OPLUS_FEATURE_CHG_BASIC
-/* Shengyang.Zhuo@BSP.CHG.Basic, 2020/11/20, sjc Add for usb temperature monitor */
-		if (g_oplus_chip)
-			g_oplus_chip->usbtemp_check = oplus_usbtemp_condition();
-#endif
     	fg_oplus_set_input_current = false;
 		opluschg_pd_sdp = false;
 		cancel_delayed_work_sync(&chg->chg_monitor_work);
@@ -7263,7 +7229,7 @@ irqreturn_t usb_source_change_irq_handler(int irq, void *data)
 		return IRQ_HANDLED;
 #else
 		smblib_read(chg, APSD_RESULT_STATUS_REG, &reg_value);
-		if ((reg_value & (SDP_CHARGER_BIT)) || (reg_value & (CDP_CHARGER_BIT))) {
+		if (reg_value & SDP_CHARGER_BIT) {
 			chg->uusb_apsd_rerun_done = true;
 			smblib_rerun_apsd(chg);
 			return IRQ_HANDLED;
@@ -7799,12 +7765,8 @@ irqreturn_t typec_state_change_irq_handler(int irq, void *data)
 		dfp_status = current_status;
 		printk(KERN_ERR "!!!!! smblib_handle_typec_cc_state_change: [%d], mode[%d]\n", dfp_status, chg->typec_mode);
 	}
-	if (chg->typec_mode != POWER_SUPPLY_TYPEC_NONE) {
+	if (chg->typec_mode != POWER_SUPPLY_TYPEC_NONE)
 		oplus_wake_up_usbtemp_thread();
-	} else {
-		if (chip)
-			chip->usbtemp_check = oplus_usbtemp_condition();
-	}
 #endif
 
 #ifdef OPLUS_FEATURE_CHG_BASIC
@@ -8606,11 +8568,6 @@ static void oplus_ccdetect_work(struct work_struct *work)
 		if (oplus_ccdetect_get_power_role() != POWER_SUPPLY_TYPEC_PR_SINK
 				&& oplus_get_otg_switch_status() == false)
 			oplus_ccdetect_disable();
-#ifdef OPLUS_FEATURE_CHG_BASIC
-/* Shengyang.Zhuo@BSP.CHG.Basic, 2020/11/20, sjc Add for usb temperature monitor */
-		if (g_oplus_chip)
-			g_oplus_chip->usbtemp_check = oplus_usbtemp_condition();
-#endif
 		if(g_oplus_chip && g_oplus_chip->usb_status == USB_TEMP_HIGH) {
 			schedule_delayed_work(&usbtemp_recover_work, 0);
 		}
@@ -9757,7 +9714,6 @@ int smblib_init(struct smb_charger *chg)
 					smblib_pr_swap_detach_work);
 	INIT_DELAYED_WORK(&chg->pr_lock_clear_work,
 					smblib_pr_lock_clear_work);
-	INIT_DELAYED_WORK(&chg->regist_pd, register_oplus_pdsvooc_svid);
 
 	if (chg->wa_flags & CHG_TERMINATION_WA) {
 		INIT_WORK(&chg->chg_termination_work,
@@ -11140,10 +11096,8 @@ void oplus_wake_up_usbtemp_thread(void)
 	if (!chip) {
 		return;
 	}
-	if (oplus_usbtemp_check_is_support() == true) {
-		chip->usbtemp_check = oplus_usbtemp_condition();
-		if (chip->usbtemp_check)
-			wake_up_interruptible(&chip->oplus_usbtemp_wq);
+	if (oplus_usbtemp_check_is_support() == true){
+		wake_up_interruptible(&chip->oplus_usbtemp_wq);
 	}
 }
 
@@ -16191,9 +16145,6 @@ int oplus_chg_set_pd_config()
 	if (!chip) {
 		return -1;
 	}
-	if(chip->pd_svooc){
-		return 0;
-	}
 	if (chip->limits.vbatt_pdqc_to_5v_thr > 0 && chip->charger_volt > 7500 && chip->batt_volt > chip->limits.vbatt_pdqc_to_5v_thr) {
 		chip->chg_ops->input_current_write(500);
 		oplus_chg_suspend_charger();
@@ -16449,7 +16400,6 @@ struct oplus_chg_operations  smb5_chg_ops = {
 	.get_dyna_aicl_result = oplus_chg_get_dyna_aicl_result,
 #endif
 	.get_shortc_hw_gpio_status = oplus_chg_get_shortc_hw_gpio_status,
-	.check_pdphy_ready = oplus_check_pdphy_ready,
 	.get_usbtemp_volt = oplus_get_usbtemp_volt,
 	.set_typec_sinkonly = oplus_set_typec_sinkonly,
 	.oplus_usbtemp_monitor_condition = oplus_usbtemp_condition,
@@ -16501,91 +16451,6 @@ static int smb5_show_charger_status(struct smb5 *chip)
 		usb_present, chg->real_charger_type,
 		batt_present, batt_health, batt_charge_type);
 	return rc;
-}
-
-static void oplus_usbpd_response_cb(struct usbpd_svid_handler *hdlr, u8 cmd,
-		enum usbpd_svdm_cmd_type cmd_type, const u32 *vdos, int num_vdos)
-{
-	chg_err("dp_usbpd_response_cb\n");
-	return;
-}
-static void oplus_usbpd_connect_cb(struct usbpd_svid_handler *hdlr,
-		bool peer_usb_comm)
-{
-	if (!g_oplus_chip) {
-        return ;
-    } else {
-        g_oplus_chip->pd_svooc = true;
-		pr_err("[OPLUS_CHG]  SVID");
-    }
-}
-
-static void oplus_usbpd_disconnect_cb(struct usbpd_svid_handler *hdlr)
-{
-	chg_err("dp_usbpd_disconnect_cb\n");
-}
-
-static bool oplus_check_pdphy_ready(void){
-	struct oplus_chg_chip *chip = g_oplus_chip;
-	if(!chip){
-		return false;
-	}
-	if(chip->pmic_spmi.smb5_chip->chg.pd_active){
-		return oplus_check_pd_state_ready();
-	} else {
-		return true;
-	}
-}
-
-#define OPLUS_SVID 0x22D9
-static void register_oplus_pdsvooc_svid(struct work_struct *work) {
-	int rc = 0;
-	struct oplus_chg_chip *chip = g_oplus_chip;
-	const char *pd_phandle = "qcom,oplus-pps-usbpd-detection";
-	struct smb_charger *chg;
-	struct usbpd *pd = NULL;
-	if(g_oplus_chip == NULL){
-		return;
-	}
-	chg = &chip->pmic_spmi.smb5_chip->chg;
-	if(chg == NULL){
-		pr_err("YGYG chg NULL ");
-		return;
-	}
-	if(chg->dev == NULL){
-		pr_err("YGYG dev NULL ");
-		return;
-	}
-	pd = devm_usbpd_get_by_phandle(chg->dev, pd_phandle);
-	if( pd == NULL){
-		pr_err("YGYG pd NULL ");
-		return;
-	}
-	pr_err("YGYG pd NULhei ");
-	if (IS_ERR(pd)) {
-		chg_err("YGYG oplus pps usbpd phandle failed (%ld)\n", PTR_ERR(pd));
-		rc = PTR_ERR(pd);
-		chg->oplus_pd = NULL;
-		//chg->oplus_svid_handler = NULL;
-		schedule_delayed_work(&chg->regist_pd, msecs_to_jiffies(1000));
-	} else {
-		//msleep(1500);
-		chg_err("YGYG2 oplus pps usbpd phandle failed (%ld)\n", PTR_ERR(pd));
-		chg->oplus_pd = pd;
-		chg->oplus_svid_handler.svid = OPLUS_SVID;
-		chg->oplus_svid_handler.vdm_received = NULL;
-		chg->oplus_svid_handler.connect = oplus_usbpd_connect_cb;
-		chg->oplus_svid_handler.svdm_received = oplus_usbpd_response_cb;
-		chg->oplus_svid_handler.disconnect = oplus_usbpd_disconnect_cb;
-		rc = usbpd_register_svid(chg->oplus_pd, &chg->oplus_svid_handler);
-		if (rc){
-			//chg->oplus_svid_handler = NULL;
-			chg_err("YGYG pps pd registration failed\n");
-		}
-		chg_err("YGYG pps pd registration success\n");
-		//oplus_chg_wake_update_work();
-	}
-
 }
 
 static int smb5_probe(struct platform_device *pdev)
@@ -16851,7 +16716,6 @@ static int smb5_probe(struct platform_device *pdev)
 	oplus_chg_parse_charger_dt(oplus_chip);
     	oplus_chg_2uart_pinctrl_init(oplus_chip);
 	oplus_chg_init(oplus_chip);
-	schedule_delayed_work(&chg->regist_pd, 0);
 	main_psy = power_supply_get_by_name("main");
 	if (main_psy) {
 		pval.intval = 1000 * oplus_chg_get_fv(oplus_chip);
@@ -16937,11 +16801,11 @@ static int smb5_probe(struct platform_device *pdev)
 
 #ifdef OPLUS_FEATURE_CHG_BASIC
 /* Jianchao.Shi@BSP.CHG.Basic, 2018/05/25, sjc Add for usbtemp */
+	if (oplus_usbtemp_check_is_support() == true)
+		oplus_usbtemp_thread_init();
 	oplus_chip->con_volt = con_volt_855;
 	oplus_chip->con_temp = con_temp_855;
 	oplus_chip->len_array = ARRAY_SIZE(con_temp_855);
-	if (oplus_usbtemp_check_is_support() == true)
-		oplus_usbtemp_thread_init();
 #endif
 	smb5_create_debugfs(chip);
 

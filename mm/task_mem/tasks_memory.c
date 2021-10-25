@@ -33,7 +33,7 @@ static unsigned long get_gpumem_by_pid(pid_t pid, int mem_type)
 	private = kgsl_process_private_find(pid);
 	if (!private)
 		return 0;
-	
+
 	if (mem_type == MEM_TYPE_GL_AND_DEV)
 		ret = atomic_long_read(&(private->stats[KGSL_MEM_ENTRY_KERNEL].cur)) >> 10;
 	else if (mem_type == MEM_TYPE_EGL)
@@ -51,9 +51,6 @@ static int show_uid_limit = 0;
 static int just_show_one_uid = JUST_IGNORE;
 static int just_show_one_pid = JUST_IGNORE;
 
-
-static LIST_HEAD(user_task_head);
-
 struct process_mem {
 	char comm[TASK_COMM_LEN];
 	int pid;
@@ -70,13 +67,6 @@ static struct process_mem pmem[1024];
 
 void update_user_tasklist(struct task_struct *tsk)
 {
-	if (!tsk)
-		return;
-
-	if (tsk->flags & PF_KTHREAD) {
-		return;
-	}
-	list_add_tail_rcu(&tsk->user_tasks, &user_task_head);
 }
 EXPORT_SYMBOL_GPL(update_user_tasklist);
 

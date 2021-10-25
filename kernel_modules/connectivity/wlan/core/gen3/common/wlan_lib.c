@@ -2035,6 +2035,11 @@ VOID wlanReleaseCommand(IN P_ADAPTER_T prAdapter, IN P_CMD_INFO_T prCmdInfo, IN 
 			kalSecurityFrameSendComplete(prAdapter->prGlueInfo, prCmdInfo->prPacket, WLAN_STATUS_FAILURE);
 			/* Avoid skb multiple free */
 			prMsduInfo->prPacket = NULL;
+                        #ifdef OPLUS_BUG_STABILITY
+                        //kongxianghui@CONNECTIVITY.WIFI.BASE.CRASH.773336, 2020/12/9
+                        //add for: set pointer is NULL
+			prCmdInfo->prPacket = NULL;
+                        #endif /* OPLUS_BUG_STABILITY */
 		}
 
 		DBGLOG(INIT, INFO,
@@ -3756,6 +3761,11 @@ VOID wlanSecurityFrameTxDone(IN P_ADAPTER_T prAdapter, IN P_CMD_INFO_T prCmdInfo
 	/* Clear the flag when Eapol frame tx Done */
 	GET_BSS_INFO_BY_INDEX(prAdapter, prCmdInfo->ucBssIndex)->fgUnencryptedEapol = FALSE;
 	kalSecurityFrameSendComplete(prAdapter->prGlueInfo, prCmdInfo->prPacket, WLAN_STATUS_SUCCESS);
+        #ifdef OPLUS_BUG_STABILITY
+        //kongxianghui@CONNECTIVITY.WIFI.BASE.CRASH.773336, 2020/12/9
+        //add for: set pointer is NULL
+	prCmdInfo->prPacket = NULL;
+        #endif /* OPLUS_BUG_STABILITY */
 }
 
 /*----------------------------------------------------------------------------*/
@@ -3775,6 +3785,11 @@ VOID wlanSecurityFrameTxTimeout(IN P_ADAPTER_T prAdapter, IN P_CMD_INFO_T prCmdI
 	ASSERT(prCmdInfo);
 
 	kalSecurityFrameSendComplete(prAdapter->prGlueInfo, prCmdInfo->prPacket, WLAN_STATUS_FAILURE);
+        #ifdef OPLUS_BUG_STABILITY
+        //kongxianghui@CONNECTIVITY.WIFI.BASE.CRASH.773336, 2020/12/9
+        //add for: set pointer is NULL
+	prCmdInfo->prPacket = NULL;
+        #endif /* OPLUS_BUG_STABILITY */
 }
 
 /*----------------------------------------------------------------------------*/

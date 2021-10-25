@@ -91,7 +91,6 @@ extern struct oplus_chg_operations  oplus_chg_rt9471_ops;
 extern struct oplus_chg_operations  oplus_chg_rt9467_ops;
 extern struct oplus_chg_operations  oplus_chg_bq2589x_ops;
 extern struct oplus_chg_operations  oplus_chg_bq2591x_ops;
-extern struct oplus_chg_operations  oplus_chg_sy6974_ops;
 /*Shouli.Wang@ODM_WT.BSP.CHG 2019/11/12, add for usbtemp*/
 struct iio_channel *usb_chan1; //usb_temp_auxadc_channel 1
 struct iio_channel *usb_chan2; //usb_temp_auxadc_channel 2
@@ -147,18 +146,6 @@ extern void oplus_chg_turn_off_charging(struct oplus_chg_chip *chip);
 #define USB_DONOT_USE		0x80000000//bit31
 static int usb_status = 0;
 #ifndef CONFIG_HIGH_TEMP_VERSION
-
-void oplus_chg_set_camera_on(bool val)
-{
-	if (!g_oplus_chip) {
-		return;
-	} else {
-		g_oplus_chip->camera_on = val;
-		chg_err("camera status is :%d\n", val);
-	}
-}
-EXPORT_SYMBOL(oplus_chg_set_camera_on);
-
 static void oplus_set_usb_status(int status)
 {
 	usb_status = usb_status | status;
@@ -3954,24 +3941,7 @@ static int battery_set_property(struct power_supply *psy,
 static int battery_get_property(struct power_supply *psy,
 	enum power_supply_property psp, union power_supply_propval *val)
 {
-	int rc = 0;
-	if (!g_oplus_chip) {
-                pr_err("%s, oplus_chip null\n", __func__);
-                return -1;
-    }
-
-	switch (psp) {
-	case POWER_SUPPLY_PROP_CAPACITY_LEVEL:
-		val->intval = POWER_SUPPLY_CAPACITY_LEVEL_NORMAL;
-		if (g_oplus_chip && (g_oplus_chip->ui_soc == 0)) {
-			val->intval = POWER_SUPPLY_CAPACITY_LEVEL_CRITICAL;
-			chg_err("bat pro POWER_SUPPLY_CAPACITY_LEVEL_CRITICAL, should shutdown!!!\n");
-		}
-		break;
-	default:
-		rc = oplus_battery_get_property(psy, psp, val);
-		break;
-	}
+	oplus_battery_get_property(psy, psp, val);
 	return 0;
 }
 
@@ -4066,7 +4036,6 @@ static enum power_supply_property battery_properties[] = {
 /*Shouli.Wang@ODM_WT.BSP.CHG 2019/11/25, add for battery info node*/
 	POWER_SUPPLY_PROP_BAT_ID_VOLT,
 	POWER_SUPPLY_PROP_BAT_TYPE,
-	POWER_SUPPLY_PROP_CAPACITY_LEVEL,
 };
 
 
@@ -4396,17 +4365,7 @@ static int oplus_charger_probe(struct platform_device *pdev)
 					case (1<<BQ2591X|1<<BQ2589X):
 						oplus_chip->chg_ops = &oplus_chg_bq2589x_ops;
 						oplus_chip->sub_chg_ops = &oplus_chg_bq2591x_ops;
-						chg_err("charger IC match successful (1)\n");
-						break;
-					case (1<<RT9471D|1<<BQ2589X):
-						oplus_chip->chg_ops = &oplus_chg_bq2589x_ops;
-						oplus_chip->sub_chg_ops = &oplus_chg_rt9471_ops;
-						chg_err("charger IC match successful (2)\n");
-						break;
-					case (1<<SY6974|1<<BQ2589X):
-						oplus_chip->chg_ops = &oplus_chg_bq2589x_ops;
-						oplus_chip->sub_chg_ops = &oplus_chg_sy6974_ops;
-						chg_err("charger IC match successful (3)\n");
+						chg_err("charger IC match successful\n");
 						break;
 					default:
 						oplus_chip->chg_ops = &oplus_chg_default_ops;
@@ -4416,11 +4375,6 @@ static int oplus_charger_probe(struct platform_device *pdev)
 				switch(charger_ic__det_flag) {
 					case (1<<RT9471D):
 						oplus_chip->chg_ops = &oplus_chg_rt9471_ops;
-						chg_err("charger IC match successful (5)\n");
-						break;
-					case (1<<BQ2589X):
-						oplus_chip->chg_ops = &oplus_chg_bq2589x_ops;
-						chg_err("charger IC match successful (6)\n");
 						break;
 					default:
 						oplus_chip->chg_ops = &oplus_chg_default_ops;

@@ -464,8 +464,7 @@ static int lcm_unprepare(struct drm_panel *panel)
 	return 0;
 }
 
-/* extern int power_mode; */
-static int power_mode = 2;
+extern int power_mode;
 static int lcm_prepare(struct drm_panel *panel)
 {
 	struct lcm *ctx = panel_to_lcm(panel);
@@ -939,7 +938,9 @@ static int lcm_setbacklight_cmdq(void *dsi, dcs_write_gce cb,
 /* #endif */ /* OPLUS_BUG_STABILITY */
 
 	/*add for global hbm*/
-	if(level <= 1023){
+	if (level == 1 || mapped_level == 1) {
+		pr_info("enter aod mode, ignore set backlight to 1\n");
+	} else if (level <= 1023){
 	    if(flag_writ == 3||flag_writ == 0){
 			bl_tb1[1] = 0x20;
 			cb(dsi, handle, bl_tb1, ARRAY_SIZE(bl_tb1));
@@ -1210,6 +1211,7 @@ static struct mtk_panel_params ext_params = {
 	.hbm_en_time = 2,
 	.hbm_dis_time = 1,
 	.oplus_panel_cv_switch = 1,
+	.oplus_no_reset_before_aod_enable = 1,
 };
 
 static struct mtk_panel_funcs ext_funcs = {

@@ -30,7 +30,7 @@
 
 #include "gc2375hmipi_Sensor.h"
 /* Zhen.Quan@Camera.Driver, 2019/10/17, add for [otp bringup] */
-#include "imgsensor_read_eeprom.h"
+//#include "imgsensor_read_eeprom.h"
 #define ENABLE_GC2375H_HLT_OTP 1
 
 /**************** Modify Following Strings for Debug ******************/
@@ -707,12 +707,12 @@ static kal_uint32 get_imgsensor_id(UINT32 *sensor_id)
 			*sensor_id = return_sensor_id();
 			if (*sensor_id == imgsensor_info.sensor_id) {
 				/* Zhen.Quan@Camera.Driver, 2019/10/17, add for [otp bringup] */
-#if 1
+#if 0
 				if(!check_otp_data(&monetx_hlt_macro_gc2375h_eeprom_data, monetx_hlt_macro_gc2375h_checksum, sensor_id)){
 					break;
 				} else {
 					/*xiaojun.Pu@Camera.Driver, 2019/10/15, add for [add hardware_info for factory]*/
-					//hardwareinfo_set_prop(HARDWARE_MONO_CAM_MOUDULE_ID, "Hlt");
+					hardwareinfo_set_prop(HARDWARE_MONO_CAM_MOUDULE_ID, "Hlt");
 				}
 #endif
 				cam_pr_debug("i2c write id: 0x%x, sensor id: 0x%x\n",

@@ -407,4 +407,11 @@ config OPLUS_FEATURE_KTV_V2_NONDAPM
 	default n
 	help
 	This will enable KTV feature
+
+#Liang.Wang@MULTIMEDIA.AUDIODRIVER.SMARTPA, 2020/11/01, add for sia algorithm
+config SND_SOC_CODEC_SIA_ALG
+	bool "sia algorithm"
+	default n
+	help
+	This will enable sia algorithm
 #endif /* OPLUS_ARCH_EXTENDS */

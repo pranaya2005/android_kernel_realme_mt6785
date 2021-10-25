@@ -304,6 +304,9 @@ extern unsigned long silence_mode;
 extern unsigned long long last_te_time;
 //#endif
 
+/* liwei.a@PSW.MM.feature.onfingerprint, 2020/11/05, add for finger unlock */
+extern void hbm_notify_fingerprint_if_neccessary(void);
+
 //#ifdef OPLUS_FEATURE_ESD
 /* shangruofan@PSW.MM.DisplayDriver.esd, 2020/4/4, add for esd recovery*/
 extern unsigned long esd_flag;
@@ -317,6 +320,7 @@ extern unsigned char aod_area_set_flag;
 //#ifdef OPLUS_FEATURE_ONFINGERPRINT
 /* liwei.a@PSW.MM.feature.onfingerprint, 2020/11/05, add for finger unlock */
 extern void hbm_notify_fingerprint_if_neccessary(void);
+extern void hbm_notify_fingerprint_if_neccessary_vdo(void);
 //#endif
 
 static const char * const mtk_dsi_porch_str[] = {
@@ -1465,7 +1469,10 @@ static irqreturn_t mtk_dsi_irq_status(int irq, void *dev_id)
 				priv = mtk_crtc->base.dev->dev_private;
 			if (priv && mtk_drm_helper_get_opt(priv->helper_opt,
 				MTK_DRM_OPT_DSI_UNDERRUN_AEE)) {
-				if (dsi_underrun_trigger == 1) {
+				//#ifdef OPLUS_BUG_STABILITY
+				/* gaoxiaolei@PSW.MM.Display.LCD.Stability 2020/12/02, add for debug underrun issue */
+				if ((dsi_underrun_trigger % 10) == 1) {
+				//#endif
 					DDPAEE(
 						"[IRQ] %s:buffer underrun,sys_time=%u\n",
 						mtk_dump_comp_str(
@@ -1477,8 +1484,13 @@ static irqreturn_t mtk_dsi_irq_status(int irq, void *dev_id)
 						mtk_drm_crtc_dump(
 							dsi->encoder.crtc);
 					}
-					dsi_underrun_trigger = 0;
 				}
+				//#ifdef OPLUS_BUG_STABILITY
+				/* gaoxiaolei@PSW.MM.Display.LCD.Stability 2020/12/02, add for debug underrun issue */
+				dsi_underrun_trigger++;
+				if ((dsi_underrun_trigger % 10) == 0)
+					dsi_underrun_trigger = 0;
+				//#endif
 			}
 
 #if defined(CONFIG_MACH_MT6873) || defined(CONFIG_MACH_MT6853) \
@@ -1574,9 +1586,11 @@ static irqreturn_t mtk_dsi_irq_status(int irq, void *dev_id)
 			if (mtk_crtc && mtk_crtc->base.dev)
 				priv = mtk_crtc->base.dev->dev_private;
 			if (priv && mtk_drm_helper_get_opt(priv->helper_opt,
-							   MTK_DRM_OPT_HBM))
+							   MTK_DRM_OPT_HBM)){
 				wakeup_dsi_wq(&dsi->frame_done);
-
+				/* shangruofan@PSW.MM.feature.onfingerprint, 2020/12/30, add for finger unlock */
+				hbm_notify_fingerprint_if_neccessary_vdo();
+			}
 			if (!mtk_dsi_is_cmd_mode(&dsi->ddp_comp) &&
 				mtk_crtc && mtk_crtc->vblank_en)
 				mtk_crtc_vblank_irq(&mtk_crtc->base);
@@ -1770,6 +1784,15 @@ static void mtk_output_en_doze_switch(struct mtk_dsi *dsi)
 	}
 
 	/* Change LCM Doze mode */
+	#ifndef OPLUS_BUG_STABILITY
+	/* Zhijun.Ye@MM.Display.LCD.Stability, 2020/11/23, modify for aod */
+	if (doze_enabled && panel_funcs->doze_enable_start)
+		panel_funcs->doze_enable_start(dsi->panel, dsi,
+			mipi_dsi_dcs_write_gce2, NULL);
+	else if (!doze_enabled && panel_funcs->doze_disable)
+		panel_funcs->doze_disable(dsi->panel, dsi,
+			mipi_dsi_dcs_write_gce2, NULL);
+	#else /* OPLUS_BUG_STABILITY */
 	if (doze_enabled && panel_funcs->doze_enable_start) {
 		if(dsi->ext->params->oplus_panel_cv_switch){
 			panel_funcs->reset(dsi->panel,0);
@@ -1778,10 +1801,11 @@ static void mtk_output_en_doze_switch(struct mtk_dsi *dsi)
 		}
 		panel_funcs->doze_enable_start(dsi->panel, dsi,
 			mipi_dsi_dcs_write_gce2, NULL);
-	}
-	else if (!doze_enabled && panel_funcs->doze_disable)
+	} else if (!doze_enabled && panel_funcs->doze_disable) {
 		panel_funcs->doze_disable(dsi->panel, dsi,
 			mipi_dsi_dcs_write_gce2, NULL);
+	}
+	#endif /* OPLUS_BUG_STABILITY */
 
 	/* Display mode switch */
 	if (panel_funcs->doze_get_mode_flags) {
@@ -1790,14 +1814,6 @@ static void mtk_output_en_doze_switch(struct mtk_dsi *dsi)
 
 		/* set DSI into ULPS mode */
 		mtk_dsi_reset_engine(dsi);
-
-		#ifdef OPLUS_BUG_STABILITY
-		/* Zhijun.Ye@MM.Display.LCD.Stability, 2020/12/09, add for aod */
-		if(doze_enabled){
-			DDPINFO("%s msleep 80ms\n",__func__);
-			msleep(80);
-		}
-		#endif /* OPLUS_BUG_STABILITY */
 
 		dsi->mode_flags =
 			panel_funcs->doze_get_mode_flags(
@@ -1970,6 +1986,14 @@ static void mtk_output_dsi_enable(struct mtk_dsi *dsi,
 		return;
 	}
 
+	#ifdef OPLUS_BUG_STABILITY
+	/*liwei.a@PSW.MM.Display.LCD.Stability, add for novatek IC, 2020/06/01*/
+	if (ext && ext->funcs
+            && ext->funcs->nt_reset){
+		ext->funcs->nt_reset(dsi->panel, 0);
+	}
+	#endif /* OPLUS_BUG_STABILITY */
+
 	mtk_dsi_enable(dsi);
 	mtk_dsi_phy_timconfig(dsi, NULL);
 
@@ -2033,9 +2057,18 @@ static void mtk_output_dsi_enable(struct mtk_dsi *dsi,
 
 		if (new_doze_state && !dsi->doze_enabled) {
 			if (ext && ext->funcs &&
-				ext->funcs->doze_enable_start)
+				ext->funcs->doze_enable_start){
+				if(ext->params->oplus_panel_cv_switch){
+						if(ext->params->oplus_no_reset_before_aod_enable) {
+						} else {
+							ext->funcs->reset(dsi->panel,0);
+							msleep(2);
+							ext->funcs->reset(dsi->panel,1);
+						}
+				}
 				ext->funcs->doze_enable_start(dsi->panel, dsi,
 					mipi_dsi_dcs_write_gce2, NULL);
+			}
 			if (ext && ext->funcs
 				&& ext->funcs->doze_enable)
 				ext->funcs->doze_enable(dsi->panel, dsi,
@@ -2105,6 +2138,38 @@ err_dsi_power_off:
 	mtk_dsi_poweroff(dsi);
 }
 
+static int mtk_drm_crtc_set_panel_disp(struct drm_crtc *crtc, enum mtk_ddp_io_cmd io_cmd)
+{
+	struct mtk_drm_crtc *mtk_crtc = to_mtk_crtc(crtc);
+	struct mtk_ddp_comp *comp = mtk_ddp_comp_request_output(mtk_crtc);
+	struct cmdq_pkt *cmdq_handle;
+	#ifndef VENDOR_EDIT
+	/* liwei.a@PSW.MM.DisplayDriver.Stability, 2019/12/06, modify for cmdq timeout issue*/
+	bool is_frame_mode;
+	#endif
+	//bool state = false;
+
+	if (!(comp && comp->funcs && comp->funcs->io_cmd))
+		return -EINVAL;
+
+
+	if (!(mtk_crtc->enabled)) {
+		DDPINFO("%s: skip, slept\n", __func__);
+		return -EINVAL;
+	}
+
+	//mtk_drm_send_lcm_cmd_prepare(crtc, &cmdq_handle);
+
+	comp->funcs->io_cmd(comp, cmdq_handle, io_cmd, NULL);
+
+
+	DDPPR_ERR("%s+\n", __func__);
+	//mtk_drm_send_lcm_cmd_flush(crtc, &cmdq_handle, 1);
+	DDPPR_ERR("%s-\n", __func__);
+
+	return 0;
+}
+
 static int mtk_dsi_stop_vdo_mode(struct mtk_dsi *dsi, void *handle);
 static int mtk_dsi_wait_cmd_frame_done(struct mtk_dsi *dsi,
 	int force_lcm_update)
@@ -2148,7 +2213,7 @@ static void mtk_output_dsi_disable(struct mtk_dsi *dsi,
 {
 	bool new_doze_state = mtk_dsi_doze_state(dsi);
 	struct mtk_drm_crtc *mtk_crtc = to_mtk_crtc(dsi->encoder.crtc);
-
+	struct mtk_panel_ext *ext = dsi->ext;
 	DDPINFO("%s+ doze_enabled:%d\n", __func__, new_doze_state);
 	//#ifdef OPLUS_FEATURE_AOD
 	/* liwei.a@PSW.MM.DisplayDriver.AOD, 2019/11/15, add for aod*/
@@ -2173,7 +2238,12 @@ static void mtk_output_dsi_disable(struct mtk_dsi *dsi,
 			return;
 		}
 	}
-
+#ifdef OPLUS_BUG_STABILITY
+	/* Zepu.Zhang@PSW.MM.Display.LCD.Power 2020/11/19, add for oled ic timming */
+	if(!new_doze_state) {
+		mtk_drm_crtc_set_panel_disp(dsi->encoder.crtc, DISP_OFF);
+	}
+#endif /* OPLUS_BUG_STABILITY */
 	/* 2. If VDO mode, stop it and set to CMD mode */
 	if (!mtk_dsi_is_cmd_mode(&dsi->ddp_comp))
 		mtk_dsi_stop_vdo_mode(dsi, NULL);
@@ -2199,6 +2269,13 @@ static void mtk_output_dsi_disable(struct mtk_dsi *dsi,
 	mtk_dsi_stop(dsi);
 
 	mtk_dsi_poweroff(dsi);
+	/* liwei.a@PSW.MM.DisplayDriver.Stability, 2019/12/08,
+	 * modify to fix this issue occurs in stutiation that hwc power mode from 1->0->2*/
+	if (ext->funcs->doze_get_mode_flags) {
+		dsi->mode_flags =
+			ext->funcs->doze_get_mode_flags(
+				dsi->panel, new_doze_state);
+	}
 	dsi->output_en = false;
 	dsi->doze_enabled = new_doze_state;
 	DDPINFO("%s-\n", __func__);
@@ -3080,7 +3157,10 @@ unsigned int mtk_dsi_fps_change_index(struct mtk_dsi *dsi,
 
 	if (get_panel_ext) {
 		cur_panel_params = get_panel_ext->params;
+		#ifndef OPLUS_BUG_STABILITY
+		/* Zhijun.Ye@MM.DisplayDriver.Stability, 2021/01/02, delete for dyfps */
 		adjust_panel_params = get_panel_ext->params;
+		#endif /* OPLUS_BUG_STABILITY */
 	}
 
 	if (panel_ext && panel_ext->funcs &&
@@ -3092,6 +3172,13 @@ unsigned int mtk_dsi_fps_change_index(struct mtk_dsi *dsi,
 	if (new_get_sta)
 		DDPINFO("%s,error:not support dst MODE:(%d)\n", __func__,
 			dst_mode_idx);
+
+	#ifdef OPLUS_BUG_STABILITY
+	/* Zhijun.Ye@MM.DisplayDriver.Stability, 2021/01/02, add for dyfps */
+	if (get_panel_ext) {
+		adjust_panel_params = get_panel_ext->params;
+	}
+	#endif /* OPLUS_BUG_STABILITY */
 
 	if (!(dsi->mipi_hopping_sta && adjust_panel_params &&
 		cur_panel_params && cur_panel_params->dyn.switch_en &&
@@ -3447,6 +3534,14 @@ static void mtk_dsi_clk_change(struct mtk_dsi *dsi, int en)
 		goto done;
 	}
 
+	/* #ifdef OPLUS_BUG_STABILITY */
+	/* Jian.Zhou@MM.Display.LCD.Stability, 2020/11/12, fix for screen problem caused by mipi hoping */
+	if (dsi->mode_flags & MIPI_DSI_MODE_VIDEO) {
+		mtk_dsi_phy_timconfig(dsi, NULL);
+		mtk_dsi_calc_vdo_timing(dsi);
+	}
+	/* #endif */
+
 	if (dsi->mode_flags & MIPI_DSI_MODE_VIDEO)
 		mtk_crtc_pkt_create(&cmdq_handle, &mtk_crtc->base,
 				mtk_crtc->gce_obj.client[CLIENT_DSI_CFG]);
@@ -3455,12 +3550,18 @@ static void mtk_dsi_clk_change(struct mtk_dsi *dsi, int en)
 			mtk_crtc->gce_obj.client[CLIENT_CFG]);
 
 	if (dsi->mode_flags & MIPI_DSI_MODE_VIDEO) {
-		mtk_dsi_calc_vdo_timing(dsi);
+		/* #ifndef OPLUS_BUG_STABILITY */
+		/* Jian.Zhou@MM.Display.LCD.Stability, 2020/11/12, fix for screen problem caused by mipi hoping */
+		/* mtk_dsi_calc_vdo_timing(dsi); */
+		/* #endif */
 
 		cmdq_pkt_wait_no_clear(cmdq_handle,
 			mtk_crtc->gce_obj.event[EVENT_VDO_EOF]);
 
-		mtk_dsi_phy_timconfig(dsi, cmdq_handle);
+		/* #ifndef OPLUS_BUG_STABILITY */
+		/* Jian.Zhou@MM.Display.LCD.Stability, 2020/11/12, fix for screen problem caused by mipi hoping */
+		/* mtk_dsi_phy_timconfig(dsi, cmdq_handle); */
+		/* #endif */
 
 		if (mod_hfp)
 			mtk_dsi_porch_setting(comp, cmdq_handle, DSI_HFP,
@@ -3481,6 +3582,13 @@ static void mtk_dsi_clk_change(struct mtk_dsi *dsi, int en)
 		if (mod_vsa)
 			mtk_dsi_porch_setting(comp, cmdq_handle,
 				DSI_VSA, dsi->vsa);
+
+		/* #ifdef OPLUS_BUG_STABILITY */
+		/* Jian.Zhou@MM.Display.LCD.Stability, 2020/11/12, fix for screen problem caused by mipi hoping */
+		if (mod_vfp)
+			mtk_dsi_porch_setting(comp, cmdq_handle,
+				DSI_VFP, dsi->vfp);
+		/* #endif */
 	}
 
 	mtk_mipi_tx_pll_rate_switch_gce(dsi->phy, cmdq_handle, data_rate);
@@ -3491,9 +3599,12 @@ static void mtk_dsi_clk_change(struct mtk_dsi *dsi, int en)
 		cmdq_pkt_wait_no_clear(cmdq_handle,
 			mtk_crtc->gce_obj.event[EVENT_DSI0_SOF]);
 
-		if (mod_vfp)
-			mtk_dsi_porch_setting(comp, cmdq_handle,
-				DSI_VFP, dsi->vfp);
+		/* #ifndef OPLUS_BUG_STABILITY */
+		/* Jian.Zhou@MM.Display.LCD.Stability, 2020/11/12, fix for screen problem caused by mipi hoping */
+		/* if (mod_vfp) */
+			/* mtk_dsi_porch_setting(comp, cmdq_handle, */
+				/* DSI_VFP, dsi->vfp); */
+		/* #endif */
 	}
 
 	cmdq_pkt_flush(cmdq_handle);
@@ -5286,6 +5397,23 @@ static int mtk_dsi_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 	}
 		break;
 	#ifdef OPLUS_BUG_STABILITY
+	/* Jian.Zhou@MM.Display.LCD.Machine 2020/11/28, add safe mode */
+	case DSI_SET_SAFE_MODE:
+	{
+		struct mtk_dsi *dsi =
+			container_of(comp, struct mtk_dsi, ddp_comp);
+
+		DDPPR_ERR("dsi_set_safe_mode\n");
+		panel_ext = mtk_dsi_get_panel_ext(comp);
+		if (panel_ext && panel_ext->funcs
+			&& panel_ext->funcs->set_safe_mode)
+			panel_ext->funcs->set_safe_mode(dsi,
+					mipi_dsi_dcs_write_gce,
+					handle, *(int *)params);
+	}
+		break;
+	#endif /* OPLUS_BUG_STABILITY */
+	#ifdef OPLUS_BUG_STABILITY
 	/* Zhijun.Ye@PSW.MM.Display.LCD.Machine 2020/10/23, add for dc cmd timing */
 	case DC_BACKLIGHT:
 	{
@@ -5298,6 +5426,20 @@ static int mtk_dsi_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 			panel_ext->funcs->set_dc_backlight(dsi,
 					mipi_dsi_dcs_write_gce,
 					handle, *(int *)params);
+		}
+	}
+		break;
+	/*shangruofan@PSW.MM.LCD.Display.Stability, 2020/2/8, add for cabc*/
+	case LCM_CABC:
+	{
+		struct mtk_dsi *dsi =
+			container_of(comp, struct mtk_dsi, ddp_comp);
+
+		panel_ext = mtk_dsi_get_panel_ext(comp);
+		if (dsi->ext && dsi->ext->funcs
+			&& dsi->ext->funcs->cabc_switch) {
+			DDPINFO("%s cabc_switch\n", __func__);
+			dsi->ext->funcs->cabc_switch(dsi,mipi_dsi_dcs_write_gce,handle,*(int *)params);
 		}
 	}
 		break;
@@ -5515,7 +5657,19 @@ static int mtk_dsi_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 			//#endif
 	}
 		break;
+	case DISP_OFF:
+	{
+		struct mtk_dsi *dsi =
+			container_of(comp, struct mtk_dsi, ddp_comp);
 
+		panel_ext = mtk_dsi_get_panel_ext(comp);
+		if (dsi->ext && dsi->ext->funcs
+			&& dsi->ext->funcs->panel_disp_off) {
+			DDPINFO("%s disp off\n", __func__);
+			dsi->ext->funcs->panel_disp_off(dsi,mipi_dsi_dcs_write_gce2,handle);
+		}
+	}
+		break;
 	case DSI_SET_BL_GRP:
 	{
 		struct mtk_dsi *dsi =
@@ -5698,34 +5852,6 @@ static int mtk_dsi_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 
 		mtk_dsi_set_mmclk_by_datarate(dsi, crtc, *pixclk);
 #endif
-	}
-		break;
-//#ifdef OPLUS_BUG_STABILITY
-/*Jinzhu.Han@RM.MM.LCD.Display.Stability, 2020/08/06, add for flicker when close DC */
-	case DC_POST_EXIT:
-	{
-		struct mtk_dsi *dsi =
-			container_of(comp, struct mtk_dsi, ddp_comp);
-
-		panel_ext = mtk_dsi_get_panel_ext(comp);
-		if (dsi->ext && dsi->ext->funcs
-			&& dsi->ext->funcs->lcm_dc_post_exitd) {
-			DDPINFO("%s lcm_dc_post_exitd\n", __func__);
-			dsi->ext->funcs->lcm_dc_post_exitd(dsi,mipi_dsi_dcs_write_gce,handle);
-		}
-	}
-		break;
-//#endif
-	case LCM_CABC:
-	{
-		struct mtk_dsi *dsi =
-			container_of(comp, struct mtk_dsi, ddp_comp);
-		panel_ext = mtk_dsi_get_panel_ext(comp);
-		if (dsi->ext && dsi->ext->funcs
-			&& dsi->ext->funcs->cabc_switch) {
-			DDPINFO("%s cabc_switch\n", __func__);
-			dsi->ext->funcs->cabc_switch(dsi,mipi_dsi_dcs_write_gce,handle,*(int *)params);
-		}
 	}
 		break;
 	case GET_FRAME_HRT_BW_BY_DATARATE:

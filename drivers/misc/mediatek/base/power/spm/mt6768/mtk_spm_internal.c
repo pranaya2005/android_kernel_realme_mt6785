@@ -22,6 +22,12 @@
 #define WORLD_CLK_CNTCV_H        (0x1001700C)
 static u32 pcm_timer_ramp_max_sec_loop = 1;
 
+u64 ap_pd_count;
+u64 ap_slp_duration;
+
+u64 spm_26M_off_count;
+u64 spm_26M_off_duration;
+
 const char *wakesrc_str[32] = {
 	[0] = " R12_PCM_TIMER",
 	[1] = " R12_SSPM_WDT_EVENT_B",
@@ -159,6 +165,35 @@ void __spm_get_wakeup_status(struct wake_status *wakesta)
 
 	/* get ISR status */
 	wakesta->isr = spm_read(SPM_IRQ_STA);
+}
+
+#define AVOID_OVERFLOW (0xFFFFFFFF00000000)
+void __spm_save_ap_sleep_info(struct wake_status *wakesta)
+{
+        if (ap_pd_count >= AVOID_OVERFLOW)
+                ap_pd_count = 0;
+        else
+                ap_pd_count++;
+
+        if (ap_slp_duration >= AVOID_OVERFLOW)
+                ap_slp_duration = 0;
+        else
+                ap_slp_duration = ap_slp_duration + wakesta->timer_out;
+}
+
+void __spm_save_26m_sleep_info(void)
+{
+        if (spm_26M_off_count >= AVOID_OVERFLOW)
+                spm_26M_off_count = 0;
+        else
+                spm_26M_off_count = (spm_read(SPM_26M_COUNT) & 0xffff)
+                        + spm_26M_off_count;
+
+        if (spm_26M_off_duration >= AVOID_OVERFLOW)
+                spm_26M_off_duration = 0;
+        else
+                spm_26M_off_duration = spm_26M_off_duration +
+                        spm_read(SPM_SW_RSV_4);
 }
 
 unsigned int __spm_output_wake_reason(

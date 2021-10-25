@@ -312,6 +312,21 @@ static __init int mrdump_parse_chosen(void)
 	return -1;
 }
 
+#ifdef CONFIG_MODULES
+/* Module notifier call back, update module info list */
+static int mrdump_module_callback(struct notifier_block *nb,
+				  unsigned long val, void *data)
+{
+	if (val == MODULE_STATE_LIVE)
+		mrdump_modules_info(NULL, -1);
+	return NOTIFY_DONE;
+}
+
+static struct notifier_block mrdump_module_nb = {
+	.notifier_call = mrdump_module_callback,
+};
+#endif
+
 static int __init mrdump_panic_init(void)
 {
 	mrdump_parse_chosen();
@@ -336,6 +351,9 @@ static int __init mrdump_panic_init(void)
 
 	atomic_notifier_chain_register(&panic_notifier_list, &panic_blk);
 	register_die_notifier(&die_blk);
+#ifdef CONFIG_MODULES
+	register_module_notifier(&mrdump_module_nb);
+#endif
 	pr_debug("ipanic: startup\n");
 	return 0;
 }
@@ -405,6 +423,7 @@ inline void aee_print_bt(struct pt_regs *regs)
 		aee_nested_printf("invalid sp[%lx]\n", (unsigned long)regs);
 		return;
 	}
+	memset(&cur_frame, 0, sizeof(cur_frame));
 	high = ALIGN(bottom, THREAD_SIZE);
 	cur_frame.fp = regs->reg_fp;
 	cur_frame.pc = regs->reg_pc;

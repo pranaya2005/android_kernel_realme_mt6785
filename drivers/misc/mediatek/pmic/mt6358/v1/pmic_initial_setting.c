@@ -233,4 +233,5 @@ void PMIC_LP_INIT_SETTING(void)
 #endif /*LP_INIT_SETTING_VERIFIED*/
 
 	PMIC_CUST_SETTING();
+	pmic_config_interface(0xa0e,2,3,4);
 }

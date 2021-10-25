@@ -267,7 +267,10 @@ int gf_parse_dts(struct gf_dev* gf_dev)
     }
 
     /*determine if it's optical*/
-    if (FP_GOODIX_5658 == get_fpsensor_type() || FP_GOODIX_3626 == get_fpsensor_type()) { //add new fpsensor if needed
+    if ( FP_GOODIX_5658 == get_fpsensor_type()
+         || FP_GOODIX_3626 == get_fpsensor_type()
+         || FP_GOODIX_3688 == get_fpsensor_type()
+         || FP_GOODIX_3636 == get_fpsensor_type() ) { //add new fpsensor if needed
         gf_dev->is_optical = false;
     }
     else {
@@ -476,7 +479,7 @@ int gf_hw_reset(struct gf_dev *gf_dev, unsigned int delay_ms)
 	}
 
 	gpio_set_value(gf_dev->reset_gpio, 0);
-	mdelay(delay_ms);
+	mdelay(20);
 	gpio_set_value(gf_dev->reset_gpio, 1);
         if (gf_dev->cs_gpio_set) {
                 pr_info("---- pull CS up and set CS from gpio to func ----");
@@ -487,7 +490,20 @@ int gf_hw_reset(struct gf_dev *gf_dev, unsigned int delay_ms)
 	mdelay(delay_ms);
 	return 0;
 }
-
+int gf_power_reset(struct gf_dev *gf_dev)
+{
+       if(gf_dev == NULL) {
+            pr_info("Input buff is NULL.\n");
+            return -1;
+       }
+       gpio_set_value(gf_dev->reset_gpio, 0);
+       gf_power_off(gf_dev);
+       mdelay(50);
+       gf_power_on(gf_dev);
+       gpio_set_value(gf_dev->reset_gpio, 1);
+       mdelay(3);
+       return 0;
+}
 int gf_irq_num(struct gf_dev *gf_dev)
 {
 	if(gf_dev == NULL) {

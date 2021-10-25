@@ -19,7 +19,6 @@
 #include <linux/module.h>
 #include <linux/of.h>
 #include <linux/platform_device.h>
-#include <linux/version.h>
 
 #include <sound/core.h>
 #include <sound/soc.h>
@@ -143,28 +142,17 @@ int soc_sia81xx_init(
 		}
 
 		snprintf(aux_dev_name, strlen("sia81xx.%d"), "sia81xx.%d", i);
-#if (LINUX_VERSION_CODE > KERNEL_VERSION(5,3,18))
-		aux_dev[i].dlc.name = (const char *)aux_dev_name;
-		aux_dev[i].dlc.dai_name = NULL;
-		aux_dev[i].dlc.of_node = dev_of_node;
-#else
 		aux_dev[i].name = (const char *)aux_dev_name;
 		aux_dev[i].codec_name = NULL;
 		aux_dev[i].codec_of_node = dev_of_node;
-#endif
 		aux_dev[i].init = NULL;
 
 		codec_conf[i].dev_name = NULL;
 		codec_conf[i].name_prefix = dev_name_prefix;
 		codec_conf[i].of_node = dev_of_node;
 
-#if (LINUX_VERSION_CODE > KERNEL_VERSION(5,3,18))
-		pr_debug("[debug][%s] : aux_dev = %s \r\n",
-			__func__, aux_dev[i].dlc.name);
-#else
 		pr_debug("[debug][%s] : aux_dev = %s \r\n",
 			__func__, aux_dev[i].name);
-#endif
 	}
 
 	return 0;
@@ -183,20 +171,20 @@ int soc_aux_init_only_sia81xx(
 	aux_num = soc_sia81xx_get_aux_num(pdev);
 	conf_num = soc_sia81xx_get_codec_conf_num(pdev);
 
-	if((aux_num != conf_num) || (0 == aux_num) || (NULL == card->dev)) {
-		pr_err("[  err][%s] : aux_num = %u, conf_num= %u !!! \r\n", 
+	if((aux_num != conf_num) || (0 == aux_num)) {
+		pr_err("[  err][%s] : aux_num = %u, conf_num= %u !!! \r\n",
 			__func__, aux_num, conf_num);
 		return -EINVAL;
 	}
 
 	/* make sure that the "dev_num" must be greater than 0 !!! */
-	aux_dev = devm_kzalloc(card->dev, 
+	aux_dev = devm_kzalloc(card->dev,
 					aux_num * sizeof(struct snd_soc_aux_dev),
 					GFP_KERNEL);
 	if (NULL == aux_dev)
 		return -ENOMEM;
 
-	codec_conf = devm_kzalloc(card->dev, 
+	codec_conf = devm_kzalloc(card->dev,
 					conf_num * sizeof(struct snd_soc_codec_conf),
 					GFP_KERNEL);
 	if (NULL == codec_conf)
@@ -204,7 +192,7 @@ int soc_aux_init_only_sia81xx(
 
 	ret = soc_sia81xx_init(pdev, aux_dev, aux_num, codec_conf, conf_num);
 	if(0 != ret) {
-		pr_err("[  err][%s] : soc_sia81xx_init ret = %d !!! \r\n", 
+		pr_err("[  err][%s] : soc_sia81xx_init ret = %d !!! \r\n",
 			__func__, ret);
 		return ret;
 	}

@@ -350,12 +350,9 @@ int primary_display_get_corner_pattern_height(void);
 void *primary_display_get_corner_pattern_top_va(void);
 void *primary_display_get_corner_pattern_bottom_va(void);
 #endif
-
 #ifdef OPLUS_BUG_STABILITY
-//Tongxing.Liu@ODM_WT.MM.Display.Lcd, 2019/11/26, display timing adaptation
+//HaiQuan.Chen@ODM_WT.MM.Display.Lcd, 2021/02/02, display timing adaptation
 int primary_display_shutdown(void);
-//Zhenzhen.Wu@ODM_WT.MM.Display.Lcd, 2019/12/7, add for multi-lcms
-int _ioctl_get_lcm_module_info(unsigned long arg);
 #endif
 
 int primary_display_get_pages(void);
@@ -420,6 +417,10 @@ int primary_display_pause(PRIMARY_DISPLAY_CALLBACK callback,
 	unsigned int user_data);
 int primary_display_switch_dst_mode(int mode);
 int primary_display_get_lcm_index(void);
+#ifdef OPLUS_BUG_STABILITY
+/* Shangwen.Zeng@WT.Tuning.Display, 2021/02/01, add for multi-lcms */
+int _ioctl_get_lcm_module_info(unsigned long arg);
+#endif
 int primary_display_force_set_fps(unsigned int keep, unsigned int skip);
 int primary_display_set_fps(int fps);
 int primary_display_get_lcm_max_refresh_rate(void);

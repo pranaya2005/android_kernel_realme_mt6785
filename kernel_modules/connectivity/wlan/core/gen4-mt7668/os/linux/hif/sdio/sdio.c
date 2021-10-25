@@ -182,7 +182,7 @@ static const struct dev_pm_ops mtk_sdio_pm_ops = {
 };
 
 static struct sdio_driver mtk_sdio_driver = {
-#ifdef CFG_SUPPORT_DUAL_CARD_DUAL_DRIVER_B
+#if CFG_SUPPORT_DUAL_CARD_DUAL_DRIVER_B
 	.name = "wlanb",        /* "MTK SDIO WLAN Driver" */
 #else
 	.name = "wlan",     /* "MTK SDIO WLAN Driver" */
@@ -333,9 +333,9 @@ INT_32 mtk_sdio_probe(
 int mtk_sdio_probe(struct sdio_func *func, const struct sdio_device_id *id)
 {
 	int ret = 0;
-#if defined(CFG_SUPPORT_DUAL_CARD_DUAL_DRIVER_A)
+#if CFG_SUPPORT_DUAL_CARD_DUAL_DRIVER_A
 #define MMC_FILTER	"mmc1"
-#elif defined(CFG_SUPPORT_DUAL_CARD_DUAL_DRIVER_B)
+#elif CFG_SUPPORT_DUAL_CARD_DUAL_DRIVER_B
 #define MMC_FILTER	"mmc0"
 #endif
 
@@ -371,8 +371,6 @@ int mtk_sdio_probe(struct sdio_func *func, const struct sdio_device_id *id)
 		goto out;
 	}
 #endif
-
-	
 
 	sdio_claim_host(func);
 	ret = sdio_enable_func(func);
@@ -567,11 +565,11 @@ int mtk_sdio_async_irq_enable(struct sdio_func *func)
 	func->card->quirks |= MMC_QUIRK_LENIENT_FN0;
 	/* Write CCCR into card */
 	sdio_f0_writeb(func, data, SDIO_CCCR_IRQ_EXT, &ret);
+	func->card->quirks = quirks_bak;
 	if (ret) {
 		DBGLOG(HAL, ERROR, "CCCR 0x%X write fail (%d).\n", SDIO_CCCR_IRQ_EXT, ret);
 		return FALSE;
 	}
-	func->card->quirks = quirks_bak;
 
 	data = sdio_f0_readb(func, SDIO_CCCR_IRQ_EXT, &ret);
 	if (ret || !(data & SDIO_IRQ_EXT_EAI)) {
@@ -1430,7 +1428,8 @@ VOID kalDevReadIntStatus(IN P_ADAPTER_T prAdapter, OUT PUINT_32 pu4IntStatus)
 #endif /* CFG_SDIO_INTR_ENHANCE */
 
 	if (*pu4IntStatus & ~(WHIER_DEFAULT | WHIER_FW_OWN_BACK_INT_EN)) {
-		DBGLOG(INTR, WARN, "Un-handled HISR %#lx, HISR = %#lx (HIER:0x%lx)\n",
+		DBGLOG(INTR, WARN,
+			"Un-handled HISR %lx, HISR = %lx (HIER:0x%lx)\n",
 		       (*pu4IntStatus & ~WHIER_DEFAULT), *pu4IntStatus, WHIER_DEFAULT);
 		*pu4IntStatus &= WHIER_DEFAULT;
 	}

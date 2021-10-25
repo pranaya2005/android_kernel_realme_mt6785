@@ -5595,8 +5595,8 @@ static int priv_driver_get_sta_stat(IN struct net_device *prNetDev,
 			if (!wlanGetWlanIdxByAddress(prGlueInfo->prAdapter,
 			    &aucMacAddr[0], &ucWlanIndex)) {
 				DBGLOG(REQ, INFO,
-					"wlan index of %pM is not found!\n",
-					aucMacAddr);
+				      "wlan index of "MACSTR" is not found!\n",
+				      MAC2STR(aucMacAddr));
 				goto out;
 			}
 		} else {
@@ -5621,8 +5621,8 @@ static int priv_driver_get_sta_stat(IN struct net_device *prNetDev,
 				prGlueInfo->prAdapter, NULL,
 				&ucWlanIndex)) {
 				DBGLOG(REQ, INFO,
-					"wlan index of %pM is not found!\n",
-					aucMacAddr);
+				      "wlan index of "MACSTR" is not found!\n",
+				      MAC2STR(aucMacAddr));
 				goto out;
 			}
 		} else {
@@ -5642,8 +5642,8 @@ static int priv_driver_get_sta_stat(IN struct net_device *prNetDev,
 			if (!wlanGetWlanIdxByAddress(prGlueInfo->prAdapter,
 			    &aucMacAddr[0], &ucWlanIndex)) {
 				DBGLOG(REQ, INFO,
-					"wlan index of %pM is not found!\n",
-					aucMacAddr);
+				      "wlan index of "MACSTR" is not found!\n",
+				      MAC2STR(aucMacAddr));
 				goto out;
 			}
 		}
@@ -8918,8 +8918,8 @@ int priv_driver_set_ap_get_sta_list(IN struct net_device *prNetDev,
 		i4BytesWritten += kalSnprintf(
 			pcCommand + i4BytesWritten,
 			i4TotalLen - i4BytesWritten,
-			"%pM\n",
-			prCurrStaRec->aucMacAddr);
+			""MACSTR"\n",
+			MAC2STR(prCurrStaRec->aucMacAddr));
 	}
 
 	return i4BytesWritten;

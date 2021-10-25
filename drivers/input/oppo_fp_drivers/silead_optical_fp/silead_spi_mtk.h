@@ -19,12 +19,22 @@ struct wake_lock {
 static inline void wake_lock_init(struct wake_lock *lock, int type,
                                   const char *name)
 {
-    wakeup_source_init(&lock->ws, name);
+    struct wakeup_source *ws = &lock->ws;
+    if (ws) {
+        memset(ws, 0, sizeof(*ws));
+            ws->name = name;
+    }
+    wakeup_source_add(ws);
 }
 
 static inline void wake_lock_destroy(struct wake_lock *lock)
 {
-    wakeup_source_trash(&lock->ws);
+    struct wakeup_source *ws = &lock->ws;
+    wakeup_source_remove(ws);
+    if (!ws) {
+        return;
+    }
+    __pm_relax(ws);
 }
 
 static inline void wake_lock(struct wake_lock *lock)
@@ -114,13 +124,6 @@ struct fp_dev_kmap_t {
 	uint16_t k[NAV_KEY_MAX-NAV_KEY_START];  /* Up/Down/Right/Left/Click/Double Click/Longpress */
 };
 
-struct fp_dev_touch_info {
-    uint8_t touch_state;
-    uint8_t area_rate;
-    uint16_t x;
-    uint16_t y;
-};
-
 #define PROC_VND_ID_LEN   32
 
 #define SIFP_IOC_MAGIC	's'
@@ -148,7 +151,7 @@ struct fp_dev_touch_info {
 #define SIFP_IOC_WAKELOCK     _IOW(SIFP_IOC_MAGIC, 27, u8)
 #define SIFP_IOC_PWDN         _IOW(SIFP_IOC_MAGIC, 28, u8)
 #define SIFP_IOC_PROC_NODE    _IOW(SIFP_IOC_MAGIC, 29, char[PROC_VND_ID_LEN])
-#define SIFP_IOC_GET_TP_TOUCH_INFO          _IOR(SIFP_IOC_MAGIC, 30, struct fp_dev_touch_info)//add heng
+#define SIFP_IOC_GET_TP_TOUCH_INFO          _IOR(SIFP_IOC_MAGIC, 30, struct fp_underscreen_info)//add heng
 
 #define RESET_TIME            2	/* Default chip reset wait time(ms) */
 #define RESET_TIME_MULTIPLE   1 /* Multiple for reset time multiple*wait_time */

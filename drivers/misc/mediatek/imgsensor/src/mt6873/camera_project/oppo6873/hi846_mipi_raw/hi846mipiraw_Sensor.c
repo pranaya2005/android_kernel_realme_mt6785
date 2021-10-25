@@ -35,6 +35,10 @@
 #include "hi846mipiraw_Sensor.h"
 #include "imgsensor_common.h"
 
+#ifdef OPLUS_FEATURE_CAMERA_COMMON
+#include "imgsensor_eeprom.h"
+#endif
+
 #define PFX "HI846_camera_sensor"
 #define LOG_INF(format, args...)    pr_debug(PFX "[%s] " format, __FUNCTION__, ##args)
 #define Hi846_MaxGain 16
@@ -2752,44 +2756,62 @@ static void custom2_setting(void)
 	#endif
 };
 
+#ifdef OPLUS_FEATURE_CAMERA_COMMON
+static void read_EepromQSC(void)
+{
+    int i = 0;
+    float externStereo[6] = {-0.0107, -0.0020, 0.0011, 0.0009, 11.3750, -0.6378};
+
+    gImgEepromInfo.camNormdata[2][39] = 2;
+    gImgEepromInfo.i4CurSensorIdx = 2;
+    gImgEepromInfo.i4CurSensorId = imgsensor_info.sensor_id;
+    for (i = 0; i < DUALCAM_CALI_INTERNALCOEF_DATA_LENGTH; i++) {
+        gImgEepromInfo.stereoMWdata[CALI_DATA_MASTER_LENGTH + i] =
+            Eeprom_1ByteDataRead(HI846_STEREO_START_ADDR_19131 + i, 0xA2);
+    }
+    memcpy(&gImgEepromInfo.stereoMWdata[DUALCAM_CALI_DATA_LENGTH_TOTAL - 28], externStereo, 24);
+}
+#endif
+
 static kal_uint32 get_imgsensor_id(UINT32 *sensor_id)
 {
-	kal_uint8 i = 0;
-	kal_uint8 retry = 2;
-	LOG_INF("[get_imgsensor_id] ");
-	while (imgsensor_info.i2c_addr_table[i] != 0xff) {
-			spin_lock(&imgsensor_drv_lock);
-			imgsensor.i2c_write_id = imgsensor_info.i2c_addr_table[i];
-			spin_unlock(&imgsensor_drv_lock);
-			do {
-				*sensor_id =return_sensor_id();
-				if (*sensor_id == imgsensor_info.sensor_id) {
-                    #ifdef OPLUS_FEATURE_CAMERA_COMMON
-                    read_eeprom_SN();
-                    /*zhengjiang.zhu@Camera.Drv, 2017/10/18 add for register device info*/
-                    imgsensor_info.module_id = read_module_id();
-                    if (deviceInfo_register_value == 0x00) {
-                        /*
-                        register_imgsensor_deviceinfo("Cam_r1", DEVICE_VERSION_HI846,
-							imgsensor_info.module_id);
-                        */
-                        deviceInfo_register_value=0x01;
-                    }
-                    #endif
-					LOG_INF("i2c write id  : 0x%x, sensor id: 0x%x\n", imgsensor.i2c_write_id,*sensor_id);
-					return ERROR_NONE;
-				}
-				LOG_INF("get_imgsensor_id Read sensor id fail, i2c write id: 0x%x,sensor id: 0x%x\n", imgsensor.i2c_write_id,*sensor_id);
-				retry--;
-			} while(retry > 0);
-			i++;
-			retry = 2;
-}
-	if (*sensor_id != imgsensor_info.sensor_id) {
-		*sensor_id = 0xFFFFFFFF;
-		return ERROR_SENSOR_CONNECT_FAIL;
-	}
-	return ERROR_NONE;
+    kal_uint8 i = 0;
+    kal_uint8 retry = 2;
+    LOG_INF("[get_imgsensor_id] ");
+    while (imgsensor_info.i2c_addr_table[i] != 0xff) {
+        spin_lock(&imgsensor_drv_lock);
+        imgsensor.i2c_write_id = imgsensor_info.i2c_addr_table[i];
+        spin_unlock(&imgsensor_drv_lock);
+        do {
+            *sensor_id =return_sensor_id();
+            if (*sensor_id == imgsensor_info.sensor_id) {
+                #ifdef OPLUS_FEATURE_CAMERA_COMMON
+                read_EepromQSC();
+                read_eeprom_SN();
+                /*zhengjiang.zhu@Camera.Drv, 2017/10/18 add for register device info*/
+                imgsensor_info.module_id = read_module_id();
+                if (deviceInfo_register_value == 0x00) {
+                    /*
+                    register_imgsensor_deviceinfo("Cam_r1", DEVICE_VERSION_HI846,
+                        imgsensor_info.module_id);
+                    */
+                    deviceInfo_register_value=0x01;
+                }
+                #endif
+                LOG_INF("i2c write id  : 0x%x, sensor id: 0x%x\n", imgsensor.i2c_write_id,*sensor_id);
+                return ERROR_NONE;
+            }
+            LOG_INF("get_imgsensor_id Read sensor id fail, i2c write id: 0x%x,sensor id: 0x%x\n", imgsensor.i2c_write_id,*sensor_id);
+            retry--;
+        } while(retry > 0);
+        i++;
+        retry = 2;
+    }
+    if (*sensor_id != imgsensor_info.sensor_id) {
+        *sensor_id = 0xFFFFFFFF;
+        return ERROR_SENSOR_CONNECT_FAIL;
+    }
+    return ERROR_NONE;
 }
 
 /*************************************************************************

@@ -57,7 +57,7 @@
 /*Shounan.Yang@Camera.Driver  add for 18011  board 20190620*/
 #define DEVICE_VERSION_GC02M0    "gc02m0"
 #define IMGSENSOR_MODULE_ID_SHINE  0x09
-//extern void register_imgsensor_deviceinfo(char *name, char *version, u8 module_id);
+extern void register_imgsensor_deviceinfo(char *name, char *version, u8 module_id);
 static uint8_t deviceInfo_register_value;
 /* Feiping.Li@Camera.Drv, 20190624, add for speed up sensor init*/
 #define USE_BURST_MODE
@@ -1251,7 +1251,7 @@ static kal_uint32 get_imgsensor_id(UINT32 *sensor_id)
 			/*shounan.yang@Camera.Drv, 2019.6.18 add for register device info*/
 			imgsensor_info.module_id = IMGSENSOR_MODULE_ID_SHINE;
 			if (deviceInfo_register_value == 0x00) {
-				//register_imgsensor_deviceinfo("Cam_r3", DEVICE_VERSION_GC02M0, imgsensor_info.module_id);
+				register_imgsensor_deviceinfo("Cam_r3", DEVICE_VERSION_GC02M0, imgsensor_info.module_id);
 				deviceInfo_register_value=0x01;
 			}
 			#endif

@@ -321,6 +321,9 @@ VOID aisFsmInit(IN P_ADAPTER_T prAdapter)
 	cnmTimerInitTimer(prAdapter,
 			  &prAisSpecificBssInfo->rBtmResponseTimer,
 			  (PFN_MGMT_TIMEOUT_FUNC) aisTxBtmResponseTimeout, (ULONG) NULL);
+	cnmTimerInitTimer(prAdapter,
+			&prAisFsmInfo->rChannelTimeoutTimer,
+			(PFN_MGMT_TIMEOUT_FUNC) aisFsmRunEventChannelTimeout, (ULONG) NULL);
 
 	/* 4 <1.2> Initiate PWR STATE */
 	SET_NET_PWR_STATE_IDLE(prAdapter, prAisBssInfo->ucBssIndex);
@@ -453,6 +456,8 @@ VOID aisFsmStateInit_JOIN(IN P_ADAPTER_T prAdapter, P_BSS_DESC_T prBssDesc)
 	P_CONNECTION_SETTINGS_T prConnSettings;
 	P_STA_RECORD_T prStaRec;
 	P_MSG_JOIN_REQ_T prJoinReqMsg;
+	struct AIS_BLACKLIST_ITEM *prBlackList;
+	UINT_32 u4Entry = 0;
 
 	DEBUGFUNC("aisFsmStateInit_JOIN()");
 
@@ -537,7 +542,19 @@ VOID aisFsmStateInit_JOIN(IN P_ADAPTER_T prAdapter, P_BSS_DESC_T prBssDesc)
 			prAisFsmInfo->ucAvailableAuthTypes = (UINT_8) AUTH_TYPE_FAST_BSS_TRANSITION;
 			break;
 		case AUTH_MODE_WPA3_SAE:
-			prAisFsmInfo->ucAvailableAuthTypes = (UINT_8) AUTH_TYPE_SAE;
+			prBlackList = aisQueryBlackList(prAdapter, prBssDesc);
+
+			if (rsnSearchPmkidEntry(prAdapter, prBssDesc->aucBSSID, &u4Entry)
+				&& (!prBlackList || prBlackList->u2AuthStatus
+					!= STATUS_INVALID_PMKID)) {
+				prAisFsmInfo->ucAvailableAuthTypes =
+						(UINT_8) AUTH_TYPE_OPEN_SYSTEM;
+				DBGLOG(AIS, INFO,
+					"SAE: change AUTH to OPEN when roaming with PMK\n");
+			} else {
+				prAisFsmInfo->ucAvailableAuthTypes =
+						(UINT_8) AUTH_TYPE_SAE;
+			}
 			break;
 		default:
 			prAisFsmInfo->ucAvailableAuthTypes = prAisSpecificBssInfo->ucRoamingAuthTypes;
@@ -2292,11 +2309,17 @@ VOID aisFsmRunEventScanDone(IN P_ADAPTER_T prAdapter, IN P_MSG_HDR_T prMsgHdr)
 #if CFG_SUPPORT_AGPS_ASSIST
 				scanReportScanResultToAgps(prAdapter);
 #endif
-			} else
+			} else {
+				/*we need to gen scan done event to kernel*/
+				prConnSettings->fgIsScanReqIssued = FALSE;
+				prAisFsmInfo->u4ScanIELength = 0;
+				aisPostScan(prAdapter);
+				kalScanDone(prAdapter->prGlueInfo, KAL_NETWORK_TYPE_AIS_INDEX, rStatus);
 				DBGLOG(AIS, WARN,
 				       "Wrong AIS state %d and the previous state is %d!\n",
 				       prAisFsmInfo->eCurrentState,
 				       prAisFsmInfo->ePreviousState);
+			}
 #else
 			DBGLOG(AIS, WARN, "Wrong AIS state %d\n", prAisFsmInfo->eCurrentState);
 #endif
@@ -2575,8 +2598,7 @@ VOID aisFsmStateAbort(IN P_ADAPTER_T prAdapter, UINT_8 ucReasonOfDisconnect, BOO
 	case AIS_STATE_ONLINE_SCAN:
 		/* Do abort SCAN */
 #if CFG_SUPPORT_ABORT_SCAN
-		if (ucReasonOfDisconnect != DISCONNECT_REASON_CODE_NEW_CONNECTION &&
-		    prAdapter->prGlueInfo->ucAbortScanCnt < ABORT_SCAN_COUNT &&
+		if (prAdapter->prGlueInfo->ucAbortScanCnt < ABORT_SCAN_COUNT &&
 		    prAdapter->prGlueInfo->u4LastNormalScanTime != 0 &&
 		    !(CHECK_FOR_TIMEOUT(kalGetTimeTick(),
 					prAdapter->prGlueInfo->u4LastNormalScanTime,
@@ -2857,6 +2879,17 @@ enum _ENUM_AIS_STATE_T aisFsmJoinCompleteAction(IN struct _ADAPTER_T *prAdapter,
 						MAC2STR(prBssDesc->aucBSSID),
 						prBssDesc->ucJoinFailureCount,
 						prBssDesc->rJoinFailTime);
+				}
+
+				if (prStaRec->u2StatusCode == STATUS_INVALID_PMKID) {
+					struct AIS_BLACKLIST_ITEM *prBlackList =
+						aisAddBlacklist(prAdapter, prBssDesc, AIS_BLACK_LIST_FROM_DRIVER);
+					if (prBlackList) {
+						prBlackList->u2AuthStatus =
+							prStaRec->u2StatusCode;
+						DBGLOG(AIS, INFO,
+							"Add blacklist due to STATUS_INVALID_PMKID\n");
+					}
 				}
 
 				if (prBssDesc->prBlack)

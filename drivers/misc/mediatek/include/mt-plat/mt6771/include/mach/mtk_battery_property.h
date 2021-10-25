@@ -15,7 +15,12 @@
 #define _MTK_BATTERY_PROPERTY_H
 
 /* customize */
+#ifndef OPLUS_FEATURE_CHG_BASIC
+/* Yichun.Chen  PSW.BSP.CHG  2019-7-22  for notify full current threshold */
 #define DIFFERENCE_FULLOCV_ITH	200	/* mA */
+#else
+#define DIFFERENCE_FULLOCV_ITH	350	/* mA */
+#endif
 #define MTK_CHR_EXIST 1
 #define KEEP_100_PERCENT 1
 #define R_FG_VALUE	5				/* mOhm */
@@ -63,7 +68,12 @@
 /* ADC resistor  */
 #define R_BAT_SENSE	4
 #define R_I_SENSE	4
+#ifdef OPLUS_FEATURE_CHG_BASIC
+/* Jianchao.Shi@PSW.BSP.CHG.Basic, 2018/10/15, sjc Modify for charging */
+#define R_CHARGER_1	300
+#else
 #define R_CHARGER_1	330
+#endif
 #define R_CHARGER_2	39
 
 
@@ -82,7 +92,12 @@
 #define DIFF_BAT_TEMP_SETTING 1
 #define DIFF_BAT_TEMP_SETTING_C 10
 #define DISCHARGE_TRACKING_TIME 10
+#ifndef OPLUS_FEATURE_CHG_BASIC
+/* Yichun.Chen  PSW.BSP.CHG  2019-05-16  mtk fg pursue to full 1% every 10s */
 #define CHARGE_TRACKING_TIME 60
+#else
+#define CHARGE_TRACKING_TIME 10
+#endif
 #define DIFFERENCE_FULLOCV_VTH	1000	/* 0.1mV */
 #define CHARGE_PSEUDO_FULL_LEVEL 8000
 #define FULL_TRACKING_BAT_INT2_MULTIPLY 6
@@ -100,7 +115,12 @@
 #define CALI_CAR_TUNE_AVG_NUM	60
 
 /* Aging Compensation 1*/
+#ifndef OPLUS_FEATURE_CHG_BASIC
+/* Yichun.Chen  PSW.BSP.CHG  2019-07-23  for aging issue */
 #define AGING_FACTOR_MIN 75
+#else
+#define AGING_FACTOR_MIN 85
+#endif
 #define AGING_FACTOR_DIFF 10
 #define DIFFERENCE_VOLTAGE_UPDATE 50
 #define AGING_ONE_EN 1
@@ -199,7 +219,12 @@
 
 #define BATTERY_TMP_TO_DISABLE_GM30 -50
 #define BATTERY_TMP_TO_DISABLE_NAFG -35
+#ifndef OPLUS_FEATURE_CHG_BASIC
+/* Jianwei.Ye@BSP.CHG.Basic, 2019/09/11, return -30C when battery removed */
 #define DEFAULT_BATTERY_TMP_WHEN_DISABLE_NAFG 25
+#else
+#define DEFAULT_BATTERY_TMP_WHEN_DISABLE_NAFG -30
+#endif
 #define BATTERY_TMP_TO_ENABLE_NAFG -20
 /* #define GM30_DISABLE_NAFG */
 

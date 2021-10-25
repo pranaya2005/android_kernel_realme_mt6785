@@ -503,13 +503,22 @@ static struct BTS_TEMPERATURE BTS_Temperature_Table7[] = {
 	{125, 2522}
 };
 
-#ifdef CONFIG_OPLUS_CHARGER_MTK6769
+#if defined (CONFIG_OPLUS_CHARGER_MTK6769) || defined (CONFIG_OPLUS_CHARGER_MTK6768) || defined (CONFIG_OPLUS_CHARGER_MTK6769R)
 /*Shouli.Wang@ODM_WT.BSP.CHG 2019/11/21, add for ap temp monitor*/
 static int ap_temp = 25000;
 int get_ap_temp(void)
 {
 	return ap_temp;
 }
+
+#ifdef OPLUS_FEATURE_CAMERA_COMMON
+/*Weiqiang.He@ODM_WT.CAMERA.Driver 20210121 add for flashlight NTC*/
+int get_FlashLightNTC_temp(void)
+{
+    mtkts_bts_get_hw_temp();
+    return ap_temp;
+}
+#endif
 #endif /*CONFIG_OPLUS_CHARGER_MTK6769*/
 
 /* convert register to temperature  */
@@ -739,7 +748,7 @@ int mtkts_bts_get_hw_temp(void)
 
 	if (t_ret > 40000)	/* abnormal high temp */
 		mtkts_bts_printk("T_AP=%d\n", t_ret);
-#ifdef CONFIG_OPLUS_CHARGER_MTK6769
+#if defined (CONFIG_OPLUS_CHARGER_MTK6769) || defined (CONFIG_OPLUS_CHARGER_MTK6768) || defined (CONFIG_OPLUS_CHARGER_MTK6769R)
 /*Shouli.Wang@ODM_WT.BSP.CHG 2019/11/21, add for ap temp monitor*/
 	ap_temp = t_ret;
 #endif /*CONFIG_OPLUS_CHARGER_MTK6769*/

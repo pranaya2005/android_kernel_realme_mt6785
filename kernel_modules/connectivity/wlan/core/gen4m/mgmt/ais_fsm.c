@@ -2617,7 +2617,7 @@ void aisFsmStateAbort(IN struct ADAPTER *prAdapter,
 				&prAisFsmInfo->rJoinTimeoutTimer);
 
 		if (p2p || join) {
-			fgDelayIndication = false;
+			fgDelayIndication = FALSE;
 			DBGLOG(AIS, INFO,
 				"delay indication not allowed due to p2p=%d, join=%d",
 				p2p, join);
@@ -6022,6 +6022,7 @@ aisFuncTxMgmtFrame(IN struct ADAPTER *prAdapter,
 	struct MSDU_INFO *prTxMsduInfo = (struct MSDU_INFO *)NULL;
 	struct WLAN_MAC_HEADER *prWlanHdr = (struct WLAN_MAC_HEADER *)NULL;
 	struct STA_RECORD *prStaRec = (struct STA_RECORD *)NULL;
+	uint32_t ucStaRecIdx = STA_REC_INDEX_NOT_FOUND;
 
 	do {
 		if (prMgmtTxReqInfo->fgIsMgmtTxRequested) {
@@ -6056,15 +6057,19 @@ aisFuncTxMgmtFrame(IN struct ADAPTER *prAdapter,
 					  ucBssIndex,
 					  prWlanHdr->aucAddr1);
 
+		if (IS_BMCAST_MAC_ADDR(prWlanHdr->aucAddr1))
+			ucStaRecIdx = STA_REC_INDEX_BMCAST;
+
+		if (prStaRec)
+			ucStaRecIdx = prStaRec->ucIndex;
+
 		TX_SET_MMPDU(prAdapter,
 			     prMgmtTxMsdu,
 			     (prStaRec !=
 			      NULL) ? (prStaRec->
 				       ucBssIndex)
 			     : (ucBssIndex),
-			     (prStaRec !=
-			      NULL) ? (prStaRec->ucIndex)
-			     : (STA_REC_INDEX_NOT_FOUND),
+			     ucStaRecIdx,
 			     WLAN_MAC_MGMT_HEADER_LEN,
 			     prMgmtTxMsdu->u2FrameLength,
 			     aisFsmRunEventMgmtFrameTxDone,

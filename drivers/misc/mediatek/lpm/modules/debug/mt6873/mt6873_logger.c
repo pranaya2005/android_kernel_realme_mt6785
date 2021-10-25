@@ -29,6 +29,11 @@
 #define MT6873_LOG_MONITOR_STATE_NAME	"mcusysoff"
 #define MT6873_LOG_DEFAULT_MS		5000
 
+#ifdef OPLUS_FEATURE_POWERINFO_STANDBY
+static int wakeup_state;
+#include "../../../../../../soc/oppo/oppo_wakelock_profiler/oppo_wakelock_profiler_mtk.h"
+#endif
+
 #define PCM_32K_TICKS_PER_SEC		(32768)
 #define PCM_TICK_TO_SEC(TICK)	(TICK / PCM_32K_TICKS_PER_SEC)
 
@@ -605,6 +610,19 @@ static int mt6873_show_message(struct mt6873_spm_wake_status *wakesrc, int type,
 	if (type == MT_LPM_ISSUER_SUSPEND) {
 		printk_deferred("[name:spm&][SPM] %s", log_buf);
 		mt6873_suspend_show_detailed_wakeup_reason(wakesrc);
+
+		#ifdef OPLUS_FEATURE_POWERINFO_STANDBY
+		//FanGeqiang@BSP.Power.Basic, 2020/12/5 Modify for statistics of deepsleep r13 blocker.
+		if (!(wakesrc->r12 & R12_EINT_EVENT_B)) {
+			pr_info("%s:wakeup_reson=%d scenario=%s wakeupby(buf)=%s",__func__,wr,scenario,buf);
+			wakeup_state=false;
+			wakeup_state=wakeup_reasons_statics(buf, WS_CNT_WLAN|WS_CNT_ADSP|WS_CNT_SENSOR|WS_CNT_MODEM);
+			if((wakeup_state==false)&&(strlen(buf)!=0)){
+				wakeup_reasons_statics("other",WS_CNT_OTHER);
+			}
+		}
+		#endif /* OPLUS_FEATURE_POWERINFO_STANDBY */
+
 		mt6873_suspend_spm_rsc_req_check(wakesrc);
 
 		printk_deferred("[name:spm&][SPM] Suspended for %d.%03d seconds",

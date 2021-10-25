@@ -10,7 +10,10 @@
 #include <linux/sched.h>
 #include <linux/mm.h>
 #include <linux/proc_fs.h>
-
+#include <linux/version.h>
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5,4,0)
+#include <linux/pagewalk.h>
+#endif
 #define PR_PASS		0
 #define PR_SEM_OUT	1
 #define PR_TASK_FG	2

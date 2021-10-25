@@ -1,8 +1,17 @@
-/* SPDX-License-Identifier: GPL-2.0-only */
-/*
- * Copyright (C) 2018-2020 Oplus. All rights reserved.
- */
-
+/***************************************************
+ * File:novatek_drivers_nt36525b_noflash.h
+ * VENDOR_EDIT
+ * Copyright (c)  2008- 2019  Oppo Mobile communication Corp.ltd.
+ * Description:
+ *             novatek nt36525b driver
+ * Version:1.0:
+ * Date created:2019-04-22
+ * Author: Ping.Zhang@PSW.BSP.Tp
+ * TAG: BSP.TP.Init
+ * *
+ * -------------- Revision History: -----------------
+ *  <author >  <data>  <version>  <desc>
+ ***************************************************/
 #ifndef NVT_H_NT36525B_NOFLASH
 #define NVT_H_NT36525B_NOFLASH
 

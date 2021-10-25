@@ -284,7 +284,7 @@
 	status = "okay";
 
 };
-
+/*XingYu.Liu@ODM_WT.CAMERA.Driver.2019/10/16,Add for camera bring up*/
 &flashlights_monet {
         pinctrl-names = "default","hwen_high","hwen_low";
         pinctrl-0 = <&flashlights_monet_pins_default>;
@@ -295,7 +295,7 @@
 
 &pio {
         flashlights_monet_pins_default:default {
-		};
+               };
         flashlights_monet_pins_hwen_high: hwen_high {
                 pins_cmd_dat {
                         pinmux = <PINMUX_GPIO152__FUNC_GPIO152>;

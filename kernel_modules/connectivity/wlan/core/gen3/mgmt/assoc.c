@@ -1102,6 +1102,7 @@ WLAN_STATUS assocProcessRxAssocReqFrame(IN P_ADAPTER_T prAdapter, IN P_SW_RFB_T 
 	UINT_16 u2StatusCode = STATUS_CODE_SUCCESSFUL;
 	UINT_16 u2RxFrameCtrl;
 	UINT_16 u2BSSBasicRateSet;
+	UINT_16 u2CommonRateSet = 0;
 	UINT_8 ucFixedFieldLength;
 	BOOLEAN fgIsUnknownBssBasicRate;
 	UINT_32 i;
@@ -1278,11 +1279,31 @@ WLAN_STATUS assocProcessRxAssocReqFrame(IN P_ADAPTER_T prAdapter, IN P_SW_RFB_T 
 					      &prStaRec->u2OperationalRateSet, &u2BSSBasicRateSet,
 					      &fgIsUnknownBssBasicRate);
 
-			if ((prBssInfo->u2BSSBasicRateSet & prStaRec->u2OperationalRateSet) !=
-			    prBssInfo->u2BSSBasicRateSet) {
+			u2CommonRateSet =
+				prBssInfo->u2BSSBasicRateSet & prStaRec->u2OperationalRateSet;
 
-				u2StatusCode = STATUS_CODE_ASSOC_DENIED_RATE_NOT_SUPPORTED;
-				break;
+			if (u2CommonRateSet != prBssInfo->u2BSSBasicRateSet) {
+
+				if ((prBssInfo->eNetworkType == NETWORK_TYPE_P2P)
+					&& p2pFuncIsAPMode(prAdapter->rWifiVar.prP2PConnSettings)
+					&& (prBssInfo->eBand == BAND_2G4)
+					&& (u2CommonRateSet & 0xf) == 0xf) {
+				/* AP mod, 2.4g band.
+				 * IoT issue: some station do not support all the basic rates
+				 * of our bss(1/2/5.5/11/6/12/24), but it can support 1/2/5.5/11
+				 * /6/12Mbps.
+				 *
+				 * Reject the station only if it can not support any of the rate
+				 * set (1/2/5.5/11).
+				 */
+					DBGLOG(AAA, INFO, "Sta can only support 1/2/5.5/11Mbps!\n");
+				} else {
+					DBGLOG(AAA, TRACE, "Basic data rate not support(%04x-%04x)!\n",
+						prBssInfo->u2BSSBasicRateSet,
+						prStaRec->u2OperationalRateSet);
+					u2StatusCode = STATUS_CODE_ASSOC_DENIED_RATE_NOT_SUPPORTED;
+					break;
+				}
 			}
 
 			/* Accpet the Sta, update BSSBasicRateSet from Bss */

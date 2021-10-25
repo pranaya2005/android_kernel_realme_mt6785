@@ -70,6 +70,14 @@ int __attribute__((weak)) spm_fs_init(void)
 	return 0;
 }
 
+#ifdef VENDOR_EDIT
+ssize_t __attribute__((weak)) get_oplus_rpm_master_stats(
+	char *ToUserBuf, size_t sz, void *priv) { return 0; }
+
+ssize_t __attribute__((weak)) get_oplus_rpm_stats(
+	char *ToUserBuf, size_t sz, void *priv) { return 0; }
+#endif
+
 /* Note: implemented in mtk_spm_utils.c */
 ssize_t __attribute__((weak)) get_spm_last_wakeup_src(
 	char *ToUserBuf, size_t sz, void *priv) { return 0; }
@@ -258,6 +266,16 @@ static struct notifier_block spm_pm_notifier_func = {
 #endif /* CONFIG_PM */
 #endif /* CONFIG_FPGA_EARLY_PORTING */
 
+#ifdef VENDOR_EDIT
+static const struct mtk_idle_sysfs_op oplus_rpm_stats_fops = {
+	.fs_read = get_oplus_rpm_stats,
+};
+
+static const struct mtk_idle_sysfs_op oplus_rpm_master_stats_fops = {
+	.fs_read = get_oplus_rpm_master_stats,
+};
+#endif
+
 static const struct mtk_idle_sysfs_op spm_last_wakeup_src_fops = {
 	.fs_read = get_spm_last_wakeup_src,
 };
@@ -313,6 +331,12 @@ static int spm_module_init(void)
 	if (mtk_idle_sysfs_entry_root_get(&pParent) == 0) {
 		mtk_idle_sysfs_entry_func_create("spm", 0444
 			, pParent, &pParent2ND);
+		#ifdef VENDOR_EDIT
+		mtk_idle_sysfs_entry_func_node_add("oplus_rpmh_stats", 0444
+				, &oplus_rpm_stats_fops,&pParent2ND, NULL);
+		mtk_idle_sysfs_entry_func_node_add("oplus_rpmh_master_stats", 0444
+				, &oplus_rpm_master_stats_fops,&pParent2ND, NULL);
+		#endif
 		mtk_idle_sysfs_entry_func_node_add("spm_sleep_count", 0444
 			, &spm_sleep_count_fops, &pParent2ND, NULL);
 		mtk_idle_sysfs_entry_func_node_add("spm_last_wakeup_src", 0444

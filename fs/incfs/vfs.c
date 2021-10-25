@@ -907,7 +907,7 @@ static int init_new_file(struct mount_info *mi, struct dentry *dentry,
 		goto out;
 	}
 
-	bfc = incfs_alloc_bfc(mi, new_file);
+	bfc = incfs_alloc_bfc(mi,new_file);
 	fput(new_file);
 	if (IS_ERR(bfc)) {
 		error = PTR_ERR(bfc);
@@ -1911,7 +1911,7 @@ static int file_open(struct inode *inode, struct file *file)
 	get_incfs_backing_path(file->f_path.dentry, &backing_path);
 	old_cred = override_creds(mi->mi_owner);
 	backing_file = dentry_open(&backing_path,
-			O_RDWR | O_NOATIME | O_LARGEFILE, current_cred());
+					O_RDWR | O_NOATIME | O_LARGEFILE, current_cred());
 	revert_creds(old_cred);
 	path_put(&backing_path);
 
@@ -2183,7 +2183,7 @@ struct dentry *incfs_mount_fs(struct file_system_type *type, int flags,
 	sb->s_op = &incfs_super_ops;
 	sb->s_d_op = &incfs_dentry_ops;
 	sb->s_flags |= S_NOATIME;
-	sb->s_magic = (long)INCFS_MAGIC_NUMBER;
+	sb->s_magic = INCFS_MAGIC_NUMBER;
 	sb->s_time_gran = 1;
 	sb->s_blocksize = INCFS_DATA_FILE_BLOCK_SIZE;
 	sb->s_blocksize_bits = blksize_bits(sb->s_blocksize);

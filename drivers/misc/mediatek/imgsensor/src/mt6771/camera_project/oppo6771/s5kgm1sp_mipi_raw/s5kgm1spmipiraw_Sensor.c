@@ -5423,6 +5423,32 @@ static void custom1_setting(void)
 }
 
 #ifdef OPLUS_FEATURE_CAMERA_COMMON
+/*shuzhang.liu@Camera.Driver 2020/11/16 adding for 18531 dualcam aftersale cali*/
+static kal_uint8 gS5kgm1sp_EepData[DUALCAM_CALI_EEPROM_DATA_LENGTH];
+static void read_eepromData(void)
+{
+	kal_uint16 idx = 0;
+	kal_uint16 id = 0;
+	for (idx = 0; idx <DUALCAM_CALI_DATA_LENGTH; idx++) {
+		gS5kgm1sp_EepData[idx] = read_cmos_eeprom_8(S5KGM1_STEREO_START_ADDR + idx);
+	}
+	for (idx = DUALCAM_CALI_DATA_LENGTH; idx < (CAMERA_MODULE_SN_LENGTH+DUALCAM_CALI_DATA_LENGTH); idx++) {
+		gS5kgm1sp_EepData[idx] = read_cmos_eeprom_8((0xB0 + id) & 0xFF);
+		//pr_err("gS5kgm1sp_SN[%d]: 0x%x\n", id, gS5kgm1sp_EepData[idx]);
+	    id++;
+	}
+	gS5kgm1sp_EepData[idx++] = read_cmos_eeprom_8(0x0);
+	gS5kgm1sp_EepData[idx++] = read_cmos_eeprom_8(0x1);
+	gS5kgm1sp_EepData[idx++] = read_cmos_eeprom_8(0x6);
+	gS5kgm1sp_EepData[idx++] = read_cmos_eeprom_8(0x7);
+	gS5kgm1sp_EepData[idx++] = read_cmos_eeprom_8(0x8);
+	gS5kgm1sp_EepData[idx++] = read_cmos_eeprom_8(0x9);
+	gS5kgm1sp_EepData[idx++] = read_cmos_eeprom_8(0xA);
+	gS5kgm1sp_EepData[idx] = read_cmos_eeprom_8(0xB);
+}
+#endif /*OPLUS_FEATURE_CAMERA_COMMON*/
+
+#ifdef OPLUS_FEATURE_CAMERA_COMMON
 /*zhaozhengtao 2016/02/19,modify for different module*/
 static kal_uint16 read_module_id(void)
 {
@@ -5481,6 +5507,10 @@ static kal_uint32 get_imgsensor_id(UINT32 *sensor_id)
 						imgsensor_info.sensor_output_dataformat = SENSOR_OUTPUT_FORMAT_RAW_Gb;
 						imgsensor_info.isp_driving_current = ISP_DRIVING_4MA;
 				}
+                                #ifdef OPLUS_FEATURE_CAMERA_COMMON
+                                /*shuzhang.liu@Camera.Driver 2020/11/16 adding for 18531 dualcam aftersale cali*/
+                                read_eepromData();
+                                #endif /*OPLUS_FEATURE_CAMERA_COMMON*/
 				return ERROR_NONE;
 			}
 			pr_err("Read sensor id fail, id: 0x%x ensor id: 0x%x\n", imgsensor.i2c_write_id,*sensor_id);
@@ -6118,6 +6148,15 @@ static kal_uint32 feature_control(MSDK_SENSOR_FEATURE_ENUM feature_id,
 
 	/*LOG_INF("feature_id = %d\n", feature_id);*/
 	switch (feature_id) {
+		#ifdef OPLUS_FEATURE_CAMERA_COMMON
+		case SENSOR_FEATURE_GET_EEPROM_DATA:
+		{
+			LOG_INF("[s5kgm1] SENSOR_FEATURE_GET_EEPROM_DATA:%d data_lens:%d\n",
+						*feature_para_len, DUALCAM_CALI_EEPROM_DATA_LENGTH);
+			memcpy(&feature_para[0], gS5kgm1sp_EepData, DUALCAM_CALI_EEPROM_DATA_LENGTH);
+			break;
+		}
+		#endif /*OPLUS_FEATURE_CAMERA_COMMON*/
 		#ifdef OPLUS_FEATURE_CAMERA_COMMON
 		/*Henry.Chang@Camera.Driver add for 18531 ModuleSN*/
 		case SENSOR_FEATURE_GET_MODULE_SN:

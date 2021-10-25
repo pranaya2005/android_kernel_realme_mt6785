@@ -295,6 +295,7 @@ int ufs_mtk_pltfrm_xo_ufs_req(struct ufs_hba *hba, bool on)
      * Toshiba    32us
      */
     if (on) {
+        udelay(300);
         switch (hba->card->wmanufacturerid) {
         case UFS_VENDOR_TOSHIBA:
             udelay(32);

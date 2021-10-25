@@ -94,6 +94,18 @@ extern unsigned long oplus_silence_mode;
 extern unsigned int oplus_fp_silence_mode;
 #endif /* OPLUS_BUG_STABILITY */
 
+/* #ifdef OPLUS_FEATURE_ONSCREENFINGERPRINT */
+/*
+ * Hao.lin@PSW.MM.Display.LCD.Stability, 2019/11/07,
+ * modify for fingerprint notify frigger
+ */
+#include <linux/fb.h>
+extern bool oplus_fp_notify_up_delay;
+extern bool oplus_fp_notify_down_delay;
+extern void fingerprint_send_notify(struct fb_info *fbi, uint8_t fingerprint_op_mode);
+extern bool oplus_display_fppress_support;
+extern bool oplus_display_aod_ramless_support;
+/* #endif */ /* OPLUS_FEATURE_ONSCREENFINGERPRINT */
 
 #define DDP_OUTPUT_LAYID 4
 
@@ -1071,20 +1083,41 @@ long __frame_config(unsigned long arg)
 		goto error1;
 	}
 
+	if (disp_validate_ioctl_params(cfg)) {
+		ret = -EINVAL;
+		goto error1;
+	}
+
 	cfg->setter = SESSION_USER_HWC;
 
 	input_config_preprocess(cfg);
 	if (cfg->output_en)
 		output_config_preprocess(cfg);
 
-	if (disp_validate_ioctl_params(cfg)) {
-		ret = -EINVAL;
-		goto error2;
-	}
-
 	switch (DISP_SESSION_TYPE(cfg->session_id)) {
 	case DISP_SESSION_PRIMARY:
 		primary_display_frame_cfg(cfg);
+		#ifdef OPLUS_FEATURE_ONSCREENFINGERPRINT
+		/*
+		* JianBin.Zhang@PSW.MM.Display.LCD.Stability, 2020/05/20,
+		* add for fingerprint notify frigger
+		*/
+		if (oplus_display_fppress_support) {
+			if (oplus_fp_notify_down_delay && ((cfg->hbm_en & 0x2) > 0)) {
+				/*
+				* Zhijun.Ye@PSW.MM.Display.LCD.Stability, 2020/09/12,
+				* modify for ramless aod fingerprint unlock,
+				* no uiready should be sent on ramless aod cmd mode
+				*/
+				if (oplus_display_aod_ramless_support && !primary_display_is_video_mode()) {
+					printk("ramless aod cmd mode, do not send uiready1\n");
+				} else {
+					oplus_fp_notify_down_delay = false;
+					fingerprint_send_notify(NULL, 1);
+				}
+			}
+		}
+		#endif/*OPLUS_FEATURE_ONSCREENFINGERPRINT*/
 		break;
 	case DISP_SESSION_EXTERNAL:
 #if ((defined CONFIG_MTK_HDMI_SUPPORT) || \
@@ -1097,8 +1130,17 @@ long __frame_config(unsigned long arg)
 		ovl2mem_frame_cfg(cfg);
 		break;
 	}
+#ifdef OPLUS_FEATURE_ONSCREENFINGERPRINT
+	/*
+	* JianBin.Zhang@PSW.MM.Display.LCD.Stability, 2020/05/09,
+	* add for fingerprint notify frigger
+	*/
+	if (oplus_fp_notify_up_delay && ((cfg->hbm_en & 0x2) == 0)) {
+		oplus_fp_notify_up_delay = false;
+		fingerprint_send_notify(NULL, 0);
+	}
+#endif
 
-error2:
 	disp_input_free_dirty_roi(cfg);
 error1:
 	kfree(cfg);

@@ -153,6 +153,10 @@ struct head_dts_data {
 	unsigned int moisture_comp_vth;
 	unsigned int moisture_comp_vref2;
 	unsigned int moisture_use_ext_res;
+#ifdef OPLUS_BUG_COMPATIBILITY
+	/*zhanghao@ODM_WT.mm.audiodriver.Machine, 2021/02/04, Add for setting 2.4V to eint comparator*/
+	unsigned int eint_comparator;
+#endif
 };
 
 enum {

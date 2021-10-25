@@ -48,7 +48,6 @@
 #include "kd_camera_typedef.h"
 #include "imgsensor_common.h"
 #include "s5kgm1spmipiraw_Sensor.h"
-#include <soc/oppo/oppo_project.h>
 #ifndef OPLUS_FEATURE_CAMERA_COMMON
 /* Houbing.Peng@ODM_HQ Cam.Drv, Add for hal can't detect when read sensor ID fail 20191104*/
 #define OPLUS_FEATURE_CAMERA_COMMON
@@ -78,6 +77,7 @@ struct pm_qos_request emi_opp_request;
 #ifdef OPLUS_FEATURE_CAMERA_COMMON
 /*zhaozhengtao 2016/02/19,modify for different module*/
 #define MODULE_ID_OFFSET 0x0000
+#define LENSE_ID_OFFSET 0x0008
 static kal_uint32 streaming_control(kal_bool enable);
 #endif
 
@@ -510,10 +510,12 @@ static kal_uint32 streaming_control(kal_bool enable)
 	if (enable) {
 		write_cmos_sensor(0x6028, 0x4000);
 		write_cmos_sensor_8(0x0100, 0X01);
+		mdelay(10);
 	} else {
 		write_cmos_sensor(0x6028, 0x4000);
 		write_cmos_sensor_8(0x0100, 0x00);
 		for (i = 0; i < timeout; i++) {
+			mdelay(10);
 			framecnt = read_cmos_sensor_8(0x0005);
 			if (framecnt == 0xFF) {
 				LOG_INF(" Stream Off OK at i=%d.\n", i);
@@ -554,9 +556,7 @@ static void write_shutter(kal_uint32 shutter)
 		realtime_fps = imgsensor.pclk / imgsensor.line_length * 10 / imgsensor.frame_length;
 		if (realtime_fps >= 297 && realtime_fps <= 305) {
 			set_max_framerate(296,0);
-		}else if (realtime_fps >= 593 && realtime_fps <= 607) {
-			set_max_framerate(592,0);
-		}else if (realtime_fps >= 147 && realtime_fps <= 150) {
+		} else if (realtime_fps >= 147 && realtime_fps <= 150) {
 			set_max_framerate(146,0);
 		} else {
 			// Extend frame length
@@ -688,9 +688,7 @@ static void set_shutter_frame_length(kal_uint16 shutter, kal_uint16 frame_length
 		realtime_fps = imgsensor.pclk / imgsensor.line_length * 10 / imgsensor.frame_length;
 		if (realtime_fps >= 297 && realtime_fps <= 305) {
 			set_max_framerate(296, 0);
-		} else if (realtime_fps >= 593 && realtime_fps <= 607) {
-			set_max_framerate(592,0);
-		}else if (realtime_fps >= 147 && realtime_fps <= 150) {
+		} else if (realtime_fps >= 147 && realtime_fps <= 150) {
 			set_max_framerate(146, 0);
 		} else {
 			/* Extend frame length */
@@ -841,7 +839,7 @@ static void night_mode(kal_bool enable)
 }	/*	night_mode	*/
 #endif
 #ifdef USE_TNP_BURST
-#ifdef ODM_HQ_EDIT
+#ifndef ODM_HQ_EDIT
 /*pengfei.Zhao@ODM_HQ Cam.Drv 20200316 for decrease poweron time*/
 static kal_uint16 addr_data_pair_init[] = {
 	0x6214, 0x7971,
@@ -4682,7 +4680,7 @@ static kal_uint16 addr_data_pair_custom3[] = {
 }; /*custom3 setting*/
 
 #endif
-#ifndef ODM_HQ_EDIT
+#ifdef ODM_HQ_EDIT
 /*pengfei.Zhao@ODM_HQ Cam.Drv 20200316 for decrease poweron time*/
 static const u16 uTnpArrayInit_1[] = {
 	0x126F,
@@ -7987,26 +7985,17 @@ static kal_uint16 read_module_id(void)
 }
 #endif
 
-static kal_uint32 check_board(void) //salaA:1, salaThr:2, sarter:3
+#ifdef OPLUS_FEATURE_CAMERA_COMMON
+static kal_uint16 read_lens_id(void)
 {
-	kal_uint32 version_value;
+	kal_uint16 get_byte = 0;
+	char pusendcmd[2] = {(char)(LENSE_ID_OFFSET >> 8), (char)(LENSE_ID_OFFSET & 0xFF)};
 
-	version_value = get_Operator_Version();
-	if (version_value == 143 || version_value == 144
-		|| version_value == 145 || version_value == 146
-		|| version_value == 147 || version_value == 148
-		|| version_value == 149) {
-		return 1;
-	} else if (version_value == 90 || version_value == 92
-		|| version_value == 94) {
-		return 2;
-	} else if (version_value == 111 || version_value == 112
-		|| version_value == 113 || version_value == 114) {
-		return 3;
-	}
-	return 0;
+	iReadRegI2C(pusendcmd, 2, (u8 *)&get_byte, 1, 0xA0/*EEPROM_READ_ID*/);
+	pr_err("the lens id is %d\n", get_byte);
+	return get_byte;
 }
-
+#endif
 /*************************************************************************
 * FUNCTION
 *	get_imgsensor_id
@@ -8028,6 +8017,7 @@ static kal_uint32 get_imgsensor_id(UINT32 *sensor_id)
 	kal_uint8 i = 0;
 	kal_uint8 retry = 2;
 	kal_uint16 module_id = 0;
+	kal_uint16 lens_id = 0;
 	//sensor have two i2c address 0x6c 0x6d & 0x21 0x20, we should detect the module used i2c address
 	while (imgsensor_info.i2c_addr_table[i] != 0xff) {
 		spin_lock(&imgsensor_drv_lock);
@@ -8036,22 +8026,23 @@ static kal_uint32 get_imgsensor_id(UINT32 *sensor_id)
 		do {
 			*sensor_id = (((read_cmos_sensor_8(0x0000) << 8) | read_cmos_sensor_8(0x0001)) & 0x0fff);
 			//pr_err("read_0x0000=0x%x, 0x0001=0x%x,0x0000_0001=0x%x\n",read_cmos_sensor_8(0x0000),read_cmos_sensor_8(0x0001),read_cmos_sensor(0x0000));
-			if (*sensor_id == S5KGM1SP_SENSOR_ID) {
-				if(check_board() == 2) {
-					*sensor_id = imgsensor_info.sensor_id;
-					#ifdef OPLUS_FEATURE_CAMERA_COMMON
-					module_id = read_module_id();
-					if (deviceInfo_register_value == 0x00) {
-						Oplusimgsensor_Registdeviceinfo("Cam_r", sensor_name_golden_result, module_id);
-						deviceInfo_register_value = 0x01;
-					}
-					#endif
-					printk("S5KGM1ST get_imgsensor_id success: 0x%x\n", *sensor_id);
-					return ERROR_NONE;
-				} else {
+			if (*sensor_id == imgsensor_info.sensor_id) {
+				lens_id = read_lens_id();
+				if (lens_id == 0x79) {
+					printk("S5KGM1SP lens_id is not 0x%x\n",lens_id);
 					*sensor_id = 0xFFFFFFFF;
-					printk("s5kgm1sp check borard fail\n");
+					return ERROR_SENSOR_CONNECT_FAIL;
 				}
+				#ifdef OPLUS_FEATURE_CAMERA_COMMON
+				module_id = read_module_id();
+				if (deviceInfo_register_value == 0x00) {
+					Oplusimgsensor_Registdeviceinfo("Cam_r", sensor_name_golden_result, module_id);
+					deviceInfo_register_value = 0x01;
+				}
+				#endif
+				printk("S5KGM1SP get_imgsensor_id success: 0x%x\n", *sensor_id);
+
+				return ERROR_NONE;
 			}
 			retry--;
 		} while(retry > 0);
@@ -8059,7 +8050,7 @@ static kal_uint32 get_imgsensor_id(UINT32 *sensor_id)
 		retry = 2;
 	}
 	if (*sensor_id != imgsensor_info.sensor_id) {
-		printk("S5KGM1ST get_imgsensor_id failed: 0x%x\n", *sensor_id);
+		printk("S5KGM1SP get_imgsensor_id failed: 0x%x\n", *sensor_id);
 		// if Sensor ID is not correct, Must set *sensor_id to 0xFFFFFFFF
 		*sensor_id = 0xFFFFFFFF;
 		return ERROR_SENSOR_CONNECT_FAIL;
@@ -8099,8 +8090,7 @@ static kal_uint32 open(void)
 		spin_unlock(&imgsensor_drv_lock);
 		do {
 			sensor_id = (((read_cmos_sensor_8(0x0000) << 8) | read_cmos_sensor_8(0x0001)) & 0x0fff);
-			if (sensor_id == S5KGM1SP_SENSOR_ID) {
-				sensor_id = imgsensor_info.sensor_id;
+			if (sensor_id == imgsensor_info.sensor_id) {
 				printk("S5KGM1ST open success: 0x%x\n", sensor_id);
 				break;
 			}

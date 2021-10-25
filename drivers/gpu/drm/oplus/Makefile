@@ -4,7 +4,8 @@ obj-y += oppo_display_private_api.o \
          oplus_display_panel_power.o \
          oplus_display_common.o \
          oplus_display_dc.o \
-         oplus_display_onscreenfingerprint.o
+         oplus_display_onscreenfingerprint.o \
+		 oplus_display_mtk_debug.o
 
 obj-y += display_panel/
 

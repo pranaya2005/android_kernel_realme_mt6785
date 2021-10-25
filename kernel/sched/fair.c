@@ -57,6 +57,7 @@
 #endif /* OPLUS_FEATURE_HEALTHINFO */
 #if defined (CONFIG_SCHED_WALT) && defined (OPLUS_FEATURE_UIFIRST)
 #include <linux/sched.h>
+bool ux_task_misfit(struct task_struct *p, int cpu);
 extern u64 ux_task_load[];
 extern u64 ux_load_ts[];
 extern unsigned int walt_ravg_window;
@@ -986,7 +987,6 @@ update_stats_wait_end(struct cfs_rq *cfs_rq, struct sched_entity *se)
 			return;
 		}
 #ifdef OPLUS_FEATURE_HEALTHINFO
-// wenbin.liu@PSW.BSP.MM, 2018/05/26
 // Add for get sched latency stat
 #ifdef CONFIG_OPPO_HEALTHINFO
 		ohm_schedstats_record(OHM_SCHED_SCHEDLATENCY, p, (delta >> 20));
@@ -6115,8 +6115,7 @@ static inline unsigned long cpu_util_freq(int cpu)
 #ifdef OPLUS_FEATURE_UIFIRST
 	u64 wallclock = walt_ktime_clock();
 	u64 timeline = 0;
-
-	if (sysctl_uifirst_enabled && sysctl_slide_boost_enabled && ux_task_load[cpu]) {
+	if (sysctl_uifirst_enabled && (sysctl_slide_boost_enabled || sysctl_animation_type == LAUNCHER_SI_START) && ux_task_load[cpu]) {
 		walt_cpu_util = cpu_rq(cpu)->prev_runnable_sum;
 
 		timeline = wallclock - ux_load_ts[cpu];
@@ -7673,7 +7672,7 @@ static int start_cpu(struct task_struct *p, bool prefer_idle,
 		return boosted ? rd->max_cap_orig_cpu : rd->min_cap_orig_cpu;
 
 #if defined (CONFIG_SCHED_WALT) && defined (OPLUS_FEATURE_UIFIRST)
-	if (sysctl_uifirst_enabled && sysctl_slide_boost_enabled && p->static_ux == 2 &&
+	if (sysctl_uifirst_enabled && (sysctl_slide_boost_enabled || sysctl_animation_type == LAUNCHER_SI_START)&& p->static_ux == 2 &&
 	(scale_demand(p->ravg.demand) >= sysctl_boost_task_threshold ||
 	 scale_demand(p->ravg.sum) >= sysctl_boost_task_threshold)) {
 		return rd->max_cap_orig_cpu;
@@ -7751,7 +7750,7 @@ static inline int find_best_target(struct task_struct *p, int *backup_cpu,
 			if (walt_cpu_high_irqload(i))
 				continue;
 
-#if defined(OPLUS_FEATURE_UIFIRST) && !defined(CONFIG_MTK_TASK_TURBO)
+#if defined(OPLUS_FEATURE_UIFIRST)
 // XieLiujie@BSP.KERNEL.PERFORMANCE, 2020/06/15, Add for UIFirst
 			if (sysctl_uifirst_enabled && test_task_ux(p)) {
 				if (sysctl_launcher_boost_enabled && is_heavy_ux_task(p) && !test_ux_task_cpu(i))
@@ -8377,7 +8376,7 @@ static int find_energy_efficient_cpu(struct sched_domain *sd,
 		target_cpu = find_best_target(p, &eenv->cpu[EAS_CPU_BKP].cpu_id,
 					      boosted, prefer_idle);
 
-#if defined(OPLUS_FEATURE_UIFIRST) && !defined(CONFIG_MTK_TASK_TURBO)
+#if defined(OPLUS_FEATURE_UIFIRST)
 // XieLiujie@BSP.KERNEL.PERFORMANCE, 2020/05/25, Add for UIFirst
 		if (sysctl_uifirst_enabled && sysctl_launcher_boost_enabled &&
 			is_heavy_ux_task(p) && !test_ux_prefer_cpu(p, target_cpu)) {
@@ -8639,6 +8638,14 @@ pick_cpu:
 				p, prev_cpu, new_cpu);
 		select_reason = LB_HMP;
 	}
+
+#if defined (CONFIG_SCHED_WALT) && defined (OPLUS_FEATURE_UIFIRST)
+	if (sysctl_uifirst_enabled && (sysctl_slide_boost_enabled || sysctl_animation_type == LAUNCHER_SI_START) &&
+		is_heavy_ux_task(p) && ux_task_misfit(p, new_cpu)) {
+		find_ux_task_cpu(p, &new_cpu);
+		select_reason = LB_UX_BOOST;
+	}
+#endif /* OPLUS_FEATURE_UIFIRST */
 
 	return select_reason | new_cpu;
 }
@@ -8956,7 +8963,7 @@ again:
 	} while (cfs_rq);
 
 	p = task_of(se);
-#if defined(OPLUS_FEATURE_UIFIRST) && !defined(CONFIG_MTK_TASK_TURBO)
+#if defined(OPLUS_FEATURE_UIFIRST)
 // XieLiujie@BSP.KERNEL.PERFORMANCE, 2020/05/25, Add for UIFirst
 	if (sysctl_uifirst_enabled) {
 		pick_ux_thread(rq, &p, &se);
@@ -9561,10 +9568,14 @@ static int detach_tasks(struct lb_env *env, struct rq_flags *rf)
 		if (!can_migrate_task(p, env))
 			goto next;
 
-#if defined(OPLUS_FEATURE_UIFIRST) && !defined(CONFIG_MTK_TASK_TURBO)
+#if defined(OPLUS_FEATURE_UIFIRST)
 // XieLiujie@BSP.KERNEL.PERFORMANCE, 2020/05/25, Add for UIFirst
 		if (sysctl_uifirst_enabled && test_task_ux(p)) {
+#ifdef CONFIG_SCHED_WALT
+			if((sysctl_launcher_boost_enabled || (sysctl_slide_boost_enabled || sysctl_animation_type == LAUNCHER_SI_START)) && is_heavy_ux_task(p) && test_ux_task_cpu(task_cpu(p)) &&
+#else
 			if (sysctl_launcher_boost_enabled && is_heavy_ux_task(p) && test_ux_task_cpu(task_cpu(p)) &&
+#endif
 					!test_ux_task_cpu(env->dst_cpu))
 				goto next;
 

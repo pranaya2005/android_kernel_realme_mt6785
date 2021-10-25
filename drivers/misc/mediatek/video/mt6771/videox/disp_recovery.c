@@ -121,6 +121,7 @@ extern bool oplus_display_bl_set_cmdq_on_lcd_esd_recovery;
 extern u32 oplus_display_esd_try_count;
 /*Yongpeng.Yi@PSW.MM.Display.LCD.Stability, 2018/07/04, add for hx83112a lcd esd read reg*/
 static atomic_t oplus_enable_lcm_recovery = ATOMIC_INIT(0);
+extern bool oplus_flag_lcd_off;
 #endif /* OPLUS_BUG_STABILITY */
 
 unsigned int get_esd_check_mode(void)
@@ -713,6 +714,8 @@ done:
 	} else if (oplus_display_bl_set_cmdq_on_lcd_esd_recovery) {
 		disp_lcm_set_backlight(primary_get_lcm(),primary_get_dpmgr_handle(),esd_recovery_backlight_level);
 	}
+
+	oplus_flag_lcd_off = false;
 	#endif /* OPLUS_BUG_STABILITY */
 
 	DISPCHECK("[ESD]ESD recovery end\n");

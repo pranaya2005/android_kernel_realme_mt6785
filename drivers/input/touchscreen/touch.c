@@ -70,7 +70,9 @@ typedef enum {
 	focal_ft3518,
 	td4330,
 	himax_83112b,
-	ili9882n_txd,
+	ili7807s_tm,
+	ili9882n_truly,
+	ili7807s_hlt
 } TP_USED_INDEX;
 TP_USED_INDEX tp_used_index  = TP_INDEX_NULL;
 
@@ -88,13 +90,27 @@ bool __init tp_judge_ic_match(char *tp_ic_name)
 {
 	pr_err("[TP] tp_ic_name = %s \n", tp_ic_name);
 	switch(get_project()) {
-	case 132780:
-		pr_info("[TP] tp judge ic forward for 206AC\n");
-		if (strstr(tp_ic_name, "nf_nt36525b") && strstr(saved_command_line, "nt36525b_hlt")) {
-		return true;
+	case 20761:
+	case 20762:
+	case 20764:
+	case 20767:
+	case 20766:
+	case 0x2167A:
+	case 0x2167B:
+	case 0x2167C:
+	case 0x2167D:
+	case 0x216AF:
+	case 0x216B0:
+	case 0x216B1:
+		pr_info("tp judge ic for 2076x & 216xx\n");
+		if (strstr(tp_ic_name, "ili9882n") && strstr(saved_command_line, "ilt9882n_truly_even_hdp_dsi_vdo_lcm")) {
+			return true;
 		}
-		if (strstr(tp_ic_name, "ili9882n") && strstr(saved_command_line, "ilt9882n")) {
-		return true;
+		if (strstr(tp_ic_name, "ili9882n") && strstr(saved_command_line, "ilt7807s_hlt_even_hdp_dsi_vdo_lcm")) {
+			return true;
+		}
+		if (strstr(tp_ic_name, "nf_nt36525b") && strstr(saved_command_line, "nt36525b_hlt")) {
+			return true;
 		}
 		pr_err("[TP] ERROR! ic is not match driver\n");
 		return false;
@@ -108,6 +124,35 @@ bool __init tp_judge_ic_match(char *tp_ic_name)
 			return true;
 		}
 		return false;
+	case 20730:
+	case 20731:
+	case 20732:
+	case 20733:
+		pr_info("%s forward for 20730\n", __func__);
+                if (strstr(tp_ic_name, "focaltech,fts") && strstr(saved_command_line, "oppo20730_samsung_ams643xy04_lcm_drv_1")) {
+			return true;
+		}
+
+	        if (strstr(tp_ic_name, "Goodix-gt9886") && strstr(saved_command_line, "oppo20730_samsung_ams643xy04_lcm_drv_2")) {
+		return true;
+		}
+                pr_err("[TP] ERROR! ic is not match driver\n");
+		return false;
+	case 19661:
+	case 19662:
+	case 19663:
+	case 19665:
+	case 19666:
+	case 19668:
+		pr_info("tp judge ic forward for 19661\n");
+		pr_err("[TP] boot_command_line = %s \n", saved_command_line);
+		if (strstr(tp_ic_name, "nf_nt36672c") && strstr(saved_command_line, "nt36672c")) {
+			return true;
+		}
+		if (strstr(tp_ic_name, "hx83112f_nf") && strstr(saved_command_line, "hx83112f_fhdp_dsi_vdo")) {
+			return true;
+		}
+		return false;
 	case 19131:
 	case 19132:
 	case 19133:
@@ -118,6 +163,21 @@ bool __init tp_judge_ic_match(char *tp_ic_name)
 			return true;
 		}
 		if (strstr(tp_ic_name, "hx83112f_nf") && strstr(saved_command_line, "hx83112f_fhdp_dsi_vdo")) {
+			return true;
+		}
+		return false;
+	case 20001:
+	case 20002:
+	case 20003:
+	case 20200:
+		pr_info("tp judge ic forward for 19131\n");
+		if (strstr(tp_ic_name, "nf_nt36672c") && strstr(boot_command_line, "nt36672c")) {
+			return true;
+		}
+		if (strstr(tp_ic_name, "hx83112f_nf") && strstr(boot_command_line, "hx83112f")) {
+			return true;
+		}
+		if (strstr(tp_ic_name, "ili7807s") && strstr(boot_command_line, "ili7807s")) {
 			return true;
 		}
 		return false;
@@ -158,6 +218,7 @@ bool __init tp_judge_ic_match(char *tp_ic_name)
             return true;
         }
 		break;		
+
 	case 18531:
 	case 18561:
 	case 18161:
@@ -179,6 +240,7 @@ bool __init tp_judge_ic_match(char *tp_ic_name)
 	return true;
 }
 
+EXPORT_SYMBOL(tp_judge_ic_match);
 bool  tp_judge_ic_match_commandline(struct panel_info *panel_data)
 {
 	int prj_id = 0;
@@ -207,6 +269,35 @@ bool  tp_judge_ic_match_commandline(struct panel_info *panel_data)
 	}
 
 	switch (prj_id) {
+	case 20761:
+	case 20762:
+	case 20764:
+	case 20767:
+	case 20766:
+	case 0x2167A:
+	case 0x2167B:
+	case 0x2167C:
+	case 0x2167D:
+	case 0x216AF:
+	case 0x216B0:
+	case 0x216B1:
+		is_tp_type_got_in_match = true;
+		if (strstr(saved_command_line, "ilt9882n_truly_even_hdp_dsi_vdo_lcm")) {
+			pr_err("[TP] touch ic = ilt9882n_truly_jdi \n");
+			tp_used_index = ili9882n_truly;
+			g_tp_dev_vendor = TP_TRULY;
+		}
+		if (strstr(saved_command_line, "ilt7807s_hlt_even_hdp_dsi_vdo_lcm")) {
+			pr_err("[TP] touch ic = ilt7807S_hlt_jdi \n");
+			tp_used_index = ili7807s_hlt;
+			g_tp_dev_vendor = TP_HLT;
+		}
+		if (strstr(saved_command_line, "nt36525b_hlt_even_boe_hdp_dsi_vdo_lcm")) {
+			g_tp_dev_vendor = TP_HLT;
+			tp_used_index = nt36525b_hlt;
+			pr_err("[TP] touch ic = nt36525b_hlt_b8\n");
+		}
+		break;
 	case 19741:
 	case 19747:
 		pr_info("[TP] case 19741\n");
@@ -228,6 +319,25 @@ bool  tp_judge_ic_match_commandline(struct panel_info *panel_data)
 			tp_used_index = ili9881_truly;
 			g_tp_dev_vendor = TP_TRULY;
 		}
+		break;
+	case 20730:
+	case 20731:
+	case 20732:
+	case 20733:
+		pr_info("%s forward for 20730\n", __func__);
+		is_tp_type_got_in_match = true;
+		if (strstr(saved_command_line, "oppo20730_samsung_ams643xy04_lcm_drv_1")) {
+			pr_err("[TP] touch ic = FT_3518 \n");
+			tp_used_index = focal_ft3518;
+			g_tp_dev_vendor = TP_SAMSUNG;
+		}
+
+		if (strstr(saved_command_line, "oppo20730_samsung_ams643xy04_lcm_drv_2")) {
+			pr_err("[TP] touch ic = Goodix-gt9886 \n");
+			tp_used_index =  goodix_gt9886;
+			g_tp_dev_vendor = TP_SAMSUNG;
+		}
+
 		break;
 	case 19661:
 	case 19662:
@@ -305,12 +415,16 @@ bool  tp_judge_ic_match_commandline(struct panel_info *panel_data)
 			tp_used_index = himax_83112f;
 			g_tp_dev_vendor = TP_TIANMA;
 		}
+		if (strstr(boot_command_line, "ili7807s")) {
+			tp_used_index = ili7807s_tm;
+			g_tp_dev_vendor = TP_TIANMA;
+		}
 		break;
-
+		
 	case 20613:
-	case 20611:
-	case 20610:
-	case 20680:
+    	case 20611:
+    	case 20610:
+    	case 20680: 
 	case 20686:
 		pr_info("[TP] case 20611\n");
 		is_tp_type_got_in_match = true;
@@ -342,11 +456,6 @@ bool  tp_judge_ic_match_commandline(struct panel_info *panel_data)
 			tp_used_index = nt36525b_hlt;
 			pr_err("[TP] 206AC tp vendor hlt_b8\n");
 		}
-		if (strstr(saved_command_line, "ilt9882n_txd")) {
-			g_tp_dev_vendor = TP_TXD;
-			tp_used_index = ili9882n_txd;
-			pr_err("[TP] 206AC tp vendor ili9882n_txd\n");
-		}
 		break;
 	/*Xiaofei.Gong@BSP.TP.Function, 2020/09/15, bringup add for sala touchscreen.*/
 	case 20682:
@@ -360,8 +469,6 @@ bool  tp_judge_ic_match_commandline(struct panel_info *panel_data)
 		} else if (strstr(saved_command_line, "nt36672c_jdi")) {
 			g_tp_dev_vendor = TP_JDI;
 
-		} else if (strstr(saved_command_line, "nt36672c_boe")) {
-			g_tp_dev_vendor = TP_BOE;
 		} else {
 			g_tp_dev_vendor = TP_UNKNOWN;
 		}
@@ -417,6 +524,7 @@ bool  tp_judge_ic_match_commandline(struct panel_info *panel_data)
 	return true;
 }
 
+EXPORT_SYMBOL(tp_judge_ic_match_commandline);
 int tp_util_get_vendor(struct hw_resource *hw_res,
 		       struct panel_info *panel_data)
 {
@@ -456,9 +564,14 @@ if ( prj_id == 20630 || prj_id == 20631 || prj_id == 20632 || prj_id == 20633 ||
 	if (prj_id == 19165 || prj_id == 19166) {
 	    memcpy(panel_data->manufacture_info.version, "0xBD3100000", 11);
 	}
+	if (g_tp_prj_id == 19350 || g_tp_prj_id == 19151)
+		memcpy(panel_data->manufacture_info.version, "0xFA1180000", 11);
 	if (prj_id == 20075 || prj_id == 20076) {
 	    memcpy(panel_data->manufacture_info.version, "0xRA5230000", 11);
 	}
+	if (prj_id == 20151 || prj_id == 20301 || prj_id == 20302) {
+            memcpy(panel_data->manufacture_info.version, "0xFA2720000", 11);
+        }
 
 	vendor = GET_TP_DEV_NAME(panel_data->tp_type);
 
@@ -466,6 +579,14 @@ if ( prj_id == 20630 || prj_id == 20631 || prj_id == 20632 || prj_id == 20633 ||
 	if (prj_id == 20131 || prj_id == 20133 || prj_id == 20255 || prj_id == 20257
 		|| prj_id == 20644 || prj_id == 20645 || prj_id == 20649 || prj_id == 0x2064A || prj_id == 0x2068D) {
 		memcpy(panel_data->manufacture_info.version, "0xbd3520000", 11);
+	}
+	if (20730 == prj_id || 20731 == prj_id || 20732 == prj_id  || 20733 == prj_id) {
+		if (focal_ft3518 == tp_used_index) {
+		memcpy(panel_data->manufacture_info.version, "focalt_", 7);
+		}
+		if (goodix_gt9886 == tp_used_index) {
+		memcpy(panel_data->manufacture_info.version, "goodix_", 7);
+		}
 	}
 
 	if (strstr(saved_command_line, "oppo20131_tianma_nt37701")) {
@@ -476,33 +597,129 @@ if ( prj_id == 20630 || prj_id == 20631 || prj_id == 20632 || prj_id == 20633 ||
 
 	/*Xuhang.Li@BSP.TP.Function, 2020/09/18, add tp path for chaka.*/
 
-
-        if (strstr(saved_command_line, "nt36672c_boe_sala")) {
-                hw_res->TX_NUM = 18;
-                hw_res->RX_NUM = 36;
-        }
-
 	strcpy(panel_data->manufacture_info.manufacture, vendor);
 
 	switch (prj_id) {
+	case 20761:
+	case 20762:
+	case 20764:
+	case 20767:
+	case 20766:
+		if ((tp_used_index == ili9882n_truly) && (g_tp_dev_vendor == TP_TRULY)) {
+			snprintf(panel_data->fw_name, MAX_FW_NAME_LENGTH,
+				 "tp/20761/FW_%s_%s.bin",
+				 "NF_ILI9882N", vendor);
+
+			if (panel_data->test_limit_name) {
+				snprintf(panel_data->test_limit_name, MAX_LIMIT_DATA_LENGTH,
+					 "tp/20761/LIMIT_%s_%s.ini",
+					 "NF_ILI9882N", vendor);
+			}
+
+			panel_data->manufacture_info.fw_path = panel_data->fw_name;
+			pr_info("[TP]: firmware_headfile = FW_20762_ILI9882N_TRULY\n");
+			memcpy(panel_data->manufacture_info.version, "XL_NSZ_9882_", 12);
+			panel_data->firmware_headfile.firmware_data = FW_20762_ILI9882H_TRULY;
+			panel_data->firmware_headfile.firmware_size = sizeof(FW_20762_ILI9882H_TRULY);
+		}
+		if ((tp_used_index == ili7807s_hlt) && (g_tp_dev_vendor == TP_HLT)) {
+			vendor = "HLT";
+			strcpy(panel_data->manufacture_info.manufacture, vendor);
+			snprintf(panel_data->fw_name, MAX_FW_NAME_LENGTH,
+				 "tp/20761/FW_%s_%s.bin",
+				 "NF_ILI7807S", vendor);
+
+			if (panel_data->test_limit_name) {
+				snprintf(panel_data->test_limit_name, MAX_LIMIT_DATA_LENGTH,
+					 "tp/20761/LIMIT_%s_%s.ini",
+					 "NF_ILI7807S", vendor);
+			}
+
+			panel_data->manufacture_info.fw_path = panel_data->fw_name;
+			pr_info("[TP]: firmware_headfile = FW_20761_ILI7807S_HLT\n");
+			memcpy(panel_data->manufacture_info.version, "HLT_B6_7807_", 12);
+			panel_data->firmware_headfile.firmware_data = FW_20761_ILI7807S_HLT;
+			panel_data->firmware_headfile.firmware_size = sizeof(FW_20761_ILI7807S_HLT);
+		}
+		break;
+	case 0x2167A:
+	case 0x2167B:
+	case 0x2167C:
+	case 0x2167D:
+	case 0x216AF:
+	case 0x216B0:
+	case 0x216B1:
+		if ((tp_used_index == ili9882n_truly) && (g_tp_dev_vendor == TP_TRULY)) {
+			snprintf(panel_data->fw_name, MAX_FW_NAME_LENGTH,
+				 "tp/2167A/FW_%s_%s.bin",
+				 "NF_ILI9882N", vendor);
+
+			if (panel_data->test_limit_name) {
+				snprintf(panel_data->test_limit_name, MAX_LIMIT_DATA_LENGTH,
+					 "tp/2167A/LIMIT_%s_%s.ini",
+					 "NF_ILI9882N", vendor);
+			}
+
+			panel_data->manufacture_info.fw_path = panel_data->fw_name;
+			pr_info("[TP]: firmware_headfile = FW_20762_ILI9882N_TRULY\n");
+			memcpy(panel_data->manufacture_info.version, "XL_NSZ_9882_", 12);
+			panel_data->firmware_headfile.firmware_data = FW_20762_ILI9882H_TRULY;
+			panel_data->firmware_headfile.firmware_size = sizeof(FW_20762_ILI9882H_TRULY);
+		}
+		if ((tp_used_index == ili7807s_hlt) && (g_tp_dev_vendor == TP_HLT)) {
+			vendor = "HLT";
+			strcpy(panel_data->manufacture_info.manufacture, vendor);
+			snprintf(panel_data->fw_name, MAX_FW_NAME_LENGTH,
+				 "tp/2167A/FW_%s_%s.bin",
+				 "NF_ILI7807S", vendor);
+
+			if (panel_data->test_limit_name) {
+				snprintf(panel_data->test_limit_name, MAX_LIMIT_DATA_LENGTH,
+					 "tp/2167A/LIMIT_%s_%s.ini",
+					 "NF_ILI7807S", vendor);
+			}
+
+			panel_data->manufacture_info.fw_path = panel_data->fw_name;
+			pr_info("[TP]: firmware_headfile = FW_20761_ILI7807S_HLT\n");
+			memcpy(panel_data->manufacture_info.version, "HLT_B6_7807_", 12);
+			panel_data->firmware_headfile.firmware_data = FW_20761_ILI7807S_HLT;
+			panel_data->firmware_headfile.firmware_size = sizeof(FW_20761_ILI7807S_HLT);
+		}
+		if ((tp_used_index == nt36525b_hlt) && (g_tp_dev_vendor == TP_HLT)) {
+			snprintf(panel_data->fw_name, MAX_FW_NAME_LENGTH,
+				"tp/2167A/FW_%s_%s.bin",
+				"NF_NT36525B", "HLTB8");
+
+			if (panel_data->test_limit_name) {
+			snprintf(panel_data->test_limit_name, MAX_LIMIT_DATA_LENGTH,
+				"tp/2167A/LIMIT_%s_%s.img",
+				"NF_NT36525B", "HLTB8");
+			}
+
+			panel_data->manufacture_info.fw_path = panel_data->fw_name;
+			strcpy(panel_data->manufacture_info.manufacture, "HLT");
+			memcpy(panel_data->manufacture_info.version, "HLT_B8_NT25_", 12);
+			panel_data->firmware_headfile.firmware_data = FW_206AC_NF_NT36525B_HLT_B8;
+			panel_data->firmware_headfile.firmware_size = sizeof(FW_206AC_NF_NT36525B_HLT_B8);
+		}
+		break;
 	case 19741:
 	case 19747:
 		pr_info("[TP] enter case 19741\n");
 
-		if ((tp_used_index == nt36525b_hlt) && (g_tp_dev_vendor == TP_HLT)) {
+		if ((tp_used_index == nt36525b_hlt) && (g_tp_dev_vendor == TP_HLT)){
 			snprintf(panel_data->fw_name, MAX_FW_NAME_LENGTH,
 				 "tp/19741/FW_%s_%s.bin",
-				 "NF_NT36525B", "HLT");
+				 "NF_NT36525B", vendor);
 
 			if (panel_data->test_limit_name) {
 				snprintf(panel_data->test_limit_name, MAX_LIMIT_DATA_LENGTH,
 					 "tp/19741/LIMIT_%s_%s.img",
-					 "NF_NT36525B", "HLT");
+					 "NF_NT36525B", vendor);
 			}
 
 			panel_data->manufacture_info.fw_path = panel_data->fw_name;
 			pr_info("[TP]: firmware_headfile = FW_19741_NT36525B_HLT\n");
-			strcpy(panel_data->manufacture_info.manufacture, "HLT");
 			memcpy(panel_data->manufacture_info.version, "NT36525B_HLT", 12);
 			panel_data->firmware_headfile.firmware_data = FW_19741_NT36525B_HLT;
 			panel_data->firmware_headfile.firmware_size = sizeof(FW_19741_NT36525B_HLT);
@@ -542,6 +759,50 @@ if ( prj_id == 20630 || prj_id == 20631 || prj_id == 20632 || prj_id == 20633 ||
 			panel_data->firmware_headfile.firmware_size = sizeof(FW_19741_ILI9881H_TRULY);
 		}
 		break;
+	case 20730:
+	case 20731:
+	case 20732:
+	case 20733:
+
+                pr_info("%s forward for 20730\n", __func__);
+		if (tp_used_index == focal_ft3518) {
+			snprintf(panel_data->fw_name, MAX_FW_NAME_LENGTH,
+				 "tp/20730/FW_%s_%s.img",
+				 "FT3518", vendor);
+
+			if (panel_data->test_limit_name) {
+				snprintf(panel_data->test_limit_name, MAX_LIMIT_DATA_LENGTH,
+					 "tp/20730/LIMIT_%s_%s.img",
+					 "FT3518", vendor);
+			}
+
+			if (panel_data->extra) {
+				snprintf(panel_data->extra, MAX_LIMIT_DATA_LENGTH,
+					 "tp/20730/BOOT_FW_%s_%s.ihex",
+					 "FT3518", vendor);
+			}
+		}
+
+		if (tp_used_index == goodix_gt9886) {
+			snprintf(panel_data->fw_name, MAX_FW_NAME_LENGTH,
+				 "tp/20730/FW_%s_%s.img",
+				"GT9886", vendor);
+
+			if (panel_data->test_limit_name) {
+				snprintf(panel_data->test_limit_name, MAX_LIMIT_DATA_LENGTH,
+					 "tp/20730/LIMIT_%s_%s.img",
+					 "GT9886", vendor);
+			}
+
+			if (panel_data->extra) {
+				snprintf(panel_data->extra, MAX_LIMIT_DATA_LENGTH,
+					 "tp/20730/BOOT_FW_%s_%s.ihex",
+					 "GT9886", vendor);
+			}
+                }
+
+		panel_data->manufacture_info.fw_path = panel_data->fw_name;
+		break;
 	case 19661:
 	case 19662:
 	case 19663:
@@ -553,18 +814,18 @@ if ( prj_id == 20630 || prj_id == 20631 || prj_id == 20632 || prj_id == 20633 ||
 		if (tp_used_index == nt36672c) {
 			snprintf(panel_data->fw_name, MAX_FW_NAME_LENGTH,
 				 "tp/19661/FW_%s_%s.bin",
-				 "NT36672C_NF", vendor);
+				 "NF_NT36672C", vendor);
 
 			if (panel_data->test_limit_name) {
 				snprintf(panel_data->test_limit_name, MAX_LIMIT_DATA_LENGTH,
 					 "tp/19661/LIMIT_%s_%s.img",
-					 "NT36672C_NF", vendor);
+					 "NF_NT36672C", vendor);
 			}
 
 			if (panel_data->extra) {
 				snprintf(panel_data->extra, MAX_LIMIT_DATA_LENGTH,
 					 "tp/19661/BOOT_FW_%s_%s.ihex",
-					 "NT36672C_NF", vendor);
+					 "NF_NT36672C", vendor);
 			}
 
 			panel_data->manufacture_info.fw_path = panel_data->fw_name;
@@ -691,11 +952,11 @@ if ( prj_id == 20630 || prj_id == 20631 || prj_id == 20632 || prj_id == 20633 ||
 		}
 
 		break;
-
+	
 	case 20613:
-	case 20611:
-	case 20610:
-	case 20680:
+    	case 20611:
+    	case 20610:
+    	case 20680: 
 	case 20686:
 		pr_info("[TP] enter case OPPO_20611\n");
 
@@ -761,19 +1022,16 @@ if ( prj_id == 20630 || prj_id == 20631 || prj_id == 20632 || prj_id == 20633 ||
 			snprintf(panel_data->fw_name, MAX_FW_NAME_LENGTH,
 				 "tp/20001/FW_%s_%s.img",
 				 "NF_NT36672C", vendor);
-
 			if (panel_data->test_limit_name) {
 				snprintf(panel_data->test_limit_name, MAX_LIMIT_DATA_LENGTH,
 					 "tp/20001/LIMIT_%s_%s.img",
 					 "NF_NT36672C", vendor);
 			}
-
 			if (panel_data->extra) {
 				snprintf(panel_data->extra, MAX_LIMIT_DATA_LENGTH,
 					 "tp/20001/BOOT_FW_%s_%s.ihex",
 					 "NF_NT36672C", vendor);
 			}
-
 			panel_data->manufacture_info.fw_path = panel_data->fw_name;
 
 			if (tp_used_index == nt36672c) {
@@ -788,21 +1046,17 @@ if ( prj_id == 20630 || prj_id == 20631 || prj_id == 20632 || prj_id == 20633 ||
 			snprintf(panel_data->fw_name, MAX_FW_NAME_LENGTH,
 				 "tp/20001/FW_%s_%s.img",
 				 "NF_HX83112F", vendor);
-
 			if (panel_data->test_limit_name) {
 				snprintf(panel_data->test_limit_name, MAX_LIMIT_DATA_LENGTH,
 					 "tp/20001/LIMIT_%s_%s.img",
 					 "NF_HX83112F", vendor);
 			}
-
 			if (panel_data->extra) {
 				snprintf(panel_data->extra, MAX_LIMIT_DATA_LENGTH,
 					 "tp/20001/BOOT_FW_%s_%s.ihex",
 					 "NF_HX83112F", vendor);
 			}
-
 			panel_data->manufacture_info.fw_path = panel_data->fw_name;
-
 			if (tp_used_index == himax_83112f) {
 				pr_info("[TP]: firmware_headfile = FW_20001_NF_HX83112F_TIANMA\n");
 				memcpy(panel_data->manufacture_info.version, "0xFA219TH", 9);
@@ -811,11 +1065,34 @@ if ( prj_id == 20630 || prj_id == 20631 || prj_id == 20632 || prj_id == 20633 ||
 			}
 		}
 
+		if (tp_used_index == ili7807s_tm) {
+			snprintf(panel_data->fw_name, MAX_FW_NAME_LENGTH,
+				"tp/20001/FW_%s_%s.img",
+				"NF_ILI7807S", vendor);
+			if (panel_data->test_limit_name) {
+				snprintf(panel_data->test_limit_name, MAX_LIMIT_DATA_LENGTH,
+					"tp/20001/LIMIT_%s_%s.img",
+					"NF_ILI7807S", vendor);
+			}
+			if (panel_data->extra) {
+				snprintf(panel_data->extra, MAX_LIMIT_DATA_LENGTH,
+					"tp/20001/BOOT_FW_%s_%s.ihex",
+					"NF_ILI7807S", vendor);
+			}
+			panel_data->manufacture_info.fw_path = panel_data->fw_name;
+			if (tp_used_index == ili7807s_tm) {
+				pr_info("[TP]: firmware_headfile = FW_20001_NF_ILI7807S_TIANMA\n");
+				memcpy(panel_data->manufacture_info.version, "0xFA219TI", 9);
+				panel_data->firmware_headfile.firmware_data = FW_20001_NF_ILI7807S_TIANMA;
+				panel_data->firmware_headfile.firmware_size = sizeof(FW_20001_NF_ILI7807S_TIANMA);
+			}
+		}
+
 		break;
 
 	/* Pan.Chen@BSP.TP.Function, 2020/09/11, bringup add for touchscreen. */
 	case 132780:
-		pr_info("[TP] enter case 206AC\n");
+		pr_info("[TP] enter case 132780\n");
 
 		if ((tp_used_index == nt36525b_hlt) && (g_tp_dev_vendor == TP_HLT)) {
 			snprintf(panel_data->fw_name, MAX_FW_NAME_LENGTH,
@@ -861,23 +1138,6 @@ if ( prj_id == 20630 || prj_id == 20631 || prj_id == 20632 || prj_id == 20633 ||
 			panel_data->firmware_headfile.firmware_data = FW_206AC_NF_NT36525B_HLT_B8;
 			panel_data->firmware_headfile.firmware_size = sizeof(FW_206AC_NF_NT36525B_HLT_B8);
 		}
-		if ((tp_used_index == ili9882n_txd) && (g_tp_dev_vendor == TP_TXD)) {
-			snprintf(panel_data->fw_name, MAX_FW_NAME_LENGTH,
-				"tp/206AC/FW_%s_%s.bin",
-				"NF_ILT9882N", "TXD");
-
-			if (panel_data->test_limit_name) {
-			snprintf(panel_data->test_limit_name, MAX_LIMIT_DATA_LENGTH,
-				"tp/206AC/LIMIT_%s_%s.ini",
-				"NF_ILT9882N", "TXD");
-			}
-
-			panel_data->manufacture_info.fw_path = panel_data->fw_name;
-			strcpy(panel_data->manufacture_info.manufacture, "TXD");
-			memcpy(panel_data->manufacture_info.version, "TXD_ILI882N_", 12);
-			panel_data->firmware_headfile.firmware_data = FW_206AC_NF_ILT9882N_TXD;
-			panel_data->firmware_headfile.firmware_size = sizeof(FW_206AC_NF_ILT9882N_TXD);
-		}
 		break;
 
 	/*Xiaofei.Gong@BSP.TP.Function, 2020/09/15, bringup add for sala touchscreen.*/
@@ -889,7 +1149,7 @@ if ( prj_id == 20630 || prj_id == 20631 || prj_id == 20632 || prj_id == 20633 ||
 				snprintf(panel_data->fw_name, MAX_FW_NAME_LENGTH,
 					"tp/20682/FW_%s_%s.bin",
 					"NT36672C_NF", vendor);
-				if (panel_data->test_limit_name) {
+			if (panel_data->test_limit_name) {
 				snprintf(panel_data->test_limit_name, MAX_LIMIT_DATA_LENGTH,
 					"tp/20682/LIMIT_%s_%s.img",
 					"NT36672C_NF", vendor);
@@ -924,27 +1184,6 @@ if ( prj_id == 20630 || prj_id == 20631 || prj_id == 20632 || prj_id == 20633 ||
 				memcpy(panel_data->manufacture_info.version, "NT72C_JDI", 9);
 				panel_data->firmware_headfile.firmware_data = FW_20682_NT36672C_JDI;
 				panel_data->firmware_headfile.firmware_size = sizeof(FW_20682_NT36672C_JDI);
-			} else if (g_tp_dev_vendor == TP_BOE) {
-				pr_info("[TP] 20682 tp vendor boe\n");
-				snprintf(panel_data->fw_name, MAX_FW_NAME_LENGTH,
-					"tp/20682/FW_%s_%s.bin",
-					"NT36672C_NF", vendor);
-
-				if (panel_data->test_limit_name) {
-				snprintf(panel_data->test_limit_name, MAX_LIMIT_DATA_LENGTH,
-					"tp/20682/LIMIT_%s_%s.img",
-					"NT36672C_NF", vendor);
-				}
-
-				if (panel_data->extra) {
-				snprintf(panel_data->extra, MAX_LIMIT_DATA_LENGTH,
-					"tp/20682/BOOT_FW_%s_%s.ihex",
-					"NT36672C_NF", vendor);
-				}
-				panel_data->manufacture_info.fw_path = panel_data->fw_name;
-				memcpy(panel_data->manufacture_info.version, "NT72C_BOE", 9);
-				panel_data->firmware_headfile.firmware_data = FW_20682_NT36672C_BOE;
-				panel_data->firmware_headfile.firmware_size = sizeof(FW_20682_NT36672C_BOE);
 			} else {
 				pr_info("[TP] 20682 tp ic not found\n");
 			}
@@ -1107,12 +1346,12 @@ if ( prj_id == 20630 || prj_id == 20631 || prj_id == 20632 || prj_id == 20633 ||
 	case 20257:
 	case 20644:
 	case 20645:
-        case 20649:
+	case 20649:
 	case 0x2064A:
 	case 0x2068D:
 		snprintf(panel_data->fw_name, MAX_FW_NAME_LENGTH,
 			 "tp/20131/FW_%s_%s.%s",
-			  panel_data->chip_name, vendor, !strcmp(vendor,
+			 panel_data->chip_name, vendor, !strcmp(vendor,
 					"SAMSUNG") ? "bin" : "img");
 
 		if (panel_data->test_limit_name) {
@@ -1124,6 +1363,23 @@ if ( prj_id == 20630 || prj_id == 20631 || prj_id == 20632 || prj_id == 20633 ||
 		break;
 
 	/*Xuhang.Li@BSP.TP.Function, 2020/09/24, add end*/
+/*#ifdef OPLUS_FEATURE_TP_BASIC shifan@bsp.tp 2020.1102 populating fw_name test_limit name fw_path*/
+	case 20151:
+	case 20301:
+	case 20302:
+		snprintf(panel_data->fw_name, MAX_FW_NAME_LENGTH,
+				"tp/20151/FW_%s_%s.img",
+				"FT3518", "SAMSUNG");
+
+		if (panel_data->test_limit_name) {
+			snprintf(panel_data->test_limit_name, MAX_LIMIT_DATA_LENGTH,
+				"tp/20151/LIMIT_%s_%s.img",
+				"FT3518", "SAMSUNG");
+		}
+		panel_data->manufacture_info.fw_path = panel_data->fw_name;
+		break;
+/*#endif OPLUS_FEATURE_TP_BASIC*/
+
 	case 20630:
 	case 20631:
 	case 20632:
@@ -1148,6 +1404,8 @@ if ( prj_id == 20630 || prj_id == 20631 || prj_id == 20632 || prj_id == 20633 ||
         }
         panel_data->manufacture_info.fw_path = panel_data->fw_name;
         break;
+
+
 	default:
 		snprintf(panel_data->fw_name, MAX_FW_NAME_LENGTH,
 			 "tp/%d/FW_%s_%s.img",
@@ -1176,6 +1434,7 @@ if ( prj_id == 20630 || prj_id == 20631 || prj_id == 20632 || prj_id == 20633 ||
 
 	return 0;
 }
+EXPORT_SYMBOL(tp_util_get_vendor);
 
 /**
  * Description:

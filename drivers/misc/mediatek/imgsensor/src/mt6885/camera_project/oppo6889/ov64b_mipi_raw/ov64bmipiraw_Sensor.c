@@ -89,14 +89,14 @@ static struct imgsensor_info_struct imgsensor_info = {
 
     .normal_video = { /*4624*2600@30fps*/
         .pclk = 115200000,
-        .linelength = 936,
-        .framelength = 4102,
+        .linelength = 696,
+        .framelength = 5518,
         .startx = 0,
         .starty = 0,
         .grabwindow_width = 4624,
         .grabwindow_height = 2600,
         .mipi_data_lp2hs_settle_dc = 85,
-        .mipi_pixel_rate = 679680000,
+        .mipi_pixel_rate = 920000000,
         .max_framerate = 300,
     },
 

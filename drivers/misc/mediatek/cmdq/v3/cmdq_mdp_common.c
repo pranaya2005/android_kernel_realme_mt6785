@@ -902,12 +902,18 @@ static s32 cmdq_mdp_consume_handle(void)
 	bool acquired = false;
 	struct CmdqCBkStruct *callback = cmdq_core_get_group_cb();
 	bool force_inorder = false;
+	bool secure_run = false;
 
 	/* operation for tasks_wait list need task mutex */
 	mutex_lock(&mdp_task_mutex);
 
 	CMDQ_PROF_MMP(cmdq_mmp_get_event()->consume_done, MMPROFILE_FLAG_START,
 		current->pid, 0);
+
+	handle = list_first_entry_or_null(&mdp_ctx.tasks_wait, typeof(*handle),
+		list_entry);
+	if (handle)
+		secure_run = handle->secData.is_secure;
 
 	/* loop waiting list for pending handles */
 	list_for_each_entry_safe(handle, temp, &mdp_ctx.tasks_wait,
@@ -923,6 +929,14 @@ static s32 cmdq_mdp_consume_handle(void)
 			continue;
 		}
 
+		if (secure_run != handle->secData.is_secure) {
+			mutex_unlock(&mdp_thread_mutex);
+			CMDQ_LOG(
+				"skip secure inorder handle:%p engine:%#llx\n",
+				handle, handle->engineFlag);
+			break;
+		}
+
 		handle->thread = cmdq_mdp_find_free_thread(handle);
 		if (handle->thread == CMDQ_INVALID_THREAD) {
 			/* no available thread, keep wait */
@@ -936,12 +950,7 @@ static s32 cmdq_mdp_consume_handle(void)
 			CMDQ_MSG(
 				"fail to get thread handle:0x%p engine:0x%llx\n",
 				handle, handle->engineFlag);
-			#ifndef OPLUS_FEATURE_CAMERA_COMMON
-			//dingpeifei@camera 20210708 modify for MDP error ALPS05901187
 			continue;
-			#else
-			break;
-			#endif
 		}
 
 		/* lock thread for counting and clk */
@@ -2359,6 +2368,10 @@ static void cmdq_mdp_begin_task_virtual(struct cmdqRecStruct *handle,
 
 	pmqos_curr_record =
 		kzalloc(sizeof(struct mdp_pmqos_record), GFP_KERNEL);
+	if (unlikely(!pmqos_curr_record)) {
+		CMDQ_ERR("alloc pmqos_curr_record fail\n");
+		return;
+	}
 	handle->user_private = pmqos_curr_record;
 
 	do_gettimeofday(&curr_time);
@@ -2646,6 +2659,10 @@ static void cmdq_mdp_end_task_virtual(struct cmdqRecStruct *handle,
 
 	mdp_curr_pmqos = (struct mdp_pmqos *)handle->prop_addr;
 	pmqos_curr_record = (struct mdp_pmqos_record *)handle->user_private;
+	if (unlikely(!pmqos_curr_record)) {
+		CMDQ_ERR("alloc pmqos_curr_record fail\n");
+		return;
+	}
 	pmqos_curr_record->submit_tm = curr_time;
 
 	for (i = 0; i < size; i++) {

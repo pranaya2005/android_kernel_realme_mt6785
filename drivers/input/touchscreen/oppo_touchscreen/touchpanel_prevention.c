@@ -4,6 +4,7 @@
  */
 
 #include "touchpanel_common.h"
+#include "touchpanel_healthinfo.h"
 #include <touchpanel_prevention.h>
 #include <linux/uaccess.h>
 
@@ -561,6 +562,11 @@ static void touch_report_work(struct work_struct *work)
         TPD_DETAIL("Reset the algorithm id:%d points\n", up_id);
     }
 #endif
+
+    if (g_tp->health_monitor_v2_support) {
+        tp_healthinfo_report(&g_tp->monitor_data_v2, HEALTH_GRIP_UP, &up_id);
+        TPD_DETAIL("healthinfo point %d report UP in grip\n", up_id);
+    }
 
     g_tp->grip_info->grip_hold_status[up_id] = 0;
 OUT:
@@ -1177,7 +1183,7 @@ static int kernel_grip_read_func(struct seq_file *s, void *v)
     return kernel_grip_print_func(s, grip_info);
 }
 
-static int get_key_value(char *in, char *check)
+int touch_get_key_value(char *in, char *check)
 {
     int out = 0;
     char *pos = NULL;
@@ -1547,7 +1553,7 @@ static int kernel_grip_parse(struct kernel_grip_info *grip_info, char *input, in
 
         if (OBJECT_PARAMETER == object) {
             if(OPERATE_MODIFY == cmd) {
-                if ((value = get_key_value(split_str[i], "condition_frame_limit")) >= 0) {
+                if ((value = touch_get_key_value(split_str[i], "condition_frame_limit")) >= 0) {
                     grip_info->condition_frame_limit = value;
                     TPD_INFO("change condition_frame_limit to %d.\n", value);
                     if (grip_info->grip_handle_in_fw && op && op->set_condition_frame_limit
@@ -1557,10 +1563,10 @@ static int kernel_grip_parse(struct kernel_grip_info *grip_info, char *input, in
                             TPD_INFO("%s: set condition frame limit in fw failed !\n", __func__);
                         }
                     }
-                } else if ((value = get_key_value(split_str[i], "condition_updelay_ms")) >= 0) {
+                } else if ((value = touch_get_key_value(split_str[i], "condition_updelay_ms")) >= 0) {
                     grip_info->condition_updelay_ms = value;
                     TPD_INFO("change condition_updelay_ms to %d.\n", value);
-                } else if ((value = get_key_value(split_str[i], "large_frame_limit"))  >= 0) {
+                } else if ((value = touch_get_key_value(split_str[i], "large_frame_limit"))  >= 0) {
                     grip_info->large_frame_limit = value;
                     TPD_INFO("change large_frame_limit to %d.\n", value);
                     if (grip_info->grip_handle_in_fw && op && op->set_large_frame_limit
@@ -1570,7 +1576,7 @@ static int kernel_grip_parse(struct kernel_grip_info *grip_info, char *input, in
                             TPD_INFO("%s: set condition frame limit in fw failed !\n", __func__);
                         }
                     }
-                } else if ((value = get_key_value(split_str[i], "large_ver_thd"))  >= 0) {
+                } else if ((value = touch_get_key_value(split_str[i], "large_ver_thd"))  >= 0) {
                     grip_info->large_ver_thd = value;
                     TPD_INFO("change large_ver_thd to %d.\n", value);
                     if (grip_info->grip_handle_in_fw && op && op->set_large_ver_thd
@@ -1580,16 +1586,16 @@ static int kernel_grip_parse(struct kernel_grip_info *grip_info, char *input, in
                             TPD_INFO("%s: set large ver thd in fw failed !\n", __func__);
                         }
                     }
-                } else if ((value = get_key_value(split_str[i], "large_hor_thd"))  >= 0) {
+                } else if ((value = touch_get_key_value(split_str[i], "large_hor_thd"))  >= 0) {
                     grip_info->large_hor_thd = value;
                     TPD_INFO("change large_hor_thd to %d.\n", value);
-                } else if ((value = get_key_value(split_str[i], "large_hor_corner_thd")) >= 0) {
+                } else if ((value = touch_get_key_value(split_str[i], "large_hor_corner_thd")) >= 0) {
                     grip_info->large_hor_corner_thd = value;
                     TPD_INFO("change large_hor_corner_thd to %d.\n", value);
-                } else if ((value = get_key_value(split_str[i], "large_ver_corner_thd"))  >= 0) {
+                } else if ((value = touch_get_key_value(split_str[i], "large_ver_corner_thd"))  >= 0) {
                     grip_info->large_ver_corner_thd = value;
                     TPD_INFO("change large_ver_corner_thd to %d.\n", value);
-                } else if ((value = get_key_value(split_str[i], "large_corner_frame_limit"))  >= 0) {
+                } else if ((value = touch_get_key_value(split_str[i], "large_corner_frame_limit"))  >= 0) {
                     grip_info->large_corner_frame_limit = value;
                     TPD_INFO("change large_corner_frame_limit to %d.\n", value);
                     if (grip_info->grip_handle_in_fw && op && op->set_large_corner_frame_limit
@@ -1599,25 +1605,25 @@ static int kernel_grip_parse(struct kernel_grip_info *grip_info, char *input, in
                             TPD_INFO("%s: set large condition frame limit in fw failed !\n", __func__);
                         }
                     }
-                } else if ((value = get_key_value(split_str[i], "large_ver_corner_width"))  >= 0) {
+                } else if ((value = touch_get_key_value(split_str[i], "large_ver_corner_width"))  >= 0) {
                     grip_info->large_ver_corner_width = value;
                     TPD_INFO("change large_ver_corner_width to %d.\n", value);
-                } else if ((value = get_key_value(split_str[i], "large_hor_corner_width"))  >= 0) {
+                } else if ((value = touch_get_key_value(split_str[i], "large_hor_corner_width"))  >= 0) {
                     grip_info->large_hor_corner_width = value;
                     TPD_INFO("change large_hor_corner_width to %d.\n", value);
-                } else if ((value = get_key_value(split_str[i], "large_corner_distance"))  >= 0) {
+                } else if ((value = touch_get_key_value(split_str[i], "large_corner_distance"))  >= 0) {
                     grip_info->large_corner_distance = value;
                     TPD_INFO("change large_corner_distance to %d.\n", value);
-                } else if ((value = get_key_value(split_str[i], "grip_disable_level"))  >= 0) {
+                } else if ((value = touch_get_key_value(split_str[i], "grip_disable_level"))  >= 0) {
                     grip_info->grip_disable_level |= 1 << value;
                     TPD_INFO("change grip_disable_level to %d.\n", value);
-                } else if ((value = get_key_value(split_str[i], "grip_enable_level"))  >= 0) {
+                } else if ((value = touch_get_key_value(split_str[i], "grip_enable_level"))  >= 0) {
                     grip_info->grip_disable_level &= ~(1 << value);
                     TPD_INFO("change grip_enable_level to %d.\n", value);
-                } else if ((value = get_key_value(split_str[i], "large_detect_time_ms"))  >= 0) {
+                } else if ((value = touch_get_key_value(split_str[i], "large_detect_time_ms"))  >= 0) {
                     grip_info->large_detect_time_ms = value;
                     TPD_INFO("change large_detect_time_ms to %d.\n", value);
-                } else if ((value = get_key_value(split_str[i], "down_delta_time_ms"))  >= 0) {
+                } else if ((value = touch_get_key_value(split_str[i], "down_delta_time_ms"))  >= 0) {
                     grip_info->down_delta_time_ms = value;
                     TPD_INFO("change down_delta_time_ms to %d.\n", value);
                 } else {
@@ -1628,37 +1634,37 @@ static int kernel_grip_parse(struct kernel_grip_info *grip_info, char *input, in
             }
         } else if (OBJECT_LONG_CURVED_PARAMETER == object) {
             if(OPERATE_MODIFY == cmd) {
-                if ((value = get_key_value(split_str[i], "edge_finger_thd")) >= 0) {
+                if ((value = touch_get_key_value(split_str[i], "edge_finger_thd")) >= 0) {
                     long_side_para->edge_finger_thd = value;
                     TPD_INFO("change long side edge_finger_thd to %d.\n", value);
-                } else if ((value = get_key_value(split_str[i], "hold_finger_thd")) >= 0) {
+                } else if ((value = touch_get_key_value(split_str[i], "hold_finger_thd")) >= 0) {
                     long_side_para->hold_finger_thd = value;
                     TPD_INFO("change long side hold_finger_thd to %d.\n", value);
-                } else if ((value = get_key_value(split_str[i], "normal_finger_thd_1"))  >= 0) {
+                } else if ((value = touch_get_key_value(split_str[i], "normal_finger_thd_1"))  >= 0) {
                     long_side_para->normal_finger_thd_1 = value;
                     TPD_INFO("change long side normal_finger_thd_1 to %d.\n", value);
-                } else if ((value = get_key_value(split_str[i], "normal_finger_thd_2"))  >= 0) {
+                } else if ((value = touch_get_key_value(split_str[i], "normal_finger_thd_2"))  >= 0) {
                     long_side_para->normal_finger_thd_2 = value;
                     TPD_INFO("change long side normal_finger_thd_2 to %d.\n", value);
-                } else if ((value = get_key_value(split_str[i], "normal_finger_thd_3"))  >= 0) {
+                } else if ((value = touch_get_key_value(split_str[i], "normal_finger_thd_3"))  >= 0) {
                     long_side_para->normal_finger_thd_3 = value;
                     TPD_INFO("change long side normal_finger_thd_3 to %d.\n", value);
-                } else if ((value = get_key_value(split_str[i], "large_palm_thd_1"))  >= 0) {
+                } else if ((value = touch_get_key_value(split_str[i], "large_palm_thd_1"))  >= 0) {
                     long_side_para->large_palm_thd_1 = value;
                     TPD_INFO("change long side large_palm_thd_1 to %d.\n", value);
-                } else if ((value = get_key_value(split_str[i], "large_palm_thd_2")) >= 0) {
+                } else if ((value = touch_get_key_value(split_str[i], "large_palm_thd_2")) >= 0) {
                     long_side_para->large_palm_thd_2 = value;
                     TPD_INFO("change long side large_palm_thd_2 to %d.\n", value);
-                } else if ((value = get_key_value(split_str[i], "small_palm_thd_1"))  >= 0) {
+                } else if ((value = touch_get_key_value(split_str[i], "small_palm_thd_1"))  >= 0) {
                     long_side_para->small_palm_thd_1 = value;
                     TPD_INFO("change long side small_palm_thd_1 to %d.\n", value);
-                } else if ((value = get_key_value(split_str[i], "small_palm_thd_2"))  >= 0) {
+                } else if ((value = touch_get_key_value(split_str[i], "small_palm_thd_2"))  >= 0) {
                     long_side_para->small_palm_thd_2 = value;
                     TPD_INFO("change long side small_palm_thd_2 to %d.\n", value);
-                } else if ((value = get_key_value(split_str[i], "palm_thd_1"))  >= 0) {
+                } else if ((value = touch_get_key_value(split_str[i], "palm_thd_1"))  >= 0) {
                     long_side_para->palm_thd_1 = value;
                     TPD_INFO("change long side palm_thd_1 to %d.\n", value);
-                } else if ((value = get_key_value(split_str[i], "palm_thd_2"))  >= 0) {
+                } else if ((value = touch_get_key_value(split_str[i], "palm_thd_2"))  >= 0) {
                     long_side_para->palm_thd_2 = value;
                     TPD_INFO("change long side palm_thd_2 to %d.\n", value);
                 } else {
@@ -1669,37 +1675,37 @@ static int kernel_grip_parse(struct kernel_grip_info *grip_info, char *input, in
             }
         } else if (OBJECT_SHORT_CURVED_PARAMETER == object) {
             if(OPERATE_MODIFY == cmd) {
-                if ((value = get_key_value(split_str[i], "edge_finger_thd")) >= 0) {
+                if ((value = touch_get_key_value(split_str[i], "edge_finger_thd")) >= 0) {
                     short_side_para->edge_finger_thd = value;
                     TPD_INFO("change short side edge_finger_thd to %d.\n", value);
-                } else if ((value = get_key_value(split_str[i], "hold_finger_thd")) >= 0) {
+                } else if ((value = touch_get_key_value(split_str[i], "hold_finger_thd")) >= 0) {
                     short_side_para->hold_finger_thd = value;
                     TPD_INFO("change short side hold_finger_thd to %d.\n", value);
-                } else if ((value = get_key_value(split_str[i], "normal_finger_thd_1"))  >= 0) {
+                } else if ((value = touch_get_key_value(split_str[i], "normal_finger_thd_1"))  >= 0) {
                     short_side_para->normal_finger_thd_1 = value;
                     TPD_INFO("change short side normal_finger_thd_1 to %d.\n", value);
-                } else if ((value = get_key_value(split_str[i], "normal_finger_thd_2"))  >= 0) {
+                } else if ((value = touch_get_key_value(split_str[i], "normal_finger_thd_2"))  >= 0) {
                     short_side_para->normal_finger_thd_2 = value;
                     TPD_INFO("change short side normal_finger_thd_2 to %d.\n", value);
-                } else if ((value = get_key_value(split_str[i], "normal_finger_thd_3"))  >= 0) {
+                } else if ((value = touch_get_key_value(split_str[i], "normal_finger_thd_3"))  >= 0) {
                     short_side_para->normal_finger_thd_3 = value;
                     TPD_INFO("change short side normal_finger_thd_3 to %d.\n", value);
-                } else if ((value = get_key_value(split_str[i], "large_palm_thd_1"))  >= 0) {
+                } else if ((value = touch_get_key_value(split_str[i], "large_palm_thd_1"))  >= 0) {
                     short_side_para->large_palm_thd_1 = value;
                     TPD_INFO("change short side large_palm_thd_1 to %d.\n", value);
-                } else if ((value = get_key_value(split_str[i], "large_palm_thd_2")) >= 0) {
+                } else if ((value = touch_get_key_value(split_str[i], "large_palm_thd_2")) >= 0) {
                     short_side_para->large_palm_thd_2 = value;
                     TPD_INFO("change short side large_palm_thd_2 to %d.\n", value);
-                }  else if ((value = get_key_value(split_str[i], "small_palm_thd_1"))  >= 0) {
+                }  else if ((value = touch_get_key_value(split_str[i], "small_palm_thd_1"))  >= 0) {
                     short_side_para->small_palm_thd_1 = value;
                     TPD_INFO("change short side small_palm_thd_1 to %d.\n", value);
-                } else if ((value = get_key_value(split_str[i], "small_palm_thd_2"))  >= 0) {
+                } else if ((value = touch_get_key_value(split_str[i], "small_palm_thd_2"))  >= 0) {
                     short_side_para->small_palm_thd_2 = value;
                     TPD_INFO("change short side small_palm_thd_2 to %d.\n", value);
-                } else if ((value = get_key_value(split_str[i], "palm_thd_1"))  >= 0) {
+                } else if ((value = touch_get_key_value(split_str[i], "palm_thd_1"))  >= 0) {
                     short_side_para->palm_thd_1 = value;
                     TPD_INFO("change short side palm_thd_1 to %d.\n", value);
-                } else if ((value = get_key_value(split_str[i], "palm_thd_2"))  >= 0) {
+                } else if ((value = touch_get_key_value(split_str[i], "palm_thd_2"))  >= 0) {
                     short_side_para->palm_thd_2 = value;
                     TPD_INFO("change short side palm_thd_2 to %d.\n", value);
                 } else {

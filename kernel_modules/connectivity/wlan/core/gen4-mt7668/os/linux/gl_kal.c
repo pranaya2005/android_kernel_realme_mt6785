@@ -851,7 +851,16 @@ WLAN_STATUS kalRxIndicateOnePkt(IN P_GLUE_INFO_T prGlueInfo, IN PVOID pvPkt)
 
 #if 1
 
-	prNetDev = (struct net_device *)wlanGetNetInterfaceByBssIdx(prGlueInfo, GLUE_GET_PKT_BSS_IDX(prSkb));
+	if (GLUE_GET_PKT_BSS_IDX(prSkb) < HW_BSSID_NUM) {
+		prNetDev = (struct net_device *)wlanGetNetInterfaceByBssIdx(
+			prGlueInfo, GLUE_GET_PKT_BSS_IDX(prSkb));
+	} else {
+		/* Bssindex from fw pkt is illegal */
+		DBGLOG(RX, ERROR,
+			"WLAN Error[%s-%d]:-----Bss IDX got from fw pakcet is wrong------.\n",
+			 __func__, __LINE__);
+	}
+
 	if (!prNetDev)
 		prNetDev = prGlueInfo->prDevHandler;
 #if CFG_SUPPORT_SNIFFER
@@ -979,12 +988,14 @@ kalIndicateStatusAndComplete(IN P_GLUE_INFO_T prGlueInfo, IN WLAN_STATUS eStatus
 	P_PARAM_AUTH_EVENT_T pAuth = (P_PARAM_AUTH_EVENT_T) pStatus;
 	P_PARAM_PMKID_CANDIDATE_LIST_T pPmkid = (P_PARAM_PMKID_CANDIDATE_LIST_T) (pStatus + 1);
 	PARAM_MAC_ADDRESS arBssid;
+#if !CFG_SUPPORT_CFG80211_AUTH
 	PARAM_SSID_T ssid;
 	struct ieee80211_channel *prChannel = NULL;
 	struct cfg80211_bss *bss;
 	UINT_8 ucChannelNum;
 	P_BSS_DESC_T prBssDesc = NULL;
 	struct wiphy *wiphy = NULL;
+#endif
 	gfp_t flags = GFP_KERNEL;
 
 	GLUE_SPIN_LOCK_DECLARATION();
@@ -1008,8 +1019,7 @@ kalIndicateStatusAndComplete(IN P_GLUE_INFO_T prGlueInfo, IN WLAN_STATUS eStatus
 #if CFG_SUPPORT_CFG80211_AUTH /* Report RX association response frame */
 		DBGLOG(INIT, INFO,
 			"Skip report CONNECTED when using supplicant SME\n");
-		return;
-#endif
+#else
 		do {
 			/* print message on console */
 			wlanQueryInformation(prGlueInfo->prAdapter, wlanoidQuerySsid, &ssid, sizeof(ssid), &bufLen);
@@ -1021,6 +1031,10 @@ kalIndicateStatusAndComplete(IN P_GLUE_INFO_T prGlueInfo, IN WLAN_STATUS eStatus
 		} while (0);
 
 		if (prGlueInfo->fgIsRegistered == TRUE) {
+			struct cfg80211_bss *bss_others = NULL;
+			/* only loop 15 times to avoid dead loop */
+			UINT_8 ucLoopCnt = 15;
+			wiphy = priv_to_wiphy(prGlueInfo);
 			/* retrieve channel */
 			ucChannelNum =
 			    wlanGetChannelNumberByNetwork(prGlueInfo->prAdapter,
@@ -1082,6 +1096,44 @@ kalIndicateStatusAndComplete(IN P_GLUE_INFO_T prGlueInfo, IN WLAN_STATUS eStatus
 #endif
 				}
 			}
+
+			/* remove all bsses that before and only channel
+			 * different with the current connected one
+			 * if without this patch, UI will show channel A is
+			 * connected even if AP has change channel from A to B
+			 */
+			while (ucLoopCnt--) {
+#if KERNEL_VERSION(4, 1, 0) <= CFG80211_VERSION_CODE
+				bss_others = cfg80211_get_bss(
+						wiphy,
+						NULL, arBssid, ssid.aucSsid,
+						ssid.u4SsidLen,
+						IEEE80211_BSS_TYPE_ESS,
+						IEEE80211_PRIVACY_ANY);
+#else
+				bss_others = cfg80211_get_bss(
+						wiphy,
+						NULL, arBssid, ssid.aucSsid,
+						ssid.u4SsidLen,
+						WLAN_CAPABILITY_ESS,
+						WLAN_CAPABILITY_ESS);
+#endif
+				if (bss && bss_others && bss_others != bss) {
+					DBGLOG(SCN, INFO,
+						   "remove BSSes that only channel different\n");
+					cfg80211_unlink_bss(
+						wiphy,
+						bss_others);
+
+					cfg80211_put_bss(wiphy, bss_others);
+				} else {
+					if (bss_others) {
+						cfg80211_put_bss(wiphy,
+								 bss_others);
+					}
+					break;
+				}
+			}
 			/* CFG80211 Indication */
 			if (eStatus == WLAN_STATUS_ROAM_OUT_FIND_BEST) {
 				struct ieee80211_channel *prChannel = NULL;
@@ -1119,40 +1171,28 @@ kalIndicateStatusAndComplete(IN P_GLUE_INFO_T prGlueInfo, IN WLAN_STATUS eStatus
 				cfg80211_roamed(prGlueInfo->prDevHandler,
 						&rRoamInfo, GFP_KERNEL);
 #else
-				cfg80211_roamed(prGlueInfo->prDevHandler,
-						prChannel,
-						arBssid,
-						prGlueInfo->aucReqIe,
-						prGlueInfo->u4ReqIeLength,
-						prGlueInfo->aucRspIe, prGlueInfo->u4RspIeLength, GFP_KERNEL);
+				cfg80211_roamed_bss(
+					prGlueInfo->prDevHandler,
+					bss,
+					prGlueInfo->aucReqIe,
+					prGlueInfo->u4ReqIeLength,
+					prGlueInfo->aucRspIe,
+					prGlueInfo->u4RspIeLength,
+					GFP_KERNEL);
 #endif
-				/* cfg80211_roamed =
-				 * cfg80211_get_bss + cfg80211_roamed_bss.
-				 * If replace the cfg80211_roamed by
-				 * cfg80211_roamed_bss, don't do the following
-				 * cfg80211_put_bss.
-				 */
 			} else {
 				cfg80211_connect_result(prGlueInfo->prDevHandler, arBssid,
 							prGlueInfo->aucReqIe,
 							prGlueInfo->u4ReqIeLength,
 							prGlueInfo->aucRspIe,
 							prGlueInfo->u4RspIeLength, WLAN_STATUS_SUCCESS, GFP_KERNEL);
+				if (bss != NULL) {
+					wiphy = priv_to_wiphy(prGlueInfo);
+					cfg80211_put_bss(wiphy, bss);
+				}
 			}
-
-			/* cfg80211_put_bss decreases the bss refcount.
-			 * The __cfg80211_unlink_bss will remove the bss from
-			 * bss_list, and refcount--. If refcount == 0, free it.
-			 * So that, the bss may be not freed with an incorrect
-			 * refcount.
-			 */
-			if (bss != NULL) {
-				wiphy = priv_to_wiphy(prGlueInfo);
-				cfg80211_put_bss(wiphy, bss);
-			}
-
 		}
-
+#endif
 		break;
 
 	case WLAN_STATUS_MEDIA_DISCONNECT:
@@ -1912,6 +1952,17 @@ kalIPv4FrameClassifier(IN P_GLUE_INFO_T prGlueInfo,
 				prTxPktInfo->u2Flag |= BIT(ENUM_PKT_DHCP);
 			}
 		}
+#if (CFG_SUPPORT_MDNS_OFFLOAD && CFG_SUPPORT_MDNS_OFFLOAD_GVA)
+		else if (u2DstPort == IP_PORT_MDNS) {
+			PUINT_8 pucMdnsHdr = NULL;
+
+			if (!prGlueInfo->prAdapter->mdns_offload_enable)
+				return TRUE;
+
+			pucMdnsHdr = &pucIpHdr[IPV4_HDR_LEN + UDP_HDR_LEN];
+			kalProcessMdnsRespPkt(prGlueInfo, pucMdnsHdr);
+		}
+#endif
 	}
 
 	return TRUE;
@@ -2208,8 +2259,11 @@ kalIoctlTimeout(IN P_GLUE_INFO_T prGlueInfo,
 	/* GLUE_SPIN_LOCK_DECLARATION(); */
 	ASSERT(prGlueInfo);
 
-	/* Just direct function call if already in main_thread */
-	if (prGlueInfo->u4TxThreadPid == KAL_GET_CURRENT_THREAD_ID()) {
+	/* Just direct function call if already
+	*  in main_thread or interrupt context
+	*/
+	if (prGlueInfo->u4TxThreadPid == KAL_GET_CURRENT_THREAD_ID()
+		|| in_interrupt()) {
 		if (pfnOidHandler) {
 			g_fgIsOid = FALSE;
 			ret = pfnOidHandler(prGlueInfo->prAdapter, pvInfoBuf,
@@ -4137,13 +4191,9 @@ UINT_8 kalGetRsnIeMfpCap(IN P_GLUE_INFO_T prGlueInfo)
 struct file *kalFileOpen(const char *path, int flags, int rights)
 {
 	struct file *filp = NULL;
-	mm_segment_t oldfs;
 	int err = 0;
 
-	oldfs = get_fs();
-	set_fs(get_ds());
 	filp = filp_open(path, flags, rights);
-	set_fs(oldfs);
 	if (IS_ERR(filp)) {
 		err = PTR_ERR(filp);
 		return NULL;
@@ -4684,6 +4734,393 @@ VOID kalSchedScanStopped(IN P_GLUE_INFO_T prGlueInfo)
 	DBGLOG(SCN, INFO, "main_thread return from kalSchedScanStoppped\n");
 }
 
+#if CFG_SUPPORT_CFG80211_AUTH
+void kalIndicateRxAuthToUpperLayer(struct net_device *prDevHandler,
+			PUINT_8 prAuthFrame, UINT_16 u2FrameLen)
+{
+	DBGLOG(REQ, INFO, "\n");
+
+#if CFG_SUPPORT_CFG80211_QUEUE
+	cfg80211AddToPktQueue(prDevHandler, prAuthFrame, u2FrameLen, NULL,
+				CFG80211_RX, MAC_FRAME_AUTH);
+#else
+#if (KERNEL_VERSION(3, 11, 0) <= CFG80211_VERSION_CODE)
+	cfg80211_rx_mlme_mgmt(prDevHandler, prAuthFrame, u2FrameLen);
+#else
+	cfg80211_send_rx_auth(prDevHandler, prAuthFrame, u2FrameLen);
+#endif
+#endif
+}
+
+void kalIndicateRxAssocToUpperLayer(struct net_device *prDevHandler,
+			PUINT_8  prAssocRspFrame, struct cfg80211_bss *bss,
+			UINT_16 u2FrameLen)
+{
+	DBGLOG(REQ, INFO, "\n");
+
+#if CFG_SUPPORT_CFG80211_QUEUE
+	cfg80211AddToPktQueue(
+			prDevHandler, prAssocRspFrame,
+			u2FrameLen, bss, CFG80211_RX,
+			MAC_FRAME_ASSOC_RSP);
+#else
+#if (KERNEL_VERSION(3, 18, 0) <= CFG80211_VERSION_CODE)
+	/* [TODO] Set uapsd_queues field to zero first,fill it if needed*/
+	cfg80211_rx_assoc_resp(prDevHandler, bss, prAssocRspFrame,
+					u2FrameLen, 0);
+#else
+#if (KERNEL_VERSION(3, 11, 0) <= CFG80211_VERSION_CODE)
+	cfg80211_rx_assoc_resp(prDevHandler, bss, prAssocRspFrame, u2FrameLen);
+#else
+	cfg80211_send_rx_assoc(prDevHandler, bss, prAssocRspFrame, u2FrameLen);
+#endif
+#endif
+#endif
+}
+
+void kalIndicateRxDeauthToUpperLayer(struct net_device *prDevHandler,
+			PUINT_8 prDeauthFrame,  UINT_16 u2FrameLen)
+{
+	DBGLOG(REQ, INFO, "\n");
+
+#if CFG_SUPPORT_CFG80211_QUEUE
+	cfg80211AddToPktQueue(
+			prDevHandler,
+			prDeauthFrame,
+			u2FrameLen,
+			NULL,
+			CFG80211_RX,
+			MAC_FRAME_DEAUTH);
+#else
+#if (KERNEL_VERSION(3, 11, 0) <= CFG80211_VERSION_CODE)
+	cfg80211_rx_mlme_mgmt(prDevHandler, prDeauthFrame, u2FrameLen);
+#else
+	cfg80211_send_deauth(prDevHandler, prDeauthFrame, u2FrameLen);
+#endif
+#endif
+}
+
+void kalIndicateRxDisassocToUpperLayer(struct net_device *prDevHandler,
+			PUINT_8 prDisassocFrame,  UINT_16 u2FrameLen)
+{
+	DBGLOG(REQ, INFO, "\n");
+
+#if CFG_SUPPORT_CFG80211_QUEUE
+	cfg80211AddToPktQueue(
+			prDevHandler,
+			prDisassocFrame,
+			u2FrameLen,
+			NULL,
+			CFG80211_RX,
+			MAC_FRAME_DISASSOC);
+#else
+#if (KERNEL_VERSION(3, 11, 0) <= CFG80211_VERSION_CODE)
+	cfg80211_rx_mlme_mgmt(prDevHandler, prDisassocFrame, u2FrameLen);
+#else
+	cfg80211_send_disassoc(prDevHandler, prDisassocFrame, u2FrameLen);
+#endif
+#endif
+}
+
+void kalIndicateTxDeauthToUpperLayer(struct net_device *prDevHandler,
+			PUINT_8 prDeauthFrame,  UINT_16 u2FrameLen)
+{
+	DBGLOG(REQ, INFO, "\n");
+
+#if CFG_SUPPORT_CFG80211_QUEUE
+	cfg80211AddToPktQueue(prDevHandler,
+			prDeauthFrame,
+			u2FrameLen,
+			NULL,
+			CFG80211_TX,
+			MAC_FRAME_DEAUTH);
+#else
+#if (KERNEL_VERSION(3, 11, 0) <= CFG80211_VERSION_CODE)
+		cfg80211_tx_mlme_mgmt(prDevHandler, prDeauthFrame, u2FrameLen);
+#else
+		cfg80211_send_deauth(prDevHandler, prDeauthFrame, u2FrameLen);
+#endif
+#endif
+}
+
+void kalIndicateTxDisassocToUpperLayer(struct net_device *prDevHandler,
+			PUINT_8 prDisassocFrame,  UINT_16 u2FrameLen)
+{
+	DBGLOG(REQ, INFO, "\n");
+
+#if CFG_SUPPORT_CFG80211_QUEUE
+	cfg80211AddToPktQueue(prDevHandler,
+			prDisassocFrame,
+			u2FrameLen,
+			NULL,
+			CFG80211_TX,
+			MAC_FRAME_DISASSOC);
+#else
+#if (KERNEL_VERSION(3, 11, 0) <= CFG80211_VERSION_CODE)
+	cfg80211_tx_mlme_mgmt(prDevHandler, prDisassocFrame, u2FrameLen);
+#else
+	cfg80211_send_disassoc(prDevHandler, prDisassocFrame, u2FrameLen);
+#endif
+#endif
+}
+
+#if CFG_SUPPORT_CFG80211_QUEUE
+/*----------------------------------------------------------------------------*/
+/*!
+ * \brief This function is provided by GLUE Layer for internal driver stack to
+ *        acquire OS MUTEX for wdev.
+ *
+ * \param[in] prGlueInfo     Pointer of GLUE Data Structure
+ *
+ * \return (none)
+ */
+/*----------------------------------------------------------------------------*/
+void kalAcquireWDevMutex(IN struct net_device *pDev)
+{
+	ASSERT(pDev);
+
+	DBGLOG(INIT, TEMP, "WDEV_LOCK Try to acquire\n");
+	mutex_lock(&(pDev->ieee80211_ptr)->mtx);
+	DBGLOG(INIT, TEMP, "WDEV_LOCK Acquired\n");
+}				/* end of kalAcquireWDevMutex() */
+
+/*----------------------------------------------------------------------------*/
+/*!
+ * \brief This function is provided by GLUE Layer for internal driver stack to
+ *        release OS MUTEXfor wdev.
+ *
+ * \param[in] prGlueInfo     Pointer of GLUE Data Structure
+ *
+ * \return (none)
+ */
+/*----------------------------------------------------------------------------*/
+void kalReleaseWDevMutex(IN struct net_device *pDev)
+{
+	ASSERT(pDev);
+
+	mutex_unlock(&(pDev->ieee80211_ptr)->mtx);
+	DBGLOG(INIT, TEMP, "WDEV_UNLOCK\n");
+}				/* end of kalReleaseWDevMutex() */
+
+void cfg80211AddToPktQueue(struct net_device *prDevHandler, void *buf,
+			uint16_t u2FrameLength, struct cfg80211_bss *bss,
+			uint8_t ucflagTx, uint8_t ucFrameType)
+{
+	struct PARAM_CFG80211_REQ *prCfg80211Req = NULL;
+	P_GLUE_INFO_T prGlueInfo = NULL;
+	struct net_device *prDev = gPrDev;
+
+	GLUE_SPIN_LOCK_DECLARATION();
+
+	prGlueInfo = (prDev != NULL) ? *((P_GLUE_INFO_T *)
+					 netdev_priv(prDev)) : NULL;
+	if (!prGlueInfo) {
+		DBGLOG(SCN, INFO, "prGlueInfo == NULL unexpected\n");
+		return;
+	}
+
+	DBGLOG(REQ, INFO, "switch cfg80211 workq from main_thread\n");
+
+	prCfg80211Req = (struct PARAM_CFG80211_REQ *) kalMemAlloc(
+			sizeof(struct PARAM_CFG80211_REQ), PHY_MEM_TYPE);
+	DBGLOG(REQ, TRACE, "Alloc prCfg80211Req 0x%x\n", prCfg80211Req);
+
+	if (prCfg80211Req == NULL) {
+		DBGLOG(REQ, ERROR, "prCfg80211Req Alloc Failed\n");
+		return;
+	}
+
+	prCfg80211Req->prDevHandler = prDevHandler;
+	prCfg80211Req->prFrame = kalMemAlloc(u2FrameLength, PHY_MEM_TYPE);
+	kalMemCopy((void *) prCfg80211Req->prFrame,
+				(void *) buf,
+				u2FrameLength);
+	prCfg80211Req->bss = bss;
+	prCfg80211Req->frameLen = u2FrameLength;
+	prCfg80211Req->ucFlagTx = ucflagTx;
+	prCfg80211Req->ucFrameType = ucFrameType;
+
+	GLUE_ACQUIRE_SPIN_LOCK(prGlueInfo, SPIN_LOCK_CFG80211_QUE);
+	QUEUE_INSERT_TAIL(&prGlueInfo->prAdapter->rCfg80211Queue,
+				&prCfg80211Req->rQueEntry);
+	GLUE_RELEASE_SPIN_LOCK(prGlueInfo, SPIN_LOCK_CFG80211_QUE);
+
+	if (!schedule_delayed_work(&cfg80211_workq, 0))
+		DBGLOG(REQ, INFO, "work is already in cfg80211_workq\n");
+}
+
+static void kalProcessCfg80211TxPkt(struct PARAM_CFG80211_REQ *prCfg80211Req)
+{
+	ASSERT(prCfg80211Req);
+
+	DBGLOG(REQ, INFO, "\n");
+
+	kalAcquireWDevMutex(prCfg80211Req->prDevHandler);
+
+	switch (prCfg80211Req->ucFrameType) {
+#if (KERNEL_VERSION(3, 11, 0) <= CFG80211_VERSION_CODE)
+	case MAC_FRAME_DISASSOC:
+	case MAC_FRAME_DEAUTH:
+		cfg80211_tx_mlme_mgmt(prCfg80211Req->prDevHandler,
+			(const u8 *)prCfg80211Req->prFrame,
+			prCfg80211Req->frameLen);
+		break;
+#else
+	case MAC_FRAME_DISASSOC:
+		cfg80211_send_disassoc(
+			prCfg80211Req->prDevHandler,
+			(const u8 *)prCfg80211Req->prFrame,
+			prCfg80211Req->frameLen);
+		break;
+	case MAC_FRAME_DEAUTH:
+		cfg80211_send_deauth(prCfg80211Req->prDevHandler,
+			(const u8 *)prCfg80211Req->prFrame,
+			prCfg80211Req->frameLen);
+		break;
+#endif
+	default:
+		DBGLOG(REQ, ERROR, "cfg80211_tx get wrong frame type %d %d\n",
+			prCfg80211Req->ucFrameType, prCfg80211Req->frameLen);
+	}
+
+	kalReleaseWDevMutex(prCfg80211Req->prDevHandler);
+}
+
+static void kalProcessCfg80211RxPkt(struct PARAM_CFG80211_REQ *prCfg80211Req)
+{
+	ASSERT(prCfg80211Req);
+
+	DBGLOG(REQ, INFO, "\n");
+
+	kalAcquireWDevMutex(prCfg80211Req->prDevHandler);
+
+	switch (prCfg80211Req->ucFrameType) {
+#if (KERNEL_VERSION(3, 11, 0) <= CFG80211_VERSION_CODE)
+	case MAC_FRAME_AUTH:
+	case MAC_FRAME_DEAUTH:
+	case MAC_FRAME_DISASSOC:
+		cfg80211_rx_mlme_mgmt(prCfg80211Req->prDevHandler,
+			(PUINT_8)prCfg80211Req->prFrame,
+			prCfg80211Req->frameLen);
+		break;
+#else
+	case MAC_FRAME_AUTH:
+		cfg80211_send_rx_auth(prCfg80211Req->prDevHandler,
+			(PUINT_8)prCfg80211Req->prFrame,
+			prCfg80211Req->frameLen);
+		break;
+	case MAC_FRAME_DEAUTH:
+		cfg80211_send_deauth(prCfg80211Req->prDevHandler,
+			(PUINT_8)prCfg80211Req->prFrame,
+			prCfg80211Req->frameLen);
+		break;
+	case MAC_FRAME_DISASSOC:
+		cfg80211_send_disassoc(prCfg80211Req->prDevHandler,
+			(PUINT_8)prCfg80211Req->prFrame,
+			prCfg80211Req->frameLen);
+		break;
+#endif
+	case MAC_FRAME_ASSOC_RSP:
+#if (KERNEL_VERSION(5, 1, 0) <= CFG80211_VERSION_CODE)
+		/* [TODO] Set uapsd_queues/req_ies/req_ies_len properly */
+		cfg80211_rx_assoc_resp(prCfg80211Req->prDevHandler,
+			prCfg80211Req->bss,
+			(const u8 *)prCfg80211Req->prFrame,
+			prCfg80211Req->frameLen, 0, NULL, 0);
+#elif (KERNEL_VERSION(3, 18, 0) <= CFG80211_VERSION_CODE)
+		cfg80211_rx_assoc_resp(prCfg80211Req->prDevHandler,
+			prCfg80211Req->bss,
+			(PUINT_8)prCfg80211Req->prFrame,
+			prCfg80211Req->frameLen, 0);
+#elif (KERNEL_VERSION(3, 11, 0) <= CFG80211_VERSION_CODE)
+		cfg80211_rx_assoc_resp(prCfg80211Req->prDevHandler,
+			prCfg80211Req->bss,
+			(PUINT_8)prCfg80211Req->prFrame,
+			prCfg80211Req->frameLen);
+#else
+		cfg80211_send_rx_assoc(prCfg80211Req->prDevHandler,
+			prCfg80211Req->bss,
+			(PUINT_8)prCfg80211Req->prFrame,
+			prCfg80211Req->frameLen);
+#endif
+		break;
+	default:
+		DBGLOG(REQ, ERROR, "cfg80211_rx get wrong frame type %d %d\n",
+			prCfg80211Req->ucFrameType, prCfg80211Req->frameLen);
+	}
+
+	kalReleaseWDevMutex(prCfg80211Req->prDevHandler);
+}
+
+void wlanSchedCfg80211WorkQueue(struct work_struct *work)
+{
+	P_GLUE_INFO_T prGlueInfo = NULL;
+	struct net_device *prDev = gPrDev;
+	struct PARAM_CFG80211_REQ *prCfg80211Req = NULL;
+	QUE_T rTempQue;
+	P_QUE_T prTempQue = &rTempQue;
+
+	GLUE_SPIN_LOCK_DECLARATION();
+
+	QUEUE_INITIALIZE(prTempQue);
+
+	DBGLOG(REQ, INFO, "\n");
+	prGlueInfo = (prDev != NULL) ? *((P_GLUE_INFO_T *)
+					 netdev_priv(prDev)) : NULL;
+	if (!prGlueInfo) {
+		DBGLOG(SCN, INFO, "prGlueInfo == NULL unexpected\n");
+		return;
+	}
+
+	while (QUEUE_IS_NOT_EMPTY(&prGlueInfo->prAdapter->rCfg80211Queue)) {
+		GLUE_ACQUIRE_SPIN_LOCK(prGlueInfo, SPIN_LOCK_CFG80211_QUE);
+		QUEUE_MOVE_ALL(prTempQue,
+				&prGlueInfo->prAdapter->rCfg80211Queue);
+		GLUE_RELEASE_SPIN_LOCK(prGlueInfo, SPIN_LOCK_CFG80211_QUE);
+
+		while (QUEUE_IS_NOT_EMPTY(prTempQue)) {
+			QUEUE_REMOVE_HEAD(prTempQue, prCfg80211Req,
+					struct PARAM_CFG80211_REQ *);
+
+			if (prCfg80211Req == NULL)
+				break;
+
+			if (prGlueInfo->u4ReadyFlag == 1) {
+				if (prCfg80211Req->ucFlagTx == CFG80211_TX) {
+					DBGLOG(REQ, INFO,
+					"cfg80211_tx_mlme_mgmt %d %d\n",
+						prCfg80211Req->ucFrameType,
+						prCfg80211Req->frameLen);
+					kalProcessCfg80211TxPkt(prCfg80211Req);
+				} else if (prCfg80211Req->ucFlagTx
+							== CFG80211_RX) {
+					DBGLOG(REQ, INFO,
+					"cfg80211_rx_mlme_mgmt %d %d\n",
+						prCfg80211Req->ucFrameType,
+						prCfg80211Req->frameLen);
+					kalProcessCfg80211RxPkt(prCfg80211Req);
+				}
+			} else {
+				DBGLOG(REQ, ERROR, "Adapter is not ready\n");
+			}
+
+			DBGLOG(REQ, TRACE,
+				"Free prCfg80211Req 0x%x\n", prCfg80211Req);
+
+			if (prCfg80211Req->prFrame)
+				kalMemFree(prCfg80211Req->prFrame, PHY_MEM_TYPE,
+						prCfg80211Req->prFrameLen);
+
+			kalMemFree(prCfg80211Req, PHY_MEM_TYPE,
+					sizeof(struct PARAM_CFG80211_REQ));
+
+		}
+	}
+}
+#endif
+#endif
+
+
 BOOLEAN
 kalGetIPv4Address(IN struct net_device *prDev,
 		  IN UINT_32 u4MaxNumOfAddr, OUT PUINT_8 pucIpv4Addrs, OUT PUINT_32 pu4NumOfIpv4Addr)
@@ -5180,10 +5617,16 @@ nla_put_failure:
 
 UINT_64 kalGetBootTime(void)
 {
+#if KERNEL_VERSION(4, 20, 0) <= LINUX_VERSION_CODE
+	struct timespec64 ts;
+#else
 	struct timespec ts;
+#endif
 	UINT_64 bootTime = 0;
 
-#if KERNEL_VERSION(2, 6, 39) <= LINUX_VERSION_CODE
+#if KERNEL_VERSION(4, 20, 0) <= LINUX_VERSION_CODE
+	ktime_get_boottime_ts64(&ts);
+#elif KERNEL_VERSION(2, 6, 39) <= LINUX_VERSION_CODE
 	get_monotonic_boottime(&ts);
 #else
 	ts = ktime_to_timespec(ktime_get());
@@ -5240,6 +5683,19 @@ VOID kalWowInit(IN P_GLUE_INFO_T prGlueInfo)
 {
 	kalMemZero(&prGlueInfo->prAdapter->rWowCtrl.stWowPort, sizeof(WOW_PORT_T));
 	prGlueInfo->prAdapter->rWowCtrl.ucReason = INVALID_WOW_WAKE_UP_REASON;
+
+#if CFG_SUPPORT_MDNS_OFFLOAD
+	prGlueInfo->prAdapter->mdns_offload_enable = FALSE;
+	/* default wake up host when mdns packet not match */
+#if CFG_SUPPORT_MDNS_OFFLOAD_TV
+	/* for TV, wake up devices when there is no match record */
+	prGlueInfo->prAdapter->mdns_wake_flag = MDNS_WAKEUP_BY_NO_MATCH_RECORD;
+#else
+	/* for GVA, wake up devices when get a sub mdns query packet*/
+	prGlueInfo->prAdapter->mdns_wake_flag = MDNS_WAKEUP_BY_SUB_REQ;
+#endif
+	kalMdnsOffloadInit(prGlueInfo->prAdapter);
+#endif
 }
 
 VOID kalWowCmdEventSetCb(IN P_ADAPTER_T prAdapter, IN P_CMD_INFO_T prCmdInfo, IN PUINT_8 pucEventBuf)
@@ -5299,7 +5755,6 @@ VOID kalWowProcess(IN P_GLUE_INFO_T prGlueInfo, UINT_8 enable)
 					TRUE, TRUE, TRUE, &u4BufLen);
 	}
 
-
 	/* add band info */
 	rCmdWowlanParam.ucDbdcBand = (UINT_8)prGlueInfo->prAdapter->prAisBssInfo->eDBDCBand;
 
@@ -5313,6 +5768,13 @@ VOID kalWowProcess(IN P_GLUE_INFO_T prGlueInfo, UINT_8 enable)
 		rCmdPacket_Filter_Cap.usEnableBits |= PACKETF_CAP_TYPE_MAGIC;
 	else
 		rCmdPacket_Filter_Cap.usEnableBits &= ~PACKETF_CAP_TYPE_MAGIC;
+
+#if CFG_SUPPORT_MDNS_OFFLOAD
+	if (enable && prGlueInfo->prAdapter->mdns_offload_enable) {
+		kalSendClearRecordToFw(prGlueInfo);
+		kalSendMdnsRecordToFw(prGlueInfo);
+	}
+#endif
 
 	rStatus = wlanSendSetQueryCmd(prGlueInfo->prAdapter,
 				CMD_ID_SET_PF_CAPABILITY,
@@ -5347,6 +5809,7 @@ VOID kalWowProcess(IN P_GLUE_INFO_T prGlueInfo, UINT_8 enable)
 		kalMemZero(&prGlueInfo->prAdapter->rWowCtrl.stWowPort,
 			sizeof(WOW_PORT_T));
 
+
 	DBGLOG(PF, INFO, "Cmd: IPV4/UDP=%d, IPV4/TCP=%d, IPV6/UDP=%d, IPV6/TCP=%d\n",
 		rCmdWowlanParam.stWowPort.ucIPv4UdpPortCnt, rCmdWowlanParam.stWowPort.ucIPv4TcpPortCnt,
 		rCmdWowlanParam.stWowPort.ucIPv6UdpPortCnt, rCmdWowlanParam.stWowPort.ucIPv6TcpPortCnt);
@@ -5362,7 +5825,6 @@ VOID kalWowProcess(IN P_GLUE_INFO_T prGlueInfo, UINT_8 enable)
 
 	for (ii = 0; ii < rCmdWowlanParam.stWowPort.ucIPv6TcpPortCnt; ii++)
 		DBGLOG(PF, INFO, "IPV6/TCP port[%d]=%d\n", ii, rCmdWowlanParam.stWowPort.ausIPv6TcpPort[ii]);
-
 
 	/* GPIO parameter is necessary in suspend/resume */
 	if (enable) {
@@ -5405,10 +5867,6 @@ VOID kalWowProcess(IN P_GLUE_INFO_T prGlueInfo, UINT_8 enable)
 	}
 
 }
-#define MDNS_CMD_ENABLE		1
-#define MDNS_CMD_DISABLE	2
-#define MDNS_CMD_ADD_RECORD	3
-#define MDNS_CMD_DEL_RECORD	4
 
 /* Parse "cast.tcp.local" to "4cast3tcp5local0". */
 UINT_16 NameParse(IN PUINT_8 prParseName,
@@ -5452,275 +5910,656 @@ UINT_16 NameParse(IN PUINT_8 prParseName,
 	return name_length;
 }
 
-void kalMdnsProcess(IN P_GLUE_INFO_T prGlueInfo,
-		IN struct MDNS_PARAM_T *prMdnsParam)
+#if CFG_SUPPORT_MDNS_OFFLOAD
+void kalMdnsOffloadInit(IN P_ADAPTER_T prAdapter)
 {
-	WLAN_STATUS rStatus = WLAN_STATUS_SUCCESS;
+	struct MDNS_INFO_T *prMdnsInfo;
+	struct MDNS_PARAM_ENTRY_T *prMdnsParamEntry;
+	UINT_8 i;
 
-	struct CMD_MDNS_PARAM_T *prCmdMdnsParam;
-	struct WLAN_MAC_HEADER_QoS_T *prMacHeader = NULL;
-	PUINT_8 pucIPHeader = NULL;
-	PUINT_8 pucUDPHeader = NULL;
-	PUINT_8 pucMdnsARecord = NULL;
-	struct MDNS_Template_Record *prMdnsTemplateRecord = NULL;
-	struct MDNS_ANSWER_RR *prMdnsAnswerR = NULL;
-	struct MDNS_TXT_RR *prMdnsTxtR = NULL;
-	struct MDNS_SRV_RR *prMdnsSrvR = NULL;
-	struct MDNS_QUESTION *prMdnsQuestion = NULL;
+	prMdnsInfo = &prAdapter->rMdnsInfo;
+	LINK_INITIALIZE(&prMdnsInfo->rMdnsRecordFreeList);
+	LINK_INITIALIZE(&prMdnsInfo->rMdnsRecordList);
 
-	UINT_16 u2SrvDataLen = 0;
-	UINT_16 u2NameLen = 0;
+	for (i = 0; i < MAX_MDNS_CACHE_NUM; i++) {
+		prMdnsParamEntry = (struct MDNS_PARAM_ENTRY_T *)(&prMdnsInfo->rMdnsEntry[i]);
+		LINK_INSERT_TAIL(&prMdnsInfo->rMdnsRecordFreeList,
+			&prMdnsParamEntry->rLinkEntry);
+	}
+}
 
-	prCmdMdnsParam = kzalloc(sizeof(struct CMD_MDNS_PARAM_T), GFP_KERNEL);
-	if (!prCmdMdnsParam) {
-		DBGLOG(REQ, ERROR, "%s, alloc mem for prCmdMdnsParam failed\n",
-			__func__);
+struct MDNS_PARAM_ENTRY_T *mdnsAllocateParamEntry(IN P_ADAPTER_T prAdapter)
+{
+	struct MDNS_INFO_T *prMdnsInfo;
+	struct MDNS_PARAM_ENTRY_T *prMdnsParamEntry;
+	P_LINK_T prMdnsRecordFreeList;
+	P_LINK_T prMdnsRecordList;
+
+	ASSERT(prAdapter);
+
+	prMdnsInfo = &prAdapter->rMdnsInfo;
+
+	prMdnsRecordFreeList = &prMdnsInfo->rMdnsRecordFreeList;
+
+	LINK_REMOVE_HEAD(prMdnsRecordFreeList, prMdnsParamEntry,
+			struct MDNS_PARAM_ENTRY_T *);
+
+	if (prMdnsParamEntry) {
+		kalMemZero(prMdnsParamEntry,
+				sizeof(struct MDNS_PARAM_ENTRY_T));
+
+		prMdnsRecordList = &prMdnsInfo->rMdnsRecordList;
+
+		LINK_INSERT_TAIL(prMdnsRecordList,
+				&prMdnsParamEntry->rLinkEntry);
+	}
+
+	return prMdnsParamEntry;
+}
+
+VOID kalSendMdnsEventCb(IN P_ADAPTER_T prAdapter,
+	IN P_CMD_INFO_T prCmdInfo, IN PUINT_8 pucEventBuf)
+{
+	ASSERT(prAdapter);
+	ASSERT(prCmdInfo);
+
+
+	if (prCmdInfo->ucCID == CMD_ID_SET_MDNS_RECORD) {
+		DBGLOG(INIT, LOUD, "CMD_ID_SET_MDNS_RECORD cmd submitted\n");
+		prAdapter->fgSetMdnsDone = TRUE;
+	}
+}
+
+void kalSendMdnsEnableToFw(P_GLUE_INFO_T prGlueInfo)
+{
+	struct CMD_MDNS_PARAM_T *cmdMdnsParam;
+	struct WLAN_MAC_HEADER_QoS_T *prMacHeader;
+	UINT_8 *pucIPHeader;
+	UINT_8 *pucUDPHeader;
+	UINT_32 wait;
+
+	cmdMdnsParam = kzalloc(sizeof(struct CMD_MDNS_PARAM_T), GFP_KERNEL);
+	if (!cmdMdnsParam) {
+		DBGLOG(REQ, WARN, "%s, alloc mem failed\n", __func__);
 		return;
 	}
 
-	memset(prCmdMdnsParam, 0, sizeof(struct CMD_MDNS_PARAM_T));
-	prCmdMdnsParam->ucCmd = prMdnsParam->ucCmd;
-	prCmdMdnsParam->u4RecordId = prMdnsParam->u4RecordId;
+	cmdMdnsParam->ucCmd = MDNS_CMD_ENABLE;
 
-	if (prMdnsParam->ucCmd == MDNS_CMD_ENABLE) {
-		DBGLOG(REQ, INFO, "kalMdnsProcess, mDNS Enable.\n");
-		/* Store 802.11 MAC header.*/
-		{
-			prMacHeader = &prCmdMdnsParam->aucMdnsMacHdr;
-			prMacHeader->u2FrameCtrl = MAC_FRAME_QOS_DATA;
-			prMacHeader->u2FrameCtrl |= MASK_FC_TO_DS;
-			prMacHeader->u2FrameCtrl |= MASK_FC_PWR_MGT;
+	cmdMdnsParam->ucWakeFlag = prGlueInfo->prAdapter->mdns_wake_flag;
 
-			/* SA, DA.*/
-			COPY_MAC_ADDR(prMacHeader->aucAddr2,
-				prGlueInfo->prDevHandler->dev_addr);
-			prMacHeader->aucAddr3[0] = 1;
-			prMacHeader->aucAddr3[1] = 0;
-			prMacHeader->aucAddr3[2] = 0x5E;
-			prMacHeader->aucAddr3[3] = 0;
-			prMacHeader->aucAddr3[4] = 0;
-			prMacHeader->aucAddr3[5] = 0xFB;
+	DBGLOG(SW4, STATE, "mDNS Enable wake flag %d.\n",
+			cmdMdnsParam->ucWakeFlag);
+	/* Store 802.11 MAC header.*/
 
-			prMacHeader->u2SeqCtrl = 0;
+	prMacHeader = &cmdMdnsParam->aucMdnsMacHdr;
+	prMacHeader->u2FrameCtrl = MAC_FRAME_QOS_DATA;
+	prMacHeader->u2FrameCtrl |= MASK_FC_TO_DS;
+	prMacHeader->u2FrameCtrl |= MASK_FC_PWR_MGT;
 
-			prMacHeader->u2QosCtrl = 0;
-			prMacHeader->u2QosCtrl |=
-				(ACK_POLICY_NORMAL_ACK_IMPLICIT_BA_REQ
-				<< MASK_QC_ACK_POLICY_OFFSET);
+	/* SA, DA.*/
+	COPY_MAC_ADDR(prMacHeader->aucAddr2,
+					prGlueInfo->prDevHandler->dev_addr);
+	prMacHeader->aucAddr3[0] = 1;
+	prMacHeader->aucAddr3[1] = 0;
+	prMacHeader->aucAddr3[2] = 0x5E;
+	prMacHeader->aucAddr3[3] = 0;
+	prMacHeader->aucAddr3[4] = 0;
+	prMacHeader->aucAddr3[5] = 0xFB;
+
+	prMacHeader->u2SeqCtrl = 0;
+
+	prMacHeader->u2QosCtrl = 0;
+	prMacHeader->u2QosCtrl |=
+					(ACK_POLICY_NORMAL_ACK_IMPLICIT_BA_REQ
+					<< MASK_QC_ACK_POLICY_OFFSET);
+
+	/* IPv4 header.*/
+	pucIPHeader = &cmdMdnsParam->aucMdnsIPHdr[0];
+	/* Version: 4, Length:(5*4) */
+	pucIPHeader[0] = (IP_VERSION_4 << IP_VERSION_OFFSET) | 5;
+	/* Diff.Services */
+	pucIPHeader[1] = 0;
+	/* IP length:
+	*(IPV4_HEADER_LENGTH + UDP_HEADER_LENGTH + u4MdnsLen)
+	*/
+	pucIPHeader[2] = 0;
+	pucIPHeader[3] = 0;
+	/* Identifier.*/
+	pucIPHeader[4] = 0;
+	pucIPHeader[5] = 0;
+	/* Fragmentation Flags, Mask 0xE0.*/
+	pucIPHeader[6] = 0;
+	pucIPHeader[6] = 1 << 6;
+	/* Fragment Offset, [6,7]Mask 0x1FFF.*/
+	pucIPHeader[7] = 0;
+	/* TTL.*/
+	pucIPHeader[8] = 255;
+	/* Protocol, UDP.*/
+	pucIPHeader[9] = IP_PROTOCOL_UDP;
+	/* Header Checksum.*/
+	pucIPHeader[10] = 0;
+	pucIPHeader[11] = 0;
+	/* Source IP: FW could check and update SIP again.*/
+	pucIPHeader[12] = 0;
+	pucIPHeader[13] = 0;
+	pucIPHeader[14] = 0;
+	pucIPHeader[15] = 0;
+	/* DIP:MC IP(224.0.0.251) */
+	pucIPHeader[16] = 224;
+	pucIPHeader[17] = 0;
+	pucIPHeader[18] = 0;
+	pucIPHeader[19] = 251;
+
+	/*UDP header*/
+	pucUDPHeader = &cmdMdnsParam->aucMdnsUdpHdr[0];
+	/* Source port: 5353 */
+	pucUDPHeader[0] = (5353 & 0xff00) >> 8;
+	pucUDPHeader[1] = 5353 & 0x00ff;
+	/* Destination port: 5353 */
+	pucUDPHeader[2] = (5353 & 0xff00) >> 8;
+	pucUDPHeader[3] = 5353 & 0x00ff;
+	/* UDP length: Calculate by FW*/
+	pucUDPHeader[4] = 0;
+	pucUDPHeader[5] = 0;
+	/* UDP CheckSum: Calculate by FW*/
+	pucUDPHeader[6] = 0;
+	pucUDPHeader[7] = 0;
+
+	prGlueInfo->prAdapter->fgSetMdnsDone = FALSE;
+
+	wlanSendSetQueryCmd(prGlueInfo->prAdapter,
+			CMD_ID_SET_MDNS_RECORD,
+			TRUE,
+			FALSE,
+			FALSE,
+			kalSendMdnsEventCb,
+			nicOidCmdTimeoutCommon,
+			sizeof(struct CMD_MDNS_PARAM_T),
+			(PUINT_8)cmdMdnsParam,
+			NULL,
+			0);
+
+	wait = 0;
+	while (1) {
+		kalMsleep(2);
+
+		if (wait > 100) {
+			DBGLOG(INIT, ERROR, "set mdns enable process timeout\n");
+			break;
+		}
+		if (prGlueInfo->prAdapter->fgSetMdnsDone == TRUE) {
+			DBGLOG(INIT, LOUD, "send mdns enable cmd done\n");
+			break;
+		}
+		wait++;
+	}
+	kfree(cmdMdnsParam);
+}
+
+void kalAddMdnsRecord(P_GLUE_INFO_T prGlueInfo,
+		struct MDNS_INFO_UPLAYER_T *prMdnsUplayerInfo)
+{
+	struct MDNS_INFO_T *prMdnsInfo;
+	struct MDNS_PARAM_ENTRY_T *prMdnsParamEntry;
+	P_LINK_T prMdnsRecordList;
+
+	prMdnsInfo = &prGlueInfo->prAdapter->rMdnsInfo;
+	prMdnsRecordList = &prMdnsInfo->rMdnsRecordList;
+
+	LINK_FOR_EACH_ENTRY(prMdnsParamEntry, prMdnsRecordList,
+				rLinkEntry, struct MDNS_PARAM_ENTRY_T) {
+		if (kalMemCmp(&prMdnsParamEntry->mdns_param,
+				&prMdnsUplayerInfo->mdns_param,
+				sizeof(struct MDNS_PARAM_T)) == 0) {
+			DBGLOG(REQ, ERROR, "mdns record is in the buffer.\n");
+			return;
+		}
+	}
+
+	prMdnsParamEntry = mdnsAllocateParamEntry(prGlueInfo->prAdapter);
+	if (prMdnsParamEntry == NULL) {
+		DBGLOG(REQ, INFO,
+			"mdns record buffer is full replace the first one.\n");
+		LINK_REMOVE_HEAD(prMdnsRecordList, prMdnsParamEntry,
+					struct MDNS_PARAM_ENTRY_T *);
+		kalMemCopy(&prMdnsParamEntry->mdns_param,
+				&prMdnsUplayerInfo->mdns_param,
+				sizeof(struct MDNS_PARAM_T));
+		LINK_INSERT_TAIL(prMdnsRecordList,
+				&prMdnsParamEntry->rLinkEntry);
+	} else {
+		DBGLOG(REQ, INFO, "add mdns record buffer number %d.\n",
+				prMdnsRecordList->u4NumElem);
+		kalMemCopy(&prMdnsParamEntry->mdns_param,
+				&prMdnsUplayerInfo->mdns_param,
+				sizeof(struct MDNS_PARAM_T));
+	}
+}
+
+void kalDelMdnsRecord(P_GLUE_INFO_T prGlueInfo,
+		struct MDNS_INFO_UPLAYER_T *prMdnsUplayerInfo) {
+	struct MDNS_INFO_T *prMdnsInfo;
+	struct MDNS_PARAM_ENTRY_T *prMdnsParamEntry;
+	struct MDNS_PARAM_ENTRY_T *prMdnsParamEntryNext;
+	P_LINK_T prMdnsRecordList;
+	P_LINK_T prMdnsRecordFreeList;
+
+	prMdnsInfo = &prGlueInfo->prAdapter->rMdnsInfo;
+	prMdnsRecordList = &prMdnsInfo->rMdnsRecordList;
+	prMdnsRecordFreeList = &prMdnsInfo->rMdnsRecordFreeList;
+
+	LINK_FOR_EACH_ENTRY_SAFE(prMdnsParamEntry, prMdnsParamEntryNext,
+		prMdnsRecordList, rLinkEntry, struct MDNS_PARAM_ENTRY_T) {
+		if (kalMemCmp(&prMdnsParamEntry->mdns_param,
+				&prMdnsUplayerInfo->mdns_param,
+				sizeof(struct MDNS_PARAM_T)) == 0) {
+			DBGLOG(REQ, ERROR, "del mdns record.\n");
+			LINK_REMOVE_KNOWN_ENTRY(prMdnsRecordList,
+				prMdnsParamEntry);
+			LINK_INSERT_HEAD(prMdnsRecordFreeList,
+				&prMdnsParamEntry->rLinkEntry);
 		}
 
-		/* IPv4 header.*/
-		{
-			pucIPHeader = &prCmdMdnsParam->aucMdnsIPHdr[0];
-			/* Version: 4, Length:(5*4) */
-			pucIPHeader[0] = 4<<4 | 5;
-			/* Diff.Services */
-			pucIPHeader[1] = 0;
-			/* IP length:
-			*(IPV4_HEADER_LENGTH + UDP_HEADER_LENGTH + u4MdnsLen)
-			*/
-			pucIPHeader[2] = 0;
-			pucIPHeader[3] = 0;
-			/* Identifier.*/
-			pucIPHeader[4] = 0;
-			pucIPHeader[5] = 0;
-			/* Fragmentation Flags, Mask 0xE0.*/
-			pucIPHeader[6] = 0;
-			pucIPHeader[6] = 1 << 6;
-			/* Fragment Offset, [6,7]Mask 0x1FFF.*/
-			pucIPHeader[7] = 0;
-			/* TTL.*/
-			pucIPHeader[8] = 255;
-			/* Protocol, UDP.*/
-			pucIPHeader[9] = 17;
-			/* Header Checksum.*/
-			pucIPHeader[10] = 0;
-			pucIPHeader[11] = 0;
-			/* Source IP: FW could check and update SIP again.*/
-			pucIPHeader[12] = 0;
-			pucIPHeader[13] = 0;
-			pucIPHeader[14] = 0;
-			pucIPHeader[15] = 0;
-			/* DIP:MC IP(224.0.0.251) */
-			pucIPHeader[16] = 224;
-			pucIPHeader[17] = 0;
-			pucIPHeader[18] = 0;
-			pucIPHeader[19] = 251;
+	}
+
+}
+
+
+void kalShowMdnsRecord(P_GLUE_INFO_T prGlueInfo)
+{
+	struct MDNS_INFO_T *prMdnsInfo;
+	struct MDNS_PARAM_ENTRY_T *prMdnsParamEntry;
+	P_LINK_T prMdnsRecordList;
+	int cnt = 0;
+
+	prMdnsInfo = &prGlueInfo->prAdapter->rMdnsInfo;
+	prMdnsRecordList = &prMdnsInfo->rMdnsRecordList;
+
+	LINK_FOR_EACH_ENTRY(prMdnsParamEntry, prMdnsRecordList,
+				rLinkEntry, struct MDNS_PARAM_ENTRY_T) {
+		DBGLOG(REQ, ERROR, "ptr name: len[%d] %s\n",
+			prMdnsParamEntry->mdns_param.query_ptr.name_length,
+			prMdnsParamEntry->mdns_param.query_ptr.name);
+		DBGLOG(REQ, ERROR, "srv name: len[%d] %s\n",
+			prMdnsParamEntry->mdns_param.query_srv.name_length,
+			prMdnsParamEntry->mdns_param.query_srv.name);
+		DBGLOG(REQ, ERROR, "txt name: len[%d] %s\n",
+			prMdnsParamEntry->mdns_param.query_txt.name_length,
+			prMdnsParamEntry->mdns_param.query_txt.name);
+		DBGLOG(REQ, ERROR, "a name: len[%d] %s\n",
+			prMdnsParamEntry->mdns_param.query_a.name_length,
+			prMdnsParamEntry->mdns_param.query_a.name);
+		DBGLOG_MEM8(REQ, ERROR, prMdnsParamEntry->mdns_param.response,
+			prMdnsParamEntry->mdns_param.response_len);
+		cnt++;
+	}
+	DBGLOG(REQ, ERROR, "record cnt %d\n", cnt);
+}
+
+
+void kalSendMdnsDisableToFw(P_GLUE_INFO_T prGlueInfo)
+{
+	struct CMD_MDNS_PARAM_T *cmdMdnsParam;
+	UINT_32 wait;
+
+	cmdMdnsParam = kzalloc(sizeof(struct CMD_MDNS_PARAM_T), GFP_KERNEL);
+	if (!cmdMdnsParam) {
+		DBGLOG(REQ, WARN, "%s, alloc mem failed\n", __func__);
+		return;
+	}
+
+	prGlueInfo->prAdapter->fgSetMdnsDone = FALSE;
+
+	cmdMdnsParam->ucCmd = MDNS_CMD_DISABLE;
+
+	DBGLOG(SW4, STATE, "mDNS disable.\n");
+
+	wlanSendSetQueryCmd(prGlueInfo->prAdapter,
+			CMD_ID_SET_MDNS_RECORD,
+			TRUE,
+			FALSE,
+			FALSE,
+			kalSendMdnsEventCb,
+			nicOidCmdTimeoutCommon,
+			sizeof(struct CMD_MDNS_PARAM_T),
+			(PUINT_8)cmdMdnsParam,
+			NULL,
+			0);
+
+	wait = 0;
+	while (1) {
+		kalMsleep(2);
+
+		if (wait > 100) {
+			DBGLOG(INIT, ERROR, "set mdns disable timeout\n");
+			break;
 		}
-
-		/*UDP header*/
-		{
-			pucUDPHeader = &prCmdMdnsParam->aucMdnsUdpHdr[0];
-			/* Source port: 5353 */
-			pucUDPHeader[0] = (5353 & 0xff00) >> 8;
-			pucUDPHeader[1] = 5353 & 0x00ff;
-			/* Destination port: 5353 */
-			pucUDPHeader[2] = (5353 & 0xff00) >> 8;
-			pucUDPHeader[3] = 5353 & 0x00ff;
-			/* UDP length: Calculate by FW*/
-			pucUDPHeader[4] = 0;
-			pucUDPHeader[5] = 0;
-			/* UDP CheckSum: Calculate by FW*/
-			pucUDPHeader[6] = 0;
-			pucUDPHeader[7] = 0;
+		if (prGlueInfo->prAdapter->fgSetMdnsDone == TRUE) {
+			DBGLOG(INIT, LOUD, "send mdns disable cmd done\n");
+			break;
 		}
+		wait++;
+	}
 
-		/* Store A RR.*/
-		{
-			pucMdnsARecord = &prCmdMdnsParam->mdnsARecord[0];
-			/* Type.*/
-			pucMdnsARecord[0] = 0;
-			pucMdnsARecord[1] = 1;
-			/* Class.*/
-			pucMdnsARecord[2] = (32769 & 0xff00) >> 8;
-			pucMdnsARecord[3] = 32769 & 0x00ff;
-			/* TTL.*/
-			pucMdnsARecord[4] = 0;
-			pucMdnsARecord[5] = 0;
-			pucMdnsARecord[6] = (4500 & 0xff00) >> 8;
-			pucMdnsARecord[7] = 4500 & 0x00ff;
-			/* Data Length.*/
-			pucMdnsARecord[8] = 0;
-			pucMdnsARecord[9] = 4;
-			/* SIP Address.*/
-			pucMdnsARecord[10] = 0;
-			pucMdnsARecord[11] = 0;
-			pucMdnsARecord[12] = 0;
-			pucMdnsARecord[13] = 0;
+	kfree(cmdMdnsParam);
+}
+
+void kalSendClearRecordToFw(P_GLUE_INFO_T prGlueInfo)
+{
+	struct CMD_MDNS_PARAM_T *cmdMdnsParam;
+	UINT_32 wait;
+
+	cmdMdnsParam = kzalloc(sizeof(struct CMD_MDNS_PARAM_T), GFP_KERNEL);
+	if (!cmdMdnsParam) {
+		DBGLOG(REQ, WARN, "%s, alloc mem failed\n", __func__);
+		return;
+	}
+
+	prGlueInfo->prAdapter->fgSetMdnsDone = FALSE;
+
+	cmdMdnsParam->ucCmd = MDNS_CMD_CLEAR_RECORD;
+
+	wlanSendSetQueryCmd(prGlueInfo->prAdapter,
+			CMD_ID_SET_MDNS_RECORD,
+			TRUE,
+			FALSE,
+			FALSE,
+			kalSendMdnsEventCb,
+			nicOidCmdTimeoutCommon,
+			sizeof(struct CMD_MDNS_PARAM_T),
+			(PUINT_8)cmdMdnsParam,
+			NULL,
+			0);
+
+	wait = 0;
+	while (1) {
+		kalMsleep(2);
+
+		if (wait > 100) {
+			DBGLOG(INIT, ERROR, "clear mdns record timeout\n");
+			break;
 		}
-	} /* end of if (MDNS_CMD_ENABLE == prMdnsParam->ucCmd).*/
-
-	else if (prMdnsParam->ucCmd == MDNS_CMD_ADD_RECORD) {
-		DBGLOG(REQ, INFO, "kalMdnsProcess, Add Record.\n");
-
-		prMdnsTemplateRecord = &prCmdMdnsParam->mdnsQueryRespTemplate;
-		/*Step 1: Store the RecordId & bIsUsed.*/
-		{
-			prMdnsTemplateRecord->u4RecordId =
-				prMdnsParam->u4RecordId;
-			prMdnsTemplateRecord->bIsUsed = FALSE;
+		if (prGlueInfo->prAdapter->fgSetMdnsDone == TRUE) {
+			DBGLOG(INIT, LOUD, "send mdns clear cmd done\n");
+			break;
 		}
+			wait++;
+	}
 
-		/*Step 2: Store the query template.*/
-		{
-			prMdnsQuestion =
-				&prMdnsTemplateRecord->mdnsQuestionTemplate;
+	kfree(cmdMdnsParam);
+}
 
-			u2NameLen = 0;
-			u2NameLen = NameParse(prMdnsParam->ucQueryName,
-				prMdnsParam->u2QueryNameLen,
-				&prMdnsQuestion->name[0]);
-			prMdnsTemplateRecord->mdnsQuestionTemplate.name_length =
-				u2NameLen;
-			prMdnsTemplateRecord->mdnsQuestionTemplate.type =
-				prMdnsParam->u2QueryType;
-			prMdnsTemplateRecord->mdnsQuestionTemplate.class =
-				prMdnsParam->u2QueryClass;
-		} /* end of Store the query template.*/
 
-		/* Step 3:Store Response template.*/
-		{
-			/* 3.1 Store Answer Response Record.*/
-			prMdnsAnswerR =
-				&prMdnsTemplateRecord->mdnsResponseRecord;
-			if (prMdnsParam->u2ResponseRecordLen > 0) {
-				memcpy(&prMdnsAnswerR->data[0],
-					&prMdnsParam->ucResponseRecord[0],
-					prMdnsParam->u2ResponseRecordLen);
-			}
-			prMdnsAnswerR->data_length =
-				prMdnsParam->u2ResponseRecordLen;
+void kalSendMdnsRecordToFw(P_GLUE_INFO_T prGlueInfo)
+{
+	struct CMD_MDNS_PARAM_T *cmdMdnsParam;
+	struct MDNS_INFO_T *prMdnsInfo;
+	struct MDNS_PARAM_ENTRY_T *prMdnsParamEntry;
+	P_LINK_T prMdnsRecordList;
+	UINT_8 i;
+	UINT_32 wait;
 
-			/* 3.2 Store ServiceName & ServiceNameLen.*/
-			u2NameLen = 0;
-			u2NameLen = NameParse(prMdnsParam->ucServiceName,
-				prMdnsParam->u2ServiceNameLen,
-				prMdnsTemplateRecord->ucServiceName);
-			prMdnsTemplateRecord->ServiceNameLen = u2NameLen;
+	cmdMdnsParam = kzalloc(sizeof(struct CMD_MDNS_PARAM_T), GFP_KERNEL);
+	if (!cmdMdnsParam) {
+		DBGLOG(REQ, WARN, "%s, alloc mem failed\n", __func__);
+		return;
+	}
 
-			/* 3.3 Store SRV RR.*/
-			prMdnsSrvR = &prMdnsTemplateRecord->mdnsSrvRecord;
+	prMdnsInfo = &prGlueInfo->prAdapter->rMdnsInfo;
+	prMdnsRecordList = &prMdnsInfo->rMdnsRecordList;
 
-			/* Type.*/
-			prMdnsSrvR->data[0] = 0;
-			prMdnsSrvR->data[1] = 33;
-			/* Class.*/
-			prMdnsSrvR->data[2] = (32769 & 0xff00) >> 8;
-			prMdnsSrvR->data[3] = 32769 & 0x00ff;
-			/* TTL.*/
-			prMdnsSrvR->data[4] = 0;
-			prMdnsSrvR->data[5] = 0;
-			prMdnsSrvR->data[6] = 0;
-			prMdnsSrvR->data[7] = 120;
-			/* Data Length:
-			*SRV Prio + SRV Weight + SRV Port +
-			*SRV target(u2SrvDomainNameLen + .locol).
-			*/
-			u2SrvDataLen =
-				6 + prMdnsTemplateRecord->ServiceNameLen + 6;
-			prMdnsSrvR->data[8] = (u2SrvDataLen & 0xff00) >> 8;
-			prMdnsSrvR->data[9] = u2SrvDataLen & 0x00ff;
-			/* Data: except that SRV target.*/
-			{
-				/* SRV Priority.*/
-				prMdnsSrvR->data[10] = 0;
-				prMdnsSrvR->data[11] = 0;
-				/* SRV Weight.*/
-				prMdnsSrvR->data[12] = 0;
-				prMdnsSrvR->data[13] = 0;
-				/* SRV Port.*/
-				prMdnsSrvR->data[14] =
-					(prMdnsParam->u4Port & 0xff00) >> 8;
-				prMdnsSrvR->data[15] =
-					prMdnsParam->u4Port & 0x00ff;
-			}
-			prMdnsSrvR->data_length = 16;
+	i = 0;
 
-			/* 3.4 Store TXT RR.*/
-			prMdnsTxtR = &prMdnsTemplateRecord->mdnsTxtRecord;
-			if (prMdnsParam->u2TxtRecordLen != 0) {
-				/* Type.*/
-				prMdnsTxtR->data[0] = 0;
-				prMdnsTxtR->data[1] = 16;
-				/* Class.*/
-				prMdnsTxtR->data[2] = (32769 & 0xff00) >> 8;
-				prMdnsTxtR->data[3] = 32769 & 0x00ff;
-				/* TTL.*/
-				prMdnsTxtR->data[4] = 0;
-				prMdnsTxtR->data[5] = 0;
-				prMdnsTxtR->data[6] = 0;
-				prMdnsTxtR->data[7] = 120;
-				/* Data Length.*/
-				prMdnsTxtR->data[8] =
-					(prMdnsParam->u2TxtRecordLen & 0xff00)
-					>> 8;
-				prMdnsTxtR->data[9] =
-					prMdnsParam->u2TxtRecordLen & 0x00ff;
-				/* Data.*/
-				memcpy(&prMdnsTxtR->data[10],
-					&prMdnsParam->ucTxtRecord[0],
-					prMdnsParam->u2TxtRecordLen);
-			}
-				prMdnsTxtR->data_length =
-					prMdnsParam->u2TxtRecordLen + 10;
-		} /* end of store Response template.*/
-	} /* end of if (MDNS_CMD_ADD_RECORD == prMdnsParam->ucCmd) .*/
+	LINK_FOR_EACH_ENTRY(prMdnsParamEntry, prMdnsRecordList,
+			rLinkEntry, struct MDNS_PARAM_ENTRY_T) {
 
-	rStatus = wlanSendSetQueryCmd(prGlueInfo->prAdapter,
+		kalMemZero(cmdMdnsParam, sizeof(struct CMD_MDNS_PARAM_T));
+
+		prGlueInfo->prAdapter->fgSetMdnsDone = FALSE;
+
+		i++;
+		cmdMdnsParam->ucCmd = MDNS_CMD_ADD_RECORD;
+		cmdMdnsParam->u4RecordId = i;
+		kalMemCopy(&cmdMdnsParam->mdns_param,
+				&prMdnsParamEntry->mdns_param,
+				sizeof(struct MDNS_PARAM_T));
+
+		wlanSendSetQueryCmd(prGlueInfo->prAdapter,
 				CMD_ID_SET_MDNS_RECORD,
 				TRUE,
 				FALSE,
 				FALSE,
-				NULL,
-				NULL,
+				kalSendMdnsEventCb,
+				nicOidCmdTimeoutCommon,
 				sizeof(struct CMD_MDNS_PARAM_T),
-				(PUINT_8) prCmdMdnsParam,
+				(PUINT_8)cmdMdnsParam,
 				NULL,
 				0);
 
-	kfree(prCmdMdnsParam);
+		wait = 0;
+		while (1) {
+			kalMsleep(2);
+
+			if (wait > 100) {
+				DBGLOG(INIT, ERROR, "send mdns record timeout\n");
+				break;
+			}
+			if (prGlueInfo->prAdapter->fgSetMdnsDone == TRUE) {
+				DBGLOG(INIT, LOUD, "send mdns record [%d] done\n", i);
+				break;
+			}
+			wait++;
+		}
+	}
+
+	kfree(cmdMdnsParam);
 }
 
+void kalMdnsProcess(IN P_GLUE_INFO_T prGlueInfo,
+		IN struct MDNS_INFO_UPLAYER_T *prMdnsUplayerInfo)
+{
+	if (prMdnsUplayerInfo->ucCmd == MDNS_CMD_ENABLE) {
+		if (prGlueInfo->prAdapter->mdns_offload_enable == FALSE) {
+			DBGLOG(REQ, INFO, "mDNS Enable.\n");
+			prGlueInfo->prAdapter->mdns_offload_enable = TRUE;
+			kalSendMdnsEnableToFw(prGlueInfo);
+		} else
+			DBGLOG(REQ, STATE, "mDNS already Enable.\n");
+	}
+
+	else if (prMdnsUplayerInfo->ucCmd == MDNS_CMD_ADD_RECORD) {
+		if (prGlueInfo->prAdapter->mdns_offload_enable == TRUE) {
+			DBGLOG(REQ, INFO, "Add Record.\n");
+			kalAddMdnsRecord(prGlueInfo, prMdnsUplayerInfo);
+		} else
+			DBGLOG(REQ, WARN, "mDNS is disable, no add record.\n");
+	}
+
+	else if (prMdnsUplayerInfo->ucCmd == MDNS_CMD_DISABLE) {
+		if (prGlueInfo->prAdapter->mdns_offload_enable == TRUE) {
+			DBGLOG(REQ, INFO, "mdns disable.\n");
+			prGlueInfo->prAdapter->mdns_offload_enable = FALSE;
+			kalMdnsOffloadInit(prGlueInfo->prAdapter);
+			kalSendMdnsDisableToFw(prGlueInfo);
+		} else
+			DBGLOG(REQ, STATE, "mDNS is aready disabled.\n");
+	}
+
+#if CFG_SUPPORT_MDNS_OFFLOAD_GVA
+	/* only for gva, need to remove record when ttl is 0 */
+	else if (prMdnsUplayerInfo->ucCmd == MDNS_CMD_DEL_RECORD) {
+		if (prGlueInfo->prAdapter->mdns_offload_enable == TRUE) {
+			DBGLOG(REQ, INFO, "DEL Record.\n");
+			kalDelMdnsRecord(prGlueInfo, prMdnsUplayerInfo);
+		} else
+			DBGLOG(REQ, WARN, "mDNS is disable, no del record.\n");
+		}
+#endif
+}
+
+#if CFG_SUPPORT_MDNS_OFFLOAD_GVA
+UINT_16 kalMdsnParseName(PUINT_8 pucMdnsHdr, UINT_16 offset,
+			PUINT_8 name, PUINT_16 name_len)
+{
+	UINT_16 pos = 0;
+	UINT_16 i = 0;
+	BOOLEAN compress = FALSE;
+
+	/* parse compress name */
+	/* there may be compress name contain compress name */
+	pos = offset;
+	while (pucMdnsHdr[offset] != 0) {
+		if ((pucMdnsHdr[offset] & 0xc0) != 0xc0) {
+			name[i] = pucMdnsHdr[offset];
+			offset++;
+			i++;
+		} else {
+			/* record the first compress pos */
+			if (compress == FALSE) {
+				pos = offset;
+				compress = TRUE;
+			}
+			offset = NTOHS(*(UINT_16 *)(pucMdnsHdr + offset))
+						& 0x3fff;
+		}
+	}
+
+	/* for compress, c0xx 2bytes, for uncompress, 0 as a end of name */
+	if (compress == TRUE)
+		pos += 2;
+	else
+		pos += i + 1;
+
+	/* include the end char 0 */
+	*name_len = i + 1;
+
+	return pos;
+}
+
+void kalProcessMdnsRespPkt(P_GLUE_INFO_T prGlueInfo, PUINT_8 pucMdnsHdr)
+{
+	UINT_8  i;
+	UINT_16 pos;
+	UINT_16 usMdnsId, usMdnsFlags;
+	UINT_16 usQuestionCnt, usAnswerCnt, usAuthCnt, usAddtionCnt;
+	UINT_32 ttl;
+	UINT_16 type, cl, dataLen;
+	UINT_8  domName[MDNS_QUESTION_NAME_MAX_LEN];
+	UINT_16 domNameLen;
+	struct MDNS_INFO_UPLAYER_T *prMdnsUplayerInfo = NULL;
+	struct MDNS_PARAM_T *prMdnsParam;
+	struct MDNS_TEMPLATE_T *prMdnsTemplate;
+
+	prMdnsUplayerInfo = kzalloc(sizeof(struct MDNS_INFO_UPLAYER_T),
+								GFP_KERNEL);
+	if (!prMdnsUplayerInfo) {
+		DBGLOG(REQ, WARN, "%s, alloc mem failed\n", __func__);
+		return;
+	}
+
+	pos = 0;
+
+	usMdnsId = NTOHS(*(UINT_16 *)(pucMdnsHdr + pos));
+	pos += 2;
+
+	usMdnsFlags = NTOHS(*(UINT_16 *)(pucMdnsHdr + pos));
+	pos += 2;
+
+	usQuestionCnt = NTOHS(*(UINT_16 *)(pucMdnsHdr + pos));
+	pos += 2;
+
+	usAnswerCnt = NTOHS(*(UINT_16 *)(pucMdnsHdr + pos));
+	pos += 2;
+
+	usAuthCnt = NTOHS(*(UINT_16 *)(pucMdnsHdr + pos));
+	pos += 2;
+
+	usAddtionCnt = NTOHS(*(UINT_16 *)(pucMdnsHdr + pos));
+	pos += 2;
+
+	DBGLOG(SW4, LOUD, "MDNS PKT[ID %d] flags[0x%x]\n",
+			usMdnsId, usMdnsFlags);
+	DBGLOG(SW4, LOUD, "questionCnt[%d] answerCnt[%d]\n",
+			usQuestionCnt, usAnswerCnt);
+	DBGLOG(SW4, LOUD, "authcnt[%d] addCnt[%d]\n",
+			usAuthCnt, usAddtionCnt);
+
+	if ((usMdnsFlags & 0x8000) == 0) {
+		DBGLOG(SW4, LOUD, "MDNS is query packet\n");
+		return;
+	}
+
+	if ((usAnswerCnt == 1 && usAddtionCnt == 3)
+		|| (usAnswerCnt == 4 && usAddtionCnt == 0)) {
+		DBGLOG(SW4, LOUD, "MDNS ans %d add %d\n",
+			usAnswerCnt, usAddtionCnt);
+	} else {
+		DBGLOG(SW4, LOUD, "MDNS ans %d add %d\n",
+			usAnswerCnt, usAddtionCnt);
+		return;
+	}
+
+	prMdnsParam = &prMdnsUplayerInfo->mdns_param;
+
+	for (i = 0; i < 4; i++) {
+		kalMemZero(domName, MDNS_QUESTION_NAME_MAX_LEN);
+		domNameLen = 0;
+
+		pos = kalMdsnParseName(pucMdnsHdr, pos,
+							domName,
+							&domNameLen);
+
+		type = NTOHS(*(UINT_16 *)(pucMdnsHdr + pos));
+		pos += 2;
+
+		cl = NTOHS(*(UINT_16 *)(pucMdnsHdr + pos));
+		pos += 2;
+
+		ttl = NTOHL(*(UINT_32 *)(pucMdnsHdr + pos));
+		pos += 4;
+
+		dataLen = NTOHS(*(UINT_16 *)(pucMdnsHdr + pos));
+		pos += 2;
+
+		switch (type) {
+		case 12:
+			prMdnsTemplate = &prMdnsParam->query_ptr;
+			if (ttl != 0)
+				prMdnsUplayerInfo->ucCmd = MDNS_CMD_ADD_RECORD;
+			else
+				prMdnsUplayerInfo->ucCmd = MDNS_CMD_DEL_RECORD;
+			break;
+		case 16:
+			prMdnsTemplate = &prMdnsParam->query_txt;
+			break;
+		case 33:
+			prMdnsTemplate = &prMdnsParam->query_srv;
+			break;
+		case 1:
+			prMdnsTemplate = &prMdnsParam->query_a;
+			break;
+		default:
+			DBGLOG(SW4, LOUD, "not needed type %d\n", type);
+			return;
+		}
+
+		kalMemCopy(prMdnsTemplate->name, domName, domNameLen);
+		prMdnsTemplate->name_length = domNameLen;
+		prMdnsTemplate->type = type;
+		prMdnsTemplate->class = cl;
+		pos += dataLen;
+	}
+
+	kalMemCopy(prMdnsParam->response, pucMdnsHdr, pos);
+	prMdnsParam->response_len = pos;
+
+	kalMdnsProcess(prGlueInfo, prMdnsUplayerInfo);
+
+	kfree(prMdnsUplayerInfo);
+}
+#endif
+#endif
 #endif
 
 VOID kalFreeTxMsduWorker(struct work_struct *work)
@@ -5825,3 +6664,21 @@ VOID kalInitDevWakeup(P_ADAPTER_T prAdapter, struct device *prDev)
 	if (prAdapter->rWifiVar.ucWow)
 		device_init_wakeup(prDev, TRUE);
 }
+
+
+unsigned long kal_kallsyms_lookup_name(const char *name)
+{
+	unsigned long ret = 0;
+
+	ret = kallsyms_lookup_name(name);
+	if (ret) {
+#ifdef CONFIG_ARM
+#ifdef CONFIG_THUMB2_KERNEL
+		/*set bit 0 in address for thumb mode*/
+		ret |= 1;
+#endif
+#endif
+	}
+	return ret;
+}
+

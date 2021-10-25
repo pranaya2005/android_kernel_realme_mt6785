@@ -210,5 +210,7 @@ void init_kernel_grip_proc(struct proc_dir_entry *prEntry_tp, struct kernel_grip
 void grip_status_reset(struct kernel_grip_info *grip_info, uint8_t index);
 void kernel_grip_reset(struct kernel_grip_info *grip_info);
 int kernel_grip_print_func(struct seq_file *s, struct kernel_grip_info *grip_info);
+int touch_get_key_value(char *in, char *check);
+
 #endif
 

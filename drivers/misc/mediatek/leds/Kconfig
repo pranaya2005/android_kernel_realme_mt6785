@@ -58,3 +58,11 @@ config CONTROL_BL_TEMPERATURE
 	  Set y to support.
 	  Set n to not support.
 	  This option enables means thermal can set brightness by the api of led driver.
+
+#ifdef OPLUS_FEATURE_TP_BASIC
+#Bin.Li@BSP.Fingerprint.Secure 2019/04/12, Add for led ic ktd2026
+source "drivers/misc/mediatek/leds/mt6771/oppo_ktd2026/Kconfig"
+source "drivers/misc/mediatek/leds/mt6771/oppo_ktd2026b/Kconfig"
+#Bin.Li@BSP.Fingerprint.Secure 2019/04/12, Add for led ic aw2026
+source "drivers/misc/mediatek/leds/mt6771/oppo_aw2026/Kconfig"
+#endif

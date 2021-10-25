@@ -115,6 +115,30 @@ static void VOW13MCK_Enable(bool enable);
 static void VOW32KCK_Enable(bool enable);
 #endif
 
+#ifdef OPLUS_BUG_COMPATIBILITY
+#ifdef CONFIG_SND_SOC_CODEC_AW87339
+/* HanHuiqun@PSW.MM.AudioDriver.Machine, 2019/04/03, Add for aw87339 */
+extern unsigned char aw87339_audio_spk_if_kspk(void);
+extern unsigned char aw87339_audio_rcv_if_kspk(void);
+extern unsigned char aw87339_audio_rcv_if_drcv(void);
+extern unsigned char aw87339_audio_spk_if_off(void);
+extern unsigned char aw87339_audio_rcv_if_off(void);
+/* Yongzhi.Zhang@PSW.MM.AudioDriver.Codec, 2019/10/17,
+ * add for reduce aw87339 output voltage */
+extern void aw87339_audio_spk_low_voltage_status(bool bStatus);
+/* Yongzhi.Zhang@PSW.MM.AudioDriver.Codec, 2019/11/19,
+ * add for setting different registers in voice */
+extern void aw87339_voice_setting(int bStatus);
+
+extern int aw87339_spk_low_voltage_status;
+extern int aw87339_voice_status;
+
+static int aw87339_kspk_control_spk = 0;
+static int aw87339_kspk_control_rcv = 0;
+static int aw87339_drcv_control_rcv = 0;
+#endif /* CONFIG_SND_SOC_CODEC_AW87339 */
+#endif /* OPLUS_BUG_COMPATIBILITY */
+
 static struct mt6358_codec_priv *mCodec_data;
 static unsigned int mBlockSampleRate[ANA_DEV_IN_OUT_MAX] = {
 	48000, 48000, 48000
@@ -3774,6 +3798,200 @@ static int Headset_Left_Right_Get(struct snd_kcontrol *kcontrol,
 {
 	return 0;
 }
+
+#ifdef CONFIG_SND_SOC_CODEC_AW87339
+/* HanHuiqun@PSW.MM.AudioDriver.Machine, 2019/04/03, Add for aw87339 */
+static int ext_kspk_amp_get_spk(struct snd_kcontrol *kcontrol, struct snd_ctl_elem_value *ucontrol)
+{
+    ucontrol->value.integer.value[0] = aw87339_kspk_control_spk;
+    pr_info("%s: aw87339_kspk_control = %d\n", __func__, aw87339_kspk_control_spk);
+    return 0;
+}
+
+static int ext_kspk_amp_put_spk(struct snd_kcontrol *kcontrol, struct snd_ctl_elem_value *ucontrol)
+{
+    if(ucontrol->value.integer.value[0] == aw87339_kspk_control_spk)
+        return 1;
+    aw87339_kspk_control_spk = ucontrol->value.integer.value[0];
+    if(ucontrol->value.integer.value[0]) {
+        aw87339_audio_spk_if_kspk();
+    } else {
+        aw87339_audio_spk_if_off();
+    }
+    pr_info("%s: value.integer.value = %ld\n", __func__, ucontrol->value.integer.value[0]);
+    return 0;
+}
+
+static int ext_kspk_amp_get_rcv(struct snd_kcontrol *kcontrol, struct snd_ctl_elem_value *ucontrol)
+{
+    ucontrol->value.integer.value[0] = aw87339_kspk_control_rcv;
+    pr_info("%s: aw87339_kspk_control = %d\n", __func__, aw87339_kspk_control_rcv);
+    return 0;
+}
+
+static int ext_kspk_amp_put_rcv(struct snd_kcontrol *kcontrol, struct snd_ctl_elem_value *ucontrol)
+{
+    if(ucontrol->value.integer.value[0] == aw87339_kspk_control_rcv)
+        return 1;
+    aw87339_kspk_control_rcv = ucontrol->value.integer.value[0];
+    if(ucontrol->value.integer.value[0]) {
+        aw87339_audio_rcv_if_kspk();
+    } else {
+        aw87339_audio_rcv_if_off();
+    }
+    pr_info("%s: value.integer.value = %ld\n", __func__, ucontrol->value.integer.value[0]);
+    return 0;
+}
+
+static int ext_drcv_amp_get_rcv(struct snd_kcontrol *kcontrol, struct snd_ctl_elem_value *ucontrol)
+{
+    ucontrol->value.integer.value[0] = aw87339_drcv_control_rcv;
+    pr_info("%s: aw87339_drcv_control = %d\n", __func__, aw87339_drcv_control_rcv);
+    return 0;
+}
+
+static int ext_drcv_amp_put_rcv(struct snd_kcontrol *kcontrol, struct snd_ctl_elem_value *ucontrol)
+{
+    if(ucontrol->value.integer.value[0] == aw87339_drcv_control_rcv)
+        return 1;
+    aw87339_drcv_control_rcv = ucontrol->value.integer.value[0];
+    if(ucontrol->value.integer.value[0]) {
+        aw87339_audio_rcv_if_drcv();
+    } else {
+        aw87339_audio_rcv_if_off();
+    }
+    pr_info("%s: value.integer.value = %ld\n", __func__, ucontrol->value.integer.value[0]);
+    return 0;
+}
+
+/* Yongzhi.Zhang@PSW.MM.AudioDriver.Codec, 2019/10/17,
+ * add for reduce aw87339 output voltage */
+static int ext_amp_low_voltage_get(struct snd_kcontrol *kcontrol, struct snd_ctl_elem_value *ucontrol)
+{
+	ucontrol->value.integer.value[0] = aw87339_spk_low_voltage_status;
+	pr_info("%s: aw87339_spk_low_voltage_status = %d\n", __func__, aw87339_spk_low_voltage_status);
+	return 0;
+}
+
+static int ext_amp_low_voltage_set(struct snd_kcontrol *kcontrol, struct snd_ctl_elem_value *ucontrol)
+{
+	if (ucontrol->value.integer.value[0] == aw87339_spk_low_voltage_status)
+		return 1;
+	if (ucontrol->value.integer.value[0] == 1) {
+		aw87339_audio_spk_low_voltage_status(1);
+	} else {
+		aw87339_audio_spk_low_voltage_status(0);
+	}
+
+	pr_info("%s: value.integer.value = %ld\n", __func__, ucontrol->value.integer.value[0]);
+	return 0;
+}
+
+/* Yongzhi.Zhang@PSW.MM.AudioDriver.Codec, 2019/11/19,
+ * add for setting different registers in voice */
+static int ext_amp_voice_get(struct snd_kcontrol *kcontrol, struct snd_ctl_elem_value *ucontrol)
+{
+	ucontrol->value.integer.value[0] = aw87339_voice_status;
+	pr_info("%s: aw87339_voice_status = %d\n", __func__, aw87339_voice_status);
+	return 0;
+}
+
+static int ext_amp_voice_set(struct snd_kcontrol *kcontrol, struct snd_ctl_elem_value *ucontrol)
+{
+	if (ucontrol->value.integer.value[0] == aw87339_voice_status)
+		return 1;
+	if (ucontrol->value.integer.value[0] == 1) {
+		aw87339_voice_setting(1);
+	} else {
+		aw87339_voice_setting(0);
+	}
+
+	pr_info("%s: value.integer.value = %ld\n", __func__, ucontrol->value.integer.value[0]);
+	return 0;
+}
+#endif /* CONFIG_SND_SOC_CODEC_AW87339 */
+
+/* Zhao.Pan@MULTIMEDIA.AUDIODRIVER.MACHINE, 2020/04/23, add for audio extern config */
+enum oplus_pa_type_def {
+	OPLUS_PA_NXP = 0,
+	OPLUS_PA_AWINIC,
+	OPLUS_PA_TYPE_NUM
+};
+static int oplus_pa_type = OPLUS_PA_NXP;
+
+//if more config values, set a bigger number
+#define AUDIO_EXTERN_CONFIG_MAX_NUM  4
+#define OPLUS_PA_TYPE_OFFSET 0
+int audio_extern[AUDIO_EXTERN_CONFIG_MAX_NUM] = {0};
+
+bool is_awinic_pa_type(void)
+{
+	return (oplus_pa_type == OPLUS_PA_AWINIC);
+}
+
+bool is_nxp_pa_type(void)
+{
+	return (oplus_pa_type == OPLUS_PA_NXP);
+}
+
+static int read_audio_extern_config_dts(struct platform_device *pdev)
+{
+	int ret;
+	int count, i;
+	count = of_property_count_u32_elems(pdev->dev.of_node, "audio_extern_config");
+	if (count <= 0) {
+		dev_err(&pdev->dev, "%s: no property match audio_extern_config\n", __func__);
+		return -ENODATA;
+	} else if (count > AUDIO_EXTERN_CONFIG_MAX_NUM) {
+		dev_err(&pdev->dev, "%s: audio_extern_config num=%d > %d(max numbers)\n",
+				__func__, count, AUDIO_EXTERN_CONFIG_MAX_NUM);
+		return -EINVAL;
+	}
+
+	ret = of_property_read_u32_array(pdev->dev.of_node, "audio_extern_config",
+			audio_extern, count);
+	if (ret) {
+		dev_err(&pdev->dev, "%s: read audio_extern_config error = %d\n", __func__, ret);
+		return ret;
+	}
+	for (i = 0; i < count; i++) {
+		dev_info(&pdev->dev, "%s: audio_extern[%d] = %d\n",
+				__func__, i ,audio_extern[i]);
+	}
+
+	if (OPLUS_PA_TYPE_OFFSET < count) {
+		oplus_pa_type = audio_extern[OPLUS_PA_TYPE_OFFSET];
+		dev_info(&pdev->dev, "%s: pa_type = audio_extern[%d] = %d\n",
+				__func__, OPLUS_PA_TYPE_OFFSET , oplus_pa_type);
+	}
+
+	return ret;
+}
+
+static int mt6358_audio_extern_config_get(struct snd_kcontrol *kcontrol,
+			       struct snd_ctl_elem_value *ucontrol)
+{
+	int i;
+
+	for (i = 0; i < AUDIO_EXTERN_CONFIG_MAX_NUM; i++) {
+		ucontrol->value.integer.value[i] = audio_extern[i];
+		pr_info("%s(), OPLUS_AUDIO_EXTERN_CONFIG get value(%d) = %d",
+				__func__, i, audio_extern[i]);
+	}
+
+	return 0;
+}
+
+static int mt6358_audio_extern_config_ctl(struct snd_kcontrol *kcontrol,
+			       struct snd_ctl_elem_info *uinfo)
+{
+	uinfo->type = SNDRV_CTL_ELEM_TYPE_INTEGER;
+	uinfo->count = AUDIO_EXTERN_CONFIG_MAX_NUM;
+	uinfo->value.integer.min = 0;
+	uinfo->value.integer.max = 0x7fffffff; /* 32 bit value,  */
+
+	return 0;
+}
 #endif /* OPLUS_BUG_COMPATIBILITY */
 
 static int PMIC_REG_CLEAR_Set(struct snd_kcontrol *kcontrol,
@@ -4719,6 +4937,18 @@ static const struct snd_kcontrol_new Audio_snd_auxadc_controls[] = {
  * add for HS Left Right control sperate */
 static const char *Headset_Left_Right_Setting[] = {"LeftOn",
 	"LeftOff", "RightOn","RightOff", "Both","None"};
+#ifdef CONFIG_SND_SOC_CODEC_AW87339
+/* HanHuiqun@PSW.MM.AudioDriver.Machine,2019/04/03, Add for aw87339 */
+static const char *const ext_kspk_amp_function_spk[] = { "Off", "On" };
+static const char *const ext_kspk_amp_function_rcv[] = { "Off", "On" };
+static const char *const ext_drcv_amp_function_rcv[] = { "Off", "On" };
+/* Yongzhi.Zhang@PSW.MM.AudioDriver.Codec, 2019/10/17,
+ * add for reduce aw87339 output voltage */
+static const char *const ext_amp_low_vol_function[] = { "Off", "On" };
+/* Yongzhi.Zhang@PSW.MM.AudioDriver.Codec, 2019/11/19,
+ * add for setting different registers in voice */
+static const char *const ext_amp_voice_function[] = { "Off", "On" };
+#endif /* CONFIG_SND_SOC_CODEC_AW87339 */
 #endif /* OPLUS_BUG_COMPATIBILITY */
 
 static const char *const amp_function[] = { "Off", "On" };
@@ -5302,6 +5532,18 @@ static const struct soc_enum Audio_DL_Enum[] = {
     /* Hongxiang.Jin@MULTIMEDIA.AUDIODRIVER.MACHINE, 2019/08/26,
      * add for HS Left Right control sperate */
 	SOC_ENUM_SINGLE_EXT(ARRAY_SIZE(Headset_Left_Right_Setting), Headset_Left_Right_Setting),
+#ifdef CONFIG_SND_SOC_CODEC_AW87339
+	/* HanHuiqun@PSW.MM.AudioDriver.Machine, 2019/04/03, Add for aw87339 */
+	SOC_ENUM_SINGLE_EXT(ARRAY_SIZE(ext_kspk_amp_function_spk), ext_kspk_amp_function_spk),
+	SOC_ENUM_SINGLE_EXT(ARRAY_SIZE(ext_kspk_amp_function_rcv), ext_kspk_amp_function_rcv),
+	SOC_ENUM_SINGLE_EXT(ARRAY_SIZE(ext_drcv_amp_function_rcv), ext_drcv_amp_function_rcv),
+	/* Yongzhi.Zhang@PSW.MM.AudioDriver.Codec, 2019/10/17,
+	 * add for reduce aw87339 output voltage */
+	SOC_ENUM_SINGLE_EXT(ARRAY_SIZE(ext_amp_low_vol_function), ext_amp_low_vol_function),
+	/* Yongzhi.Zhang@PSW.MM.AudioDriver.Codec, 2019/11/19,
+	 * add for setting different registers in voice */
+	SOC_ENUM_SINGLE_EXT(ARRAY_SIZE(ext_amp_voice_function), ext_amp_voice_function),
+#endif /* CONFIG_SND_SOC_CODEC_AW87339 */
 #endif /* OPLUS_BUG_COMPATIBILITY */
 };
 
@@ -5367,6 +5609,26 @@ static const struct snd_kcontrol_new mt6358_snd_controls[] = {
 	 * add for HS Left Right control sperate */
 	SOC_ENUM_EXT("Headset_Left_Right_Sel", Audio_DL_Enum[14],
 		Headset_Left_Right_Get, Headset_Left_Right_Set),
+#ifdef CONFIG_SND_SOC_CODEC_AW87339
+	/* HanHuiqun@PSW.MM.AudioDriver.Machine, 2019/04/03, Add for aw87339 */
+	SOC_ENUM_EXT("Ext_Speaker_Amp_spkmode", Audio_DL_Enum[15], ext_kspk_amp_get_spk, ext_kspk_amp_put_spk),
+	SOC_ENUM_EXT("Ext_Receiver_Amp_spkmode", Audio_DL_Enum[16], ext_kspk_amp_get_rcv, ext_kspk_amp_put_rcv),
+	SOC_ENUM_EXT("Ext_Receiver_Amp_rcvmode", Audio_DL_Enum[17], ext_drcv_amp_get_rcv, ext_drcv_amp_put_rcv),
+	/* Yongzhi.Zhang@PSW.MM.AudioDriver.Codec, 2019/10/17,
+	 * add for reduce aw87339 output voltage */
+	SOC_ENUM_EXT("Ext_AMP_LOW_VOLTAGE", Audio_DL_Enum[18], ext_amp_low_voltage_get, ext_amp_low_voltage_set),
+	/* Yongzhi.Zhang@PSW.MM.AudioDriver.Codec, 2019/11/19,
+	 * add for setting different registers in voice */
+	SOC_ENUM_EXT("EXT_AMP_VOICE_SETTING", Audio_DL_Enum[19], ext_amp_voice_get, ext_amp_voice_set),
+#endif /* CONFIG_SND_SOC_CODEC_AW87339 */
+	/* Zhao.Pan@MULTIMEDIA.AUDIODRIVER.MACHINE, 2020/04/23, add for audio extern config */
+	{
+		.iface = SNDRV_CTL_ELEM_IFACE_MIXER,
+		.name = "OPLUS_AUDIO_EXTERN_CONFIG",
+		.access = SNDRV_CTL_ELEM_ACCESS_READ,
+		.info = mt6358_audio_extern_config_ctl,
+		.get = mt6358_audio_extern_config_get
+	},
 #endif /* OPLUS_BUG_COMPATIBILITY */
 };
 
@@ -7735,6 +7997,9 @@ static void mt6358_codec_init_reg(struct snd_soc_codec *codec)
 	/* Enable mtkaif gpio SMT mode */
 	Ana_Set_Reg(SMT_CON1, 0x0ff0, 0x0ff0);
 
+	/* Set HP_EINT trigger level to 2.0v */
+	Ana_Set_Reg(AUDENC_ANA_CON11, 0x1 << 10, 0x1 << 10);
+
 	/* set gpio */
 	set_playback_gpio(false);
 	set_capture_gpio(false);
@@ -7885,6 +8150,11 @@ static int mtk_mt6358_codec_dev_probe(struct platform_device *pdev)
 	} else {
 		pr_warn("%s(), pdev->dev.of_node = NULL!!!\n", __func__);
 	}
+
+#ifdef OPLUS_BUG_COMPATIBILITY
+	/* Zhao.Pan@MULTIMEDIA.AUDIODRIVER.MACHINE, 2020/04/23, add for audio extern config */
+	read_audio_extern_config_dts(pdev);
+#endif /*OPLUS_BUG_COMPATIBILITY*/
 
 	pr_debug("%s: dev name %s\n", __func__, dev_name(&pdev->dev));
 	return snd_soc_register_codec(&pdev->dev,

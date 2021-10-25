@@ -34,6 +34,10 @@ enum DTS_GPIO_STATE {
 	DTS_GPIO_STATE_TE_MODE_GPIO,	/* mode_te_gpio */
 	DTS_GPIO_STATE_TE_MODE_TE,	/* mode_te_te */
 	DTS_GPIO_STATE_TE1_MODE_TE,	/* mode_te1_te */
+	/* #ifdef OPLUS_BUG_STABILITY */
+	/* YuWei.Zhang@MM.Display.LCD, 2021/01/26, add for ramless AOD function */
+	DTS_GPIO_STATE_TE_BK_GPIO15,
+	/* #endif */ /* OPLUS_BUG_STABILITY */
 	DTS_GPIO_STATE_MAX,		/* for array size */
 };
 

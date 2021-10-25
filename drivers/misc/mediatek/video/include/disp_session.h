@@ -342,8 +342,13 @@ struct disp_frame_cfg_t {
 	unsigned int hrt_weight;
 	unsigned int hrt_idx;
 
+	/* #ifndef OPLUS_FEATURE_ONSCREENFINGERPRINT */
+	/* Zhijun.Ye@MM.Display.LCD.Machine, 2020/10/26, add for fingerprint */
 	/* for panel HBM (High Backlight Mode) control */
-	bool hbm_en;
+	/* bool hbm_en; */
+	/* #else */ /* OPLUS_FEATURE_ONSCREENFINGERPRINT */
+	unsigned int hbm_en;
+	/* #endif */ /* OPLUS_FEATURE_ONSCREENFINGERPRINT */
 
 	/*DynFPS*/
 	int active_config;

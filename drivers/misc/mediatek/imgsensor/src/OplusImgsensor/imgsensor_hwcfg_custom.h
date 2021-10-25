@@ -148,10 +148,6 @@ extern struct IMGSENSOR_HW_POWER_SEQ *oplus_platform_power_sequence;
 extern struct IMGSENSOR_HW_POWER_SEQ *oplus_platform_power_sequence;
 #endif
 
-#ifdef SENSOR_PLATFORM_5G_H
-extern int is_check_lcm_status(void);
-#endif
-
 extern int pmic_ldo_get_type(void);
 extern int pmic_ldo_set_voltage_mv(unsigned int ldo_num, int set_mv);
 extern int pmic_ldo_set_disable(unsigned int ldo_num);

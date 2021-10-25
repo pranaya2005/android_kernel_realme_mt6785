@@ -1,14 +1,21 @@
-// SPDX-License-Identifier: GPL-2.0-only
-/*
- * Copyright (C) 2018-2020 Oplus. All rights reserved.
- */
-
+/*****************************************************************************************
+ * Copyright (c)  2008- 2019  Oppo Mobile communication Corp.ltd.
+ * VENDOR_EDIT
+ * File       : novatek_drivers_nt36525b.c
+ * Description: Source file for novatek nt36525b driver
+ * Version   : 1.0
+ * Date        : 2019/04/22
+ * Author    : Ping.Zhang@PSW.BSP.Tp
+ * TAG         : BSP.TP.Init
+ * ---------------- Revision History: --------------------------
+ *   <version>    <date>          < author >                            <desc>
+ *******************************************************************************************/
 #include <linux/kernel.h>
 #include <linux/module.h>
 #include <linux/delay.h>
 #include <linux/gpio.h>
 #include <linux/proc_fs.h>
-#include <linux/uaccess.h>
+#include <asm/uaccess.h>
 #include <linux/input/mt.h>
 //#include <linux/wakelock.h>
 #include <linux/of_gpio.h>
@@ -30,6 +37,8 @@ static struct timeval start, end;
 
 /****************** Start of Log Tag Declear and level define*******************************/
 #define TPD_DEVICE "novatek,nf_nt36525b"
+
+
 #define TPD_INFO(a, arg...)  pr_err("[TP]"TPD_DEVICE ": " a, ##arg)
 #define TPD_DEBUG(a, arg...)\
     do{\
@@ -56,7 +65,7 @@ static fw_update_state nvt_fw_update_sub(void *chip_data, const struct firmware 
 static fw_update_state nvt_fw_update(void *chip_data, const struct firmware *fw, bool force);
 static int nvt_reset(void *chip_data);
 static int nvt_get_chip_info(void *chip_data);
-
+extern void lcd_queue_load_tp_fw(void);
 static struct chip_data_nt36525b *g_chip_info = NULL;
 
 /***************************** start of id map table******************************************/
@@ -121,6 +130,7 @@ static const struct mtk_chip_config spi_ctrdata = {
     .rx_mlsb = 1,
     .tx_mlsb = 1,
     .cs_pol = 0,
+    .cs_setuptime = 30,
 };
 #else
 static const struct mt_chip_conf spi_ctrdata = {
@@ -192,7 +202,7 @@ Description:
 return:
     n.a.
 *******************************************************/
-void nvt_bootloader_reset_noflash(struct chip_data_nt36525b *chip_info)
+static void nvt_bootloader_reset_noflash(struct chip_data_nt36525b *chip_info)
 {
     //---reset cmds to SWRST_N8_ADDR---
     TPD_INFO("%s is called!\n", __func__);
@@ -738,7 +748,6 @@ firmware into each partition.
 return:
         n.a.
 *******************************************************/
-/* Pan.Chen@BSP.TP.Function, 2020/09/11, bringup add for touchscreen mould. */
 /*static int32_t Write_Partition(struct chip_data_nt36525b *chip_info, const u8 *fwdata, size_t fwsize)
 {
     uint32_t list = 0;
@@ -798,7 +807,7 @@ out:
     return ret;
 }*/
 
-/* Pan.Chen@BSP.TP.Function, 2020/09/11, bringup add for touchscreen mould. */
+
 static int32_t Write_Partition(struct chip_data_nt36525b *chip_info, const u8 *fwdata, size_t fwsize)
 {
     uint32_t list = 0;
@@ -869,7 +878,6 @@ static int32_t Write_Partition(struct chip_data_nt36525b *chip_info, const u8 *f
 out:
     return ret;
 }
-
 
 static void nvt_bld_crc_enable(struct chip_data_nt36525b *chip_info)
 {
@@ -1074,7 +1082,11 @@ fail:
     return ret;
 }
 
+#ifdef CONFIG_ARCH_HAS_SYSCALL_WRAPPER
 int32_t nvt_nf_detect_chip(struct chip_data_nt36525b *chip_info)
+#else
+static int32_t nvt_nf_detect_chip(struct chip_data_nt36525b *chip_info)
+#endif
 {
     int32_t ret = 0;
     int i;
@@ -1149,18 +1161,18 @@ static int nvt_get_chip_info(void *chip_data)
     return ret;
 }
 
-//#ifdef CONFIG_TOUCHPANEL_MTK_PLATFORM
-//extern unsigned int upmu_get_rgs_chrdet(void);
-//static int nvt_get_usb_state(void)
-//{
-//    return upmu_get_rgs_chrdet();
-//}
-//#else
-//static int nvt_get_usb_state(void)
-//{
-//    return 0;
-//}
-//#endif
+/*#ifdef CONFIG_TOUCHPANEL_MTK_PLATFORM
+__attribute__((weak)) unsigned int upmu_get_rgs_chrdet(void);
+static int nvt_get_usb_state(void)
+{
+    return upmu_get_rgs_chrdet();
+}
+#else
+static int nvt_get_usb_state(void)
+{
+    return 0;
+}
+#endif*/
 
 static int nvt_get_vendor(void *chip_data, struct panel_info *panel_data)
 {
@@ -1903,7 +1915,7 @@ static int nvt_reset(void *chip_data)
 }
 
 #ifdef CONFIG_OPPO_TP_APK
-static __maybe_unused int nvt_enable_debug_gesture_coordinate_record_mode(struct chip_data_nt36525b *chip_info, bool enable)
+static  int nvt_enable_debug_gesture_coordinate_record_mode(struct chip_data_nt36525b *chip_info, bool enable)
 {
     int8_t ret = -1;
 
@@ -1919,7 +1931,7 @@ static __maybe_unused int nvt_enable_debug_gesture_coordinate_record_mode(struct
     return ret;
 }
 
-static __maybe_unused int nvt_enable_debug_gesture_coordinate_mode(struct chip_data_nt36525b *chip_info, bool enable)
+static  int nvt_enable_debug_gesture_coordinate_mode(struct chip_data_nt36525b *chip_info, bool enable)
 {
     int8_t ret = -1;
 
@@ -2051,7 +2063,7 @@ static int nvt_enable_headset_mode(struct chip_data_nt36525b *chip_info, bool en
 }
 
 #ifdef CONFIG_OPPO_TP_APK
-static __maybe_unused int nvt_enable_hopping_polling_mode(struct chip_data_nt36525b *chip_info, bool enable)
+static  int nvt_enable_hopping_polling_mode(struct chip_data_nt36525b *chip_info, bool enable)
 {
     int8_t ret = -1;
 
@@ -2068,7 +2080,7 @@ static __maybe_unused int nvt_enable_hopping_polling_mode(struct chip_data_nt365
     return ret;
 }
 
-static __maybe_unused int nvt_enable_hopping_fix_freq_mode(struct chip_data_nt36525b *chip_info, bool enable)
+static  int nvt_enable_hopping_fix_freq_mode(struct chip_data_nt36525b *chip_info, bool enable)
 {
     int8_t ret = -1;
 
@@ -2085,7 +2097,7 @@ static __maybe_unused int nvt_enable_hopping_fix_freq_mode(struct chip_data_nt36
     return ret;
 }
 
-static __maybe_unused int nvt_enable_debug_msg_diff_mode(struct chip_data_nt36525b *chip_info, bool enable)
+static  int nvt_enable_debug_msg_diff_mode(struct chip_data_nt36525b *chip_info, bool enable)
 {
     int8_t ret = -1;
 
@@ -2103,7 +2115,7 @@ static __maybe_unused int nvt_enable_debug_msg_diff_mode(struct chip_data_nt3652
     return ret;
 }
 
-static __maybe_unused int nvt_enable_water_polling_mode(struct chip_data_nt36525b *chip_info, bool enable)
+static  int nvt_enable_water_polling_mode(struct chip_data_nt36525b *chip_info, bool enable)
 {
     int8_t ret = -1;
 
@@ -2255,7 +2267,6 @@ static fw_check_state nvt_fw_check(void *chip_data, struct resolution_info *reso
                 } else {
                     strlcpy(&panel_data->manufacture_info.version[12], dev_version, 3);
                 }
-
             } else {
                 ver_len = panel_data->vid_len;
                 if (ver_len > MAX_DEVICE_VERSION_LENGTH - 4) {
@@ -2703,7 +2714,11 @@ static void store_to_file(int fd, char *format, ...)
     va_end(args);
 
     if(fd >= 0) {
-        sys_write(fd, buf, strlen(buf));
+#ifdef CONFIG_ARCH_HAS_SYSCALL_WRAPPER
+    ksys_write(fd, buf, strlen(buf));
+#else
+    sys_write(fd, buf, strlen(buf));
+#endif
     }
 }
 
@@ -3581,10 +3596,17 @@ TEST_END:
 
     old_fs = get_fs();
     set_fs(KERNEL_DS);
+#ifdef CONFIG_ARCH_HAS_SYSCALL_WRAPPER
+    ksys_mkdir("/sdcard/TpTestReport/screenOff", 0666);
+    ksys_mkdir("/sdcard/TpTestReport/screenOff/OK", 0666);
+    ksys_mkdir("/sdcard/TpTestReport/screenOff/NG", 0666);
+    fd = ksys_open(data_buf, O_WRONLY | O_CREAT | O_TRUNC, 0);
+#else
     sys_mkdir("/sdcard/TpTestReport/screenOff", 0666);
     sys_mkdir("/sdcard/TpTestReport/screenOff/OK", 0666);
     sys_mkdir("/sdcard/TpTestReport/screenOff/NG", 0666);
     fd = sys_open(data_buf, O_WRONLY | O_CREAT | O_TRUNC, 0);
+#endif
     if (fd < 0) {
         TPD_INFO("Open log file '%s' failed.\n", data_buf);
         goto OUT;
@@ -3648,7 +3670,11 @@ TEST_END:
 
 OUT:
     if (fd >= 0) {
+#ifdef CONFIG_ARCH_HAS_SYSCALL_WRAPPER
+        ksys_close(fd);
+#else
         sys_close(fd);
+#endif
     }
     set_fs(old_fs);
 
@@ -3729,7 +3755,7 @@ static struct oppo_touchpanel_operations nvt_ops = {
     .fw_check                   = nvt_fw_check,
     .fw_update                  = nvt_fw_update,
     .get_vendor                 = nvt_get_vendor,
-//    .get_usb_state              = nvt_get_usb_state,
+  //  .get_usb_state              = nvt_get_usb_state,
     .black_screen_test          = nvt_black_screen_test,
     .esd_handle                 = nvt_esd_handle,
     .reset_gpio_control         = nvt_reset_gpio_control,
@@ -3892,14 +3918,14 @@ static void nvt_baseline_read(struct seq_file *s, void *chip_data)
 }
 
 #ifdef CONFIG_OPPO_TP_APK
-static __maybe_unused void nvt_dbg_diff_finger_down_read(struct seq_file *s, void *chip_data)
+static  void nvt_dbg_diff_finger_down_read(struct seq_file *s, void *chip_data)
 {
     struct chip_data_nt36525b *chip_info = (struct chip_data_nt36525b *)chip_data;
 
     nvt_debug_data_read(s, chip_info, NVT_DEBUG_FINGER_DOWN_DIFFDATA);
 }
 
-static __maybe_unused void nvt_dbg_diff_status_change_read(struct seq_file *s, void *chip_data)
+static  void nvt_dbg_diff_status_change_read(struct seq_file *s, void *chip_data)
 {
     struct chip_data_nt36525b *chip_info = (struct chip_data_nt36525b *)chip_data;
 
@@ -4694,11 +4720,19 @@ TEST_END:
 
     old_fs = get_fs();
     set_fs(KERNEL_DS);
+#ifdef CONFIG_ARCH_HAS_SYSCALL_WRAPPER
+    ksys_mkdir("/sdcard/TpTestReport", 0666);
+    ksys_mkdir("/sdcard/TpTestReport/screenOn", 0666);
+    ksys_mkdir("/sdcard/TpTestReport/screenOn/OK", 0666);
+    ksys_mkdir("/sdcard/TpTestReport/screenOn/NG", 0666);
+    nvt_testdata->fd = ksys_open(data_buf, O_WRONLY | O_CREAT | O_TRUNC, 0);
+#else
     sys_mkdir("/sdcard/TpTestReport", 0666);
     sys_mkdir("/sdcard/TpTestReport/screenOn", 0666);
     sys_mkdir("/sdcard/TpTestReport/screenOn/OK", 0666);
     sys_mkdir("/sdcard/TpTestReport/screenOn/NG", 0666);
     nvt_testdata->fd = sys_open(data_buf, O_WRONLY | O_CREAT | O_TRUNC, 0);
+#endif
     if (nvt_testdata->fd < 0) {
         TPD_INFO("Open log file '%s' failed.\n", data_buf);
         //seq_printf(s, "Open log file '%s' failed.\n", data_buf);
@@ -4783,7 +4817,11 @@ TEST_END:
 
 OUT:
     if (nvt_testdata->fd >= 0) {
+#ifdef CONFIG_ARCH_HAS_SYSCALL_WRAPPER
+        ksys_close(nvt_testdata->fd);
+#else
         sys_close(nvt_testdata->fd);
+#endif
     }
     set_fs(old_fs);
 
@@ -5135,7 +5173,7 @@ static void nova_init_oppo_apk_op(struct touchpanel_data *ts)
 
 
 /*********** Start of SPI Driver and Implementation of it's callbacks*************************/
-int __maybe_unused nvt_tp_probe(struct spi_device *client)
+static int  nvt_tp_probe(struct spi_device *client)
 {
     struct chip_data_nt36525b *chip_info = NULL;
     struct touchpanel_data *ts = NULL;
@@ -5279,6 +5317,7 @@ int __maybe_unused nvt_tp_probe(struct spi_device *client)
         }
     }
 
+	lcd_queue_load_tp_fw();
     chip_info->probe_done = 1;
     TPD_INFO("%s, probe normal end\n", __func__);
     return 0;
@@ -5310,7 +5349,6 @@ ts_malloc_failed:
     TPD_INFO("%s, probe error\n", __func__);
     return ret;
 }
-/* Pan.Chen@BSP.TP.Function, 2020/09/11, bringup add for touchscreen mould */
 static int nvt_tp_remove(struct spi_device *client)
 {
     struct touchpanel_data *ts = spi_get_drvdata(client);
@@ -5320,12 +5358,14 @@ static int nvt_tp_remove(struct spi_device *client)
 
     return 0;
 }
-/* Pan.Chen@BSP.TP.Function, 2020/09/11, bringup add for touchscreen mould */
+
 static int nvt_spi_suspend(struct device *dev)
 {
     struct touchpanel_data *ts = dev_get_drvdata(dev);
+    struct chip_data_nt36525b *chip_info = (struct chip_data_nt36525b *)(ts->chip_data);
 
     TPD_INFO("%s: is called\n", __func__);
+    nvt_esd_check_enable(chip_info, false);
     tp_i2c_suspend(ts);
 
     return 0;
@@ -5336,12 +5376,14 @@ static int nvt_spi_resume(struct device *dev)
     struct touchpanel_data *ts = dev_get_drvdata(dev);
 
     TPD_INFO("%s is called\n", __func__);
+
     tp_i2c_resume(ts);
 
     return 0;
 }
 
-static const struct spi_device_id tp_id[] = {
+static const struct spi_device_id tp_id[] =
+{
 #ifdef CONFIG_TOUCHPANEL_MULTI_NOFLASH
     { "oppo,tp_noflash", 0 },
 #else
@@ -5350,11 +5392,12 @@ static const struct spi_device_id tp_id[] = {
     {},
 };
 
-static struct of_device_id tp_match_table[] = {
+static struct of_device_id tp_match_table[] =
+{
 #ifdef CONFIG_TOUCHPANEL_MULTI_NOFLASH
-    { .compatible = "oppo,tp_noflash", },
+    { .compatible = "oppo,tp_noflash",},
 #else
-    { .compatible = TPD_DEVICE, },
+    { .compatible =  TPD_DEVICE,},
 #endif
     { },
 };
@@ -5382,11 +5425,11 @@ static struct spi_driver tp_spi_driver = {
 static int32_t __init nvt_driver_init(void)
 {
     TPD_INFO("%s is called\n", __func__);
-    if (!tp_judge_ic_match(TPD_DEVICE)) {
-        return -1;
-    }
 
-    if (spi_register_driver(&tp_spi_driver) != 0) {
+    if (!tp_judge_ic_match(TPD_DEVICE))
+        return -1;
+
+    if (spi_register_driver(&tp_spi_driver)!= 0) {
         TPD_INFO("unable to add spi driver.\n");
         return -1;
     }
@@ -5403,3 +5446,5 @@ module_exit(nvt_driver_exit);
 
 MODULE_DESCRIPTION("Novatek Touchscreen Driver");
 MODULE_LICENSE("GPL");
+
+

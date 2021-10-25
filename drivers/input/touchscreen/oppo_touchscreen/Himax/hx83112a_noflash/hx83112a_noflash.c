@@ -2242,6 +2242,8 @@ static void hx83112a_nf_read_FW_ver(void)
     uint8_t data2[64];
     int retry = 200;
     int reload_status = 0;
+    u8 ver_len = 0;
+    char dev_version[MAX_DEVICE_VERSION_LENGTH] = {0};
 
     hx83112a_nf_sense_on(0);
 
@@ -2300,6 +2302,23 @@ static void hx83112a_nf_read_FW_ver(void)
     TPD_INFO("TOUCH_VER : %X \n", data[2]);
     TPD_INFO("DISPLAY_VER : %X \n", data[3]);
 
+    snprintf(dev_version, MAX_DEVICE_VERSION_LENGTH, "%02X", data[2]);
+    TPD_INFO("%s: dev_version = %s \n", __func__, dev_version);
+    if (hx83112a_nf_pri_ts->panel_data.manufacture_info.version) {
+        if (hx83112a_nf_pri_ts->panel_data.vid_len == 0) {
+            strlcpy(&(hx83112a_nf_pri_ts->panel_data.manufacture_info.version[12]), dev_version, 3);
+        } else {
+            ver_len = hx83112a_nf_pri_ts->panel_data.vid_len;
+            if (ver_len > MAX_DEVICE_VERSION_LENGTH - 4) {
+                ver_len = MAX_DEVICE_VERSION_LENGTH - 4;
+            }
+
+            strlcpy(&hx83112a_nf_pri_ts->panel_data.manufacture_info.version[ver_len],
+                    dev_version, MAX_DEVICE_VERSION_LENGTH - ver_len);
+        }
+    }
+   TPD_INFO("manufacture_info.version: %s\n", hx83112a_nf_pri_ts->panel_data.manufacture_info.version);
+
     cmd[3] = 0x10;
     cmd[2] = 0x00;
     cmd[1] = 0x70;
@@ -2316,6 +2335,8 @@ void hx83112a_nf_read_OPPO_FW_ver(struct chip_data_hx83112a_nf *chip_info)
     uint8_t cmd[4];
     uint8_t data[4];
     uint32_t touch_ver = 0;
+    u8 ver_len = 0;
+    char dev_version[MAX_DEVICE_VERSION_LENGTH] = {0};
 
     cmd[3] = 0x10;  // oppo fw id bin address : 0xc014    Tp ic address : 0x 10007014
     cmd[2] = 0x00;
@@ -2336,6 +2357,22 @@ void hx83112a_nf_read_OPPO_FW_ver(struct chip_data_hx83112a_nf *chip_info)
     hx83112a_nf_register_read(cmd, 4, data, false);
     touch_ver = data[0] << 24 | data[1] << 16 | data[2] << 8 | data[3];
     TPD_INFO("%s :touch_ver = 0x%08X\n", __func__, touch_ver);
+
+    snprintf(dev_version, MAX_DEVICE_VERSION_LENGTH, "%02X", touch_ver>>8);
+    TPD_INFO("%s: dev_version = %s \n", __func__, dev_version);
+    if (hx83112a_nf_pri_ts->panel_data.manufacture_info.version) {
+        if (hx83112a_nf_pri_ts->panel_data.vid_len == 0) {
+         strlcpy(&(hx83112a_nf_pri_ts->panel_data.manufacture_info.version[12]), dev_version, 3);
+        } else {
+              ver_len = hx83112a_nf_pri_ts->panel_data.vid_len;
+               if (ver_len > MAX_DEVICE_VERSION_LENGTH - 4) {
+                  ver_len = MAX_DEVICE_VERSION_LENGTH - 4;
+               }
+            strlcpy(&hx83112a_nf_pri_ts->panel_data.manufacture_info.version[ver_len],
+				dev_version, MAX_DEVICE_VERSION_LENGTH - ver_len);
+        }
+    }
+    TPD_INFO("manufacture_info.version: %s\n", hx83112a_nf_pri_ts->panel_data.manufacture_info.version);
 
     cmd[3] = 0x10;
     cmd[2] = 0x00;
@@ -3461,7 +3498,8 @@ int hx83112a_nf_mpTestFunc(struct chip_data_hx83112a_nf *chip_info, uint8_t chec
 
     uint32_t i/*, j*/ = 0;
     uint16_t weight = 0;
-    uint32_t RAW[datalen];
+    uint32_t *RAW = NULL;
+
 #ifdef RAWDATA_NOISE
     uint32_t RAW_Rawdata[datalen];
 #endif
@@ -3501,7 +3539,6 @@ int hx83112a_nf_mpTestFunc(struct chip_data_hx83112a_nf *chip_info, uint8_t chec
             hx83112a_nf_set_N_frame(2, checktype);
         }
 
-
         hx83112a_nf_sense_on(1);
 
         ret = hx83112a_nf_wait_sorting_mode(checktype);
@@ -3512,6 +3549,11 @@ int hx83112a_nf_mpTestFunc(struct chip_data_hx83112a_nf *chip_info, uint8_t chec
     }
 
     hx83112a_nf_switch_data_type(checktype);
+    RAW = kcalloc(datalen,sizeof(uint32_t),GFP_KERNEL);
+    if(RAW ==NULL){
+        TPD_INFO("%s,Failed to allocate memory\n",__func__);
+        return RESULT_ERR;
+    }
 
     ret = hx83112a_nf_get_rawdata(chip_info, RAW, datalen);
     if (ret) {
@@ -3553,6 +3595,10 @@ int hx83112a_nf_mpTestFunc(struct chip_data_hx83112a_nf *chip_info, uint8_t chec
         TPD_INFO("%s: 800204B4: data[0]=%0x02X, data[1]=%0x02X, data[2]=%0x02X, data[3]=%0x02X, \n", __func__, tmp_data[0], tmp_data[1], tmp_data[2], tmp_data[3]);
 
         //900000A8,10007F40,10000000,10007F04,800204B4
+        if(RAW)
+        {
+            kfree(RAW);
+        }
         return ret;
     }
 
@@ -3812,6 +3858,11 @@ int hx83112a_nf_mpTestFunc(struct chip_data_hx83112a_nf *chip_info, uint8_t chec
 
     hx83112a_nf_test_data_get(chip_info, RAW, start_log, rslt_log, checktype);
 
+    if(RAW)
+    {
+        kfree(RAW);
+    }
+
     if (rslt_log) {
         kfree(rslt_log);
     }
@@ -3825,6 +3876,11 @@ int hx83112a_nf_mpTestFunc(struct chip_data_hx83112a_nf *chip_info, uint8_t chec
     }
 
 RET_OUT:
+    if(RAW)
+    {
+        kfree(RAW);
+    }
+
     if (rslt_log) {
         kfree(rslt_log);
     }
@@ -5178,14 +5234,12 @@ void hx83112a_nf_ts_diag_func(struct chip_data_hx83112a_nf *chip_info, int32_t *
     int j = 0;
     unsigned int index = 0;
     int total_size = chip_info->hw_res->TX_NUM * chip_info->hw_res->RX_NUM * 2;
-    uint8_t info_data[total_size];
+    uint8_t *info_data = NULL;
 
     int32_t new_data;
     /* 1:common dsram,2:100 frame Max,3:N-(N-1)frame */
     int dsram_type = 0;
-    char write_buf[total_size * 3];
 
-    memset(write_buf, '\0', sizeof(write_buf));
 
     dsram_type = hx83112a_nf_diag_command / 10;
 
@@ -5197,6 +5251,11 @@ void hx83112a_nf_ts_diag_func(struct chip_data_hx83112a_nf *chip_info, int32_t *
     }
 
     hx83112a_nf_burst_enable(1);
+    info_data=kcalloc(total_size,sizeof(uint8_t),GFP_KERNEL);
+    if(info_data == NULL) {
+        TPD_INFO("%s,Failed to allocate memory\n",__func__);
+        return;
+    }
     hx83112a_nf_get_DSRAM_data(info_data, chip_info->hw_res->RX_NUM, chip_info->hw_res->TX_NUM);
 
     index = 0;
@@ -5206,6 +5265,11 @@ void hx83112a_nf_ts_diag_func(struct chip_data_hx83112a_nf *chip_info, int32_t *
             mutual_data[i * chip_info->hw_res->RX_NUM + j] = new_data;
             index += 2;
         }
+    }
+
+    if(info_data){
+        kfree(info_data);
+        info_data=NULL;
     }
 }
 
@@ -6167,8 +6231,8 @@ static fw_check_state hx83112a_nf_fw_check(void *chip_data, struct resolution_in
 
     //fw check normal need update TP_FW  && device info
     panel_data->TP_FW = hx83112a_nf_get_fw_id(chip_info);
-    if (panel_data->manufacture_info.version)
-        sprintf(panel_data->manufacture_info.version, "0x%x-%d", panel_data->TP_FW, hx83112a_nf_lcd_vendor);
+    //if (panel_data->manufacture_info.version)
+      //  sprintf(&panel_data->manufacture_info.version[panel_data->vid_len], "%02X", panel_data->TP_FW);
 
     return FW_NORMAL;
 }
@@ -8130,6 +8194,8 @@ static int hx83112a_nf_tp_probe(struct spi_device *spi)
         // update fw in probe
         if (ts->fw_update_in_probe_with_headfile) {
             const struct firmware *fw = NULL;
+	    enable_irq(chip_info->hx_irq);
+	    TPD_INFO("It's fw_update_in_probe_with_headfile\n");
             hx83112a_nf_mcu_firmware_update_0f(fw);
         }
     }

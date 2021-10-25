@@ -661,12 +661,7 @@ int ccu_force_powerdown(void)
 		ccu_write_reg_bit(ccu_base, CTL_CCU_INT, INT_CTL_CCU, 1);
 
 		ret = _ccu_powerdown();
-		#ifdef OPLUS_FEATURE_CAMERA_COMMON
-		/*wujun@camera improve switch operation performance 20210107*/
-		mdelay(1);
-		#else
 		mdelay(60);
-		#endif
 
 		if (ret < 0)
 			return ret;
@@ -944,7 +939,14 @@ int ccu_flushLog(int argc, int *argv)
 
 int ccu_read_info_reg(int regNo)
 {
-	int *offset = (int *)(uintptr_t)(ccu_base + 0x60 + regNo * 4);
+	int *offset;
+
+	if (regNo < 0 || regNo >= 32) {
+		LOG_ERR("invalid regNo");
+		return 0;
+	}
+
+	offset = (int *)(uintptr_t)(ccu_base + 0x60 + regNo * 4);
 
 	LOG_DBG("%s: %x\n", __func__, (unsigned int)(*offset));
 

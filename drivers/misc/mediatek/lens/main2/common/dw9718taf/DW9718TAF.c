@@ -28,12 +28,8 @@
 #define AF_I2C_SLAVE_ADDR 0x18
 
 #define AF_DEBUG
-#ifdef AF_DEBUG
 #define LOG_INF(format, args...)                                               \
-	pr_info(AF_DRVNAME " [%s] " format, __func__, ##args)
-#else
-#define LOG_INF(format, args...)
-#endif
+	pr_debug(AF_DRVNAME " [%s] " format, __func__, ##args)
 
 static struct i2c_client *g_pstAF_I2Cclient;
 static int *g_pAF_Opened;
@@ -249,18 +245,31 @@ int DW9718TAF_Release(struct inode *a_pstInode, struct file *a_pstFile)
 	LOG_INF("Start\n");
 
 	if (*g_pAF_Opened == 2) {
-		int i4RetValue = 0;
-		u8 data = 0x0;
-		char puSendCmd[2] = {0x00, 0x01};
+		unsigned long af_step = 25;
 
-		LOG_INF("apply\n");
+		if (g_u4CurrPosition > g_u4AF_INF && g_u4CurrPosition <= g_u4AF_MACRO) {
+			while (g_u4CurrPosition > 150) {
+				if (g_u4CurrPosition > 400)
+					af_step = 70;
+				else if (g_u4CurrPosition > 180)
+					af_step = 40;
+				else
+					af_step = 25;
 
-		g_pstAF_I2Cclient->addr = AF_I2C_SLAVE_ADDR;
-		g_pstAF_I2Cclient->addr = g_pstAF_I2Cclient->addr >> 1;
-		i4RetValue = i2c_master_send(g_pstAF_I2Cclient, puSendCmd, 2);
+				if (s4AF_WriteReg(g_u4CurrPosition - af_step) != 0) {
+					break;
+				}
+				g_u4CurrPosition = g_u4CurrPosition - af_step;
+				mdelay(10);
+				if (g_u4CurrPosition <= 0 || g_u4CurrPosition > 1023)
+					break;
+			}
+		}
 
-		data = read_data(0x00);
-		LOG_INF("Addr:0x00 Data:0x%x (%d)\n", data, i4RetValue);
+		g_u4CurrPosition = 0;
+
+		LOG_INF("Wait\n");
+
 	}
 
 	if (*g_pAF_Opened) {

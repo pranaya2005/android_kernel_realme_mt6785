@@ -13,7 +13,6 @@
 ***************************************************************/
 #include <oplus_display_common.h>
 #include "display_panel/oplus_display_panel.h"
-#include <soc/oppo/oppo_project.h>
 
 #define PANEL_SERIAL_NUM_REG 0xA1
 #define PANEL_REG_READ_LEN   10
@@ -174,12 +173,8 @@ int oplus_display_panel_set_cabc(void *buf)
 			disp_aal_set_dre_en(1);
 			printk("%s sun enable dre\n", __func__);
 		} else {
-			if ((is_project(20601)) || (is_project(20660))) {
-				printk("%s realme need global dre");
-			} else {
-				disp_aal_set_dre_en(1);
-				printk("%s sun disable dre\n", __func__);
-			}
+			disp_aal_set_dre_en(0);
+			printk("%s sun disable dre\n", __func__);
 		}
 		return 0;
 	}
@@ -197,12 +192,8 @@ int oplus_display_panel_set_cabc(void *buf)
 		disp_aal_set_dre_en(1);
 		printk("%s enable dre\n", __func__);
 	} else {
-		if ((is_project(20601)) || (is_project(20660))) {
-			printk("%s realme need global dre");
-		} else {
-			disp_aal_set_dre_en(1);
-			printk("%s disable dre\n", __func__);
-		}
+		disp_aal_set_dre_en(0);
+		printk("%s disable dre\n", __func__);
 	}
 	oplus_mtk_drm_setcabc(crtc, cabc_true_mode);
 	if (cabc_true_mode != cabc_back_flag) {

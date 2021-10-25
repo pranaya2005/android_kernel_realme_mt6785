@@ -330,11 +330,6 @@ struct EVENT_LTE_SAFE_CHN g_rLteSafeChInfo;
  *                   F U N C T I O N   D E C L A R A T I O N S
  *******************************************************************************
  */
-static u_int8_t
-cnmDBDCIsReqPeivilegeLock(
-	void
-);
-
 static void
 cnmDbdcFsmEntryFunc_DISABLE_IDLE(
 	IN struct ADAPTER *prAdapter
@@ -680,6 +675,7 @@ void cnmChMngrRequestPrivilege(struct ADAPTER
 {
 	struct MSG_CH_REQ *prMsgChReq;
 	struct CMD_CH_PRIVILEGE *prCmdBody;
+	struct BSS_INFO *prBssInfo = (struct BSS_INFO *) NULL;
 	uint32_t rStatus;
 
 	ASSERT(prAdapter);
@@ -711,6 +707,14 @@ void cnmChMngrRequestPrivilege(struct ADAPTER
 
 		cnmMemFree(prAdapter, prMsgHdr);
 		return;
+	}
+
+	/* Activate network if it's not activated yet */
+	prBssInfo = GET_BSS_INFO_BY_INDEX(prAdapter, prMsgChReq->ucBssIndex);
+
+	if (!IS_BSS_ACTIVE(prBssInfo)) {
+		SET_NET_ACTIVE(prAdapter, prBssInfo->ucBssIndex);
+		nicActivateNetwork(prAdapter, prBssInfo->ucBssIndex);
 	}
 
 	log_dbg(CNM, INFO,
@@ -2469,7 +2473,7 @@ cnmDbdcFsmSteps(
 	}
 }
 
-static u_int8_t
+u_int8_t
 cnmDBDCIsReqPeivilegeLock(void)
 {
 	return g_rDbdcInfo.fgReqPrivelegeLock;
@@ -2519,8 +2523,8 @@ cnmDbdcFsmEntryFunc_DISABLE_IDLE(IN struct ADAPTER *prAdapter)
 	struct CNM_OPMODE_BSS_CONTROL_T *prBssOpCtrl;
 
 	if (cnmDBDCIsReqPeivilegeLock()) {
-            cnmDBDCFsmActionReqPeivilegeUnLock(prAdapter);
-        }
+		cnmDBDCFsmActionReqPeivilegeUnLock(prAdapter);
+	}
 
 	for (ucBssIndex = 0; ucBssIndex < prAdapter->ucHwBssIdNum;
 		ucBssIndex++) {
@@ -2620,9 +2624,9 @@ cnmDbdcFsmEntryFunc_WAIT_HW_DISABLE(IN struct ADAPTER *prAdapter)
 static void
 cnmDbdcFsmEntryFunc_DISABLE_GUARD(IN struct ADAPTER *prAdapter)
 {
-	 /* Do nothing if we will enter A+G immediately */
-         if (g_rDbdcInfo.fgPostpondEnterAG)
-             return;
+	/* Do nothing if we will enter A+G immediately */
+	if (g_rDbdcInfo.fgPostpondEnterAG)
+		return;
 
 	if (timerPendingTimer(&g_rDbdcInfo.rDbdcGuardTimer)) {
 		log_dbg(CNM, WARN,
@@ -2830,8 +2834,14 @@ cnmDbdcFsmEventHandler_ENABLE_GUARD(
 		break;
 
 	case DBDC_FSM_EVENT_SWITCH_GUARD_TIME_TO:
-		g_rDbdcInfo.eDbdcFsmNextState =
+		/* Exit DBDC if non A+G */
+		if (!cnmDbdcIsAGConcurrent(prAdapter, BAND_NULL)) {
+			g_rDbdcInfo.eDbdcFsmNextState =
+				ENUM_DBDC_FSM_STATE_WAIT_HW_DISABLE;
+		} else {
+			g_rDbdcInfo.eDbdcFsmNextState =
 				ENUM_DBDC_FSM_STATE_ENABLE_IDLE;
+		}
 		break;
 
 	case DBDC_FSM_EVENT_DISABLE_COUNT_DOWN_TO:
@@ -3165,9 +3175,9 @@ static void
 cnmDbdcFsmExitFunc_WAIT_HW_DISABLE(
 	IN struct ADAPTER *prAdapter)
 {
-	 /* Do not release privilege lock if we will enter A+G immediately */
-        if (!g_rDbdcInfo.fgPostpondEnterAG)
-            cnmDBDCFsmActionReqPeivilegeUnLock(prAdapter);
+	/* Do not release privilege lock if we will enter A+G immediately */
+	if (!g_rDbdcInfo.fgPostpondEnterAG)
+		cnmDBDCFsmActionReqPeivilegeUnLock(prAdapter);
 }
 
 

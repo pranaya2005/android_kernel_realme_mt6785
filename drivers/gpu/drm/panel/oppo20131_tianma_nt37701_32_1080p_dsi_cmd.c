@@ -1744,7 +1744,7 @@ static int lcm_probe(struct mipi_dsi_device *dsi)
 	int ret;
 	struct device_node *dsi_node, *remote_node = NULL, *endpoint = NULL;
 
-	pr_info("TM probe\n");
+	pr_info("TM probe 32\n");
 	dsi_node = of_get_parent(dev->of_node);
 	if (dsi_node) {
 		endpoint = of_graph_get_next_endpoint(dsi_node, NULL);
@@ -1754,7 +1754,7 @@ static int lcm_probe(struct mipi_dsi_device *dsi)
                    }
 	}
 	if (remote_node != dev->of_node) {
-		pr_info("%s+ skip probe due to not current lcm. of_node=%s\n", __func__, dev->of_node);
+		pr_info("%s+ skip probe due to not current lcm. of_node=%s\n", __func__, dev->of_node->name);
 		return 0;
 	}
 	ctx = devm_kzalloc(dev, sizeof(struct lcm), GFP_KERNEL);
@@ -1827,7 +1827,7 @@ static int lcm_probe(struct mipi_dsi_device *dsi)
 	dsi_panel_parse_panel_power_cfg(panel_vol_bak);
 	/*#endif*/ /*OPLUS_BUG_STABILITY*/
 
-	register_device_proc("lcd", "TM_NT37701", "TM_nt37800_2048");
+	register_device_proc("lcd", "TM_NT37701_32", "TM_nt37701_2048");
 	ctx->hbm_en = false;
 	oplus_max_normal_brightness = MAX_NORMAL_BRIGHTNESS;
 	pr_info("%s zjb+\n", __func__);

@@ -526,16 +526,47 @@ static const rt_register_map_t rt9467_regmap_map[] = {
 static int rt9467_device_read(void *client, u32 addr, int leng, void *dst)
 {
 	struct i2c_client *i2c = (struct i2c_client *)client;
+	int rc = 0;
+	int retry = 3;
 
-	return i2c_smbus_read_i2c_block_data(i2c, addr, leng, dst);
+	rc = i2c_smbus_read_i2c_block_data(i2c, addr, leng, dst);
+
+	if (rc < 0) {
+		while(retry > 0) {
+			usleep_range(5000, 5000);
+			rc = i2c_smbus_read_i2c_block_data(i2c, addr, leng, dst);
+			if (rc < 0) {
+				retry--;
+			} else {
+				break;
+			}
+		}
+	}
+
+	return rc;
 }
 
 static int rt9467_device_write(void *client, u32 addr, int leng,
 	const void *src)
 {
 	struct i2c_client *i2c = (struct i2c_client *)client;
+	int rc = 0;
+	int retry = 3;
 
-	return i2c_smbus_write_i2c_block_data(i2c, addr, leng, src);
+	rc = i2c_smbus_write_i2c_block_data(i2c, addr, leng, src);
+	if (rc < 0) {
+		while(retry > 0) {
+			usleep_range(5000, 5000);
+			rc = i2c_smbus_write_i2c_block_data(i2c, addr, leng, src);
+			if (rc < 0) {
+				retry--;
+			} else {
+				break;
+			}
+		}
+	}
+
+	return rc;
 }
 
 #if 0
@@ -1078,6 +1109,7 @@ static inline int rt9467_toggle_chgdet_flow(struct rt9467_info *info)
 {
 	int ret = 0;
 	u8 data = 0, usbd_off[2] = {0}, usbd_on[2] = {0};
+	int retry = 3;
 	struct i2c_client *client = info->client;
 	struct i2c_msg msgs[2] = {
 		{
@@ -1098,6 +1130,20 @@ static inline int rt9467_toggle_chgdet_flow(struct rt9467_info *info)
 	/* read data */
 	ret = i2c_smbus_read_i2c_block_data(client, RT9467_REG_CHG_DPDM1,
 		1, &data);
+
+	if (ret < 0) {
+		while(retry > 0) {
+			usleep_range(5000, 5000);
+			ret = i2c_smbus_read_i2c_block_data(client, RT9467_REG_CHG_DPDM1,
+				1, &data);
+			if (ret < 0) {
+				retry--;
+			} else {
+				break;
+			}
+		}
+	}
+
 	if (ret < 0) {
 		dev_notice(info->dev, "%s: read usbd fail\n", __func__);
 		goto out;
@@ -2110,8 +2156,22 @@ static bool rt9467_is_hw_exist(struct rt9467_info *info)
 {
 	int ret = 0;
 	u8 vendor_id = 0, chip_rev = 0;
+	int retry = 3;
 
 	ret = i2c_smbus_read_byte_data(info->client, RT9467_REG_DEVICE_ID);
+
+	if (ret < 0) {
+		while(retry > 0) {
+			usleep_range(5000, 5000);
+			ret = i2c_smbus_read_byte_data(info->client, RT9467_REG_DEVICE_ID);
+			if (ret < 0) {
+				retry--;
+			} else {
+				break;
+			}
+		}
+	}
+
 	if (ret < 0)
 		return false;
 
@@ -2708,20 +2768,11 @@ static int rt9467_parse_dt(struct rt9467_info *info, struct device *dev)
 /* Released interfaces                                         */
 /* =========================================================== */
 
-#define HOT_TEMPERATURE    540
-#define COLD_TEMPERATURE   -20
-int oplus_rt9467_chg_set_high_vbus(bool en);
 static int __rt9467_enable_charging(struct rt9467_info *info, bool en)
 {
-	struct oplus_chg_chip *chip = g_oplus_chip;
 	int ret = 0;
 
 	dev_info(info->dev, "%s: en = %d\n", __func__, en);
-
-	if (!chip) {
-		dev_info(rt9467->dev, "%s: error\n", __func__);
-		return false;
-	}
 
 	/* set hz/ceb pin for secondary charger */
 	if (strcmp(info->desc->chg_dev_name, "secondary_chg") == 0) {
@@ -2735,12 +2786,6 @@ static int __rt9467_enable_charging(struct rt9467_info *info, bool en)
 			gpio_set_value(info->ceb_gpio, en);
 		else
 			gpio_set_value(info->ceb_gpio, !en);
-	}
-
-	if((chip->temperature >= COLD_TEMPERATURE) &&
-			(chip->temperature <= HOT_TEMPERATURE) &&
-			!(chip->cool_down) && (chip->ui_soc < 95)) {
-		oplus_rt9467_chg_set_high_vbus(true);
 	}
 
 	return (en ? rt9467_set_bit : rt9467_clr_bit)
@@ -4198,7 +4243,6 @@ int oplus_rt9467_set_aicr(int current_ma)
 	aicl_point_temp = aicl_point;
 	__rt9467_set_aicr(rt9467, usb_icl[i] * 1000);
 	msleep(90);
-	chg_vol = battery_meter_get_charger_voltage();
 	if (chg_vol < aicl_point_temp) {
 		i =  i - 2;//1.5
 		goto aicl_pre_step;
@@ -4263,10 +4307,8 @@ int oplus_rt9467_charging_enable(void)
 int oplus_rt9467_charging_disable(void)
 {
 #ifdef OPLUS_FEATURE_CHG_BASIC
-/*Liu.Yong@BSP.CHG.Basic, 2021/01/19, Modify for PD charger*/
-	int ret = 0;
+//Junbo.Guo@ODM_WT.BSP.CHG, 2019/11/11, Modify for PD
 	struct charger_manager *info = NULL;
-	struct oplus_chg_chip *chip = g_oplus_chip;
 	
 	if(rt9467->chg_consumer != NULL)
 		info = rt9467->chg_consumer->cm;
@@ -4282,14 +4324,7 @@ int oplus_rt9467_charging_disable(void)
 		dev_info(rt9467->dev, "%s: set qc to 5V", __func__);
 	}
 
-	ret = rt9467_enable_wdt(rt9467, false);
-	if (ret < 0) {
-		dev_notice(rt9467->dev, "%s: en wdt fail\n", __func__);
-	}
-	if((chip != NULL) && (chip->is_double_charger_support)) {
-		dev_info(rt9467->dev, "%s sub_chg(rt9471) ichg set 0 mA\n", __func__);
-		chip->sub_chg_ops->charging_current_write_fast(0);
-	}
+	rt9467_enable_wdt(rt9467, false);
 #endif
 	rt9467->desc->pre_current_ma = -1;
 	return __rt9467_enable_charging(rt9467, false);
@@ -5082,9 +5117,6 @@ static int rt9467_remove(struct i2c_client *client)
 		mutex_destroy(&info->ieoc_lock);
 		mutex_destroy(&info->tchg_lock);
 		mutex_destroy(&info->otg_access_lock);
-	} else {
-		pr_info("%s info is null\n", __func__);
-		return ret;
 	}
 	device_remove_file(info->dev, &dev_attr_shipping_mode_9467);
 

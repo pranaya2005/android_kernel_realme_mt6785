@@ -49,6 +49,7 @@
 
 #ifdef OPLUS_PLATFORM_MT6771
 /*Feng.Hu@Camera.Driver 20171215 add to control flashlight via proc file*/
+#include <soc/oplus/system/oppo_project.h>
 #include<linux/proc_fs.h>
 /*Yijun.Tan@Camera.Driver 20180204 add for resolve flash cts verify fail*/
 #include <linux/regulator/consumer.h>
@@ -99,10 +100,7 @@ void __attribute__ ((weak)) kicker_pbm_by_flash(bool status)
  *****************************************************************************/
 #ifdef OPLUS_PLATFORM_MT6771
 /*weiriqin@camera.driver on 20190616, debug flashlight use mt6370 pmic first time*/
-#ifndef CONFIG_MTK_FLASHLIGHT_MT6370
-/*Yijun.Tan@Camera.Driver 20180204 add for resolve flash cts verify fail*/
 void FlashRegulatorCtrl(int Stage);
-#endif /* CONFIG_MTK_FLASHLIGHT_MT6370 */
 #endif /* OPLUS_PLATFORM_MT6771 */
 
 static int fl_set_level(struct flashlight_dev *fdev, int level)
@@ -330,7 +328,6 @@ static struct flashlight_dev *flashlight_find_dev_by_full_index(
 }
 #ifdef OPLUS_PLATFORM_MT6771
 /*weiriqin@camera.driver on 20190616, debug flashlight use mt6370 pmic first time*/
-#ifndef CONFIG_MTK_FLASHLIGHT_MT6370
 static struct flashlight_dev *flashlight_find_dev_by_index(
 		const int type, const int ct, const int part)
 {
@@ -344,8 +341,7 @@ static struct flashlight_dev *flashlight_find_dev_by_index(
 
 	return NULL;
 }
-#else /* CONFIG_MTK_FLASHLIGHT_MT6370 */
-static struct flashlight_dev *flashlight_find_dev_by_index(
+static struct flashlight_dev *flashlight_find_dev_by_index_19531(
 		const int type, const int ct)
 {
 	struct flashlight_dev *fdev;
@@ -357,7 +353,6 @@ static struct flashlight_dev *flashlight_find_dev_by_index(
 	}
 	return NULL;
 }
-#endif /* CONFIG_MTK_FLASHLIGHT_MT6370 */
 #else /* OPLUS_PLATFORM_MT6771 */
 static struct flashlight_dev *flashlight_find_dev_by_index(
 		const int type, const int ct)
@@ -570,17 +565,14 @@ EXPORT_SYMBOL(strobe_VDIrq);
 
 #ifdef OPLUS_PLATFORM_MT6771
 /*weiriqin@camera.driver on 20190616, debug flashlight use mt6370 pmic first time*/
-#ifndef CONFIG_MTK_FLASHLIGHT_MT6370
 extern int mp3331_readReg(int reg);
 extern int lm3642_readReg(int reg);
 /*Yijun.Tan@Camera.Driver, 2017/12/06  add new flashlight driver ic aw3642*/
 extern int aw3642_readReg(int reg);
-#endif /* CONFIG_MTK_FLASHLIGHT_MT6370 */
 
 /*Yijun.Tan@Camera modify for can not read deivce id in factory mode 20180321*/
 extern int kdVIOPowerOn( int On);
 /*weiriqin@camera.driver on 20190516, debug flashlight use mt6370 pmic first time*/
-#ifndef CONFIG_MTK_FLASHLIGHT_MT6370
 static int part_id = -1;
 int strobe_getPartId(int sensorDev, int strobeId)
 {
@@ -613,12 +605,6 @@ int strobe_getPartId(int sensorDev, int strobeId)
 	pr_err("strobe_getPartId part_id = %d \n", part_id);
 	return part_id;
 }
-#else /* CONFIG_MTK_FLASHLIGHT_MT6370 */
-int strobe_getPartId(int sensorDev, int strobeId)
-{
-	return 0;
-}
-#endif /* CONFIG_MTK_FLASHLIGHT_MT6370 */
 
 /*Feng.Hu@Camera.Driver 20171215 add to control flashlight via proc file*/
 static int flashlight_state = 0;
@@ -649,8 +635,9 @@ static ssize_t FL_HW_WRITE( struct file *file, const char __user *buffer, size_t
 		pr_err("flash state is same, do not need set flash \n");
 		return count;
 	}
-
-	partIndex = strobe_getPartId(1,1);
+	if (!is_project(19531) || !is_project(19151) || !is_project(19350)) {
+		partIndex = strobe_getPartId(1,1);
+	}
 
 	fdev = flashlight_find_dev_by_full_index(0, 0, partIndex);
 	if (!fdev) {
@@ -858,11 +845,10 @@ static int pt_trigger(void)
 			if (!fdev->ops)
 				continue;
 
-			#ifndef CONFIG_MTK_FLASHLIGHT_MT6370
-			/*Shounan.Yang@Camera add for read deivce id in factory mode 20191008*/
-			if (strobe_getPartId(1,1) != fdev->dev_id.part)
-				continue;
-			#endif /*CONFIG_MTK_FLASHLIGHT_MT6370 */
+			if (!is_project(19531) || !is_project(19151) || !is_project(19350)) {
+				if (strobe_getPartId(1,1) != fdev->dev_id.part)
+					continue;
+			}
 			fdev->ops->flashlight_open();
 			fdev->ops->flashlight_set_driver(1);
 			if (pt_strict) {
@@ -899,8 +885,9 @@ static int pt_trigger(void)
 		fdev->ops->flashlight_set_driver(0);
 		fdev->ops->flashlight_release();
 	}
-	mutex_unlock(&fl_mutex);
 	#endif /* OPLUS_PLATFORM_MT6771 */
+	mutex_unlock(&fl_mutex);
+
 	return 0;
 }
 #ifndef OPLUS_FEATURE_CAMERA_COMMON
@@ -966,31 +953,31 @@ static long _flashlight_ioctl(
 	}
 	#ifdef OPLUS_PLATFORM_MT6771
 	/*Yijun.Tan@Camera.Driver add for two flash IC 20180304*/
-	part = strobe_getPartId(1,1);
+	if (!is_project(19531) || !is_project(19151) || !is_project(19350)) {
+		part = strobe_getPartId(1,1);
+	}
 	#endif /* OPLUS_PLATFORM_MT6771 */
 
 	/* find flashlight device */
 	mutex_lock(&fl_mutex);
 	#ifdef OPLUS_PLATFORM_MT6771
 	/*weiriqin@camera.driver on 20190616, debug flashlight use mt6370 pmic first time*/
-	#ifndef CONFIG_MTK_FLASHLIGHT_MT6370
-	/*Yijun.Tan@Camera.Driver add for two flash IC 20180304*/
-	fdev = flashlight_find_dev_by_index(
+	if (!is_project(19531) || !is_project(19151) || !is_project(19350)) {
+		fdev = flashlight_find_dev_by_index(
 			flashlight_get_type_index(fl_arg.type_id),
 			flashlight_get_ct_index(fl_arg.ct_id),
 			part);
-	#endif /* CONFIG_MTK_FLASHLIGHT_MT6370 */
+	}
+	if (is_project(19531) || is_project(19151) || is_project(19350)) {
+		fdev = flashlight_find_dev_by_index_19531(
+			flashlight_get_type_index(fl_arg.type_id),
+			flashlight_get_ct_index(fl_arg.ct_id));
+	}
 	#else /* OPLUS_PLATFORM_MT6771 */
 	fdev = flashlight_find_dev_by_index(
 			flashlight_get_type_index(fl_arg.type_id),
 			flashlight_get_ct_index(fl_arg.ct_id));
 	#endif /* OPLUS_PLATFORM_MT6771 */
-	#ifdef CONFIG_MTK_FLASHLIGHT_MT6370
-	/*weiriqin@camera.driver on 20190516, debug flashlight use mt6370 pmic first time*/
-	fdev = flashlight_find_dev_by_index(
-			flashlight_get_type_index(fl_arg.type_id),
-			flashlight_get_ct_index(fl_arg.ct_id));
-	#endif /* CONFIG_MTK_FLASHLIGHT_MT6370 */
 	mutex_unlock(&fl_mutex);
 	if (!fdev) {
 		pr_info_ratelimited("Find no flashlight device\n");
@@ -1140,11 +1127,10 @@ static long _flashlight_ioctl(
 		mutex_lock(&fl_mutex);
 		#ifdef OPLUS_PLATFORM_MT6771
 		/*Yijun.Tan@Camera.Driver 20180322 add for resove flash cann't be closed sometimes after poweroff */
-		#ifndef CONFIG_MTK_FLASHLIGHT_MT6370
-		/*weiriqin@camera.driver on 20190616, debug flashlight use mt6370 pmic first time*/
-		gpio_set_value(pin_gpio_strobe,fl_arg.arg);
-		pr_err("FLASH_IOC_SET_ONOFF after set gpio to %d",fl_arg.arg);
-		#endif /* CONFIG_MTK_FLASHLIGHT_MT6370 */
+		if (!is_project(19531) || !is_project(19151) || !is_project(19350)) {
+			gpio_set_value(pin_gpio_strobe,fl_arg.arg);
+			pr_err("FLASH_IOC_SET_ONOFF after set gpio to %d",fl_arg.arg);
+		}
 		#endif /* OPLUS_PLATFORM_MT6771 */
 		ret = fl_enable(fdev, fl_arg.arg);
 		mutex_unlock(&fl_mutex);
@@ -1206,21 +1192,20 @@ static int flashlight_open(struct inode *inode, struct file *file)
 	#ifdef OPLUS_PLATFORM_MT6771
 	/*Yijun.Tan@Camera.Driver 20180204 add for resolve flash cts verify fail*/
 	/* Regulator enable */
-	#ifndef CONFIG_MTK_FLASHLIGHT_MT6370
-	/*weiriqin@camera.driver on 20190616, debug flashlight use mt6370 pmic first time*/
-	FlashRegulatorCtrl(1);
-	#endif /* CONFIG_MTK_FLASHLIGHT_MT6370 */
+	if (!is_project(19531) || !is_project(19151) || !is_project(19350)) {
+		FlashRegulatorCtrl(1);
+	}
 	#endif /* OPLUS_PLATFORM_MT6771 */
 	list_for_each_entry(fdev, &flashlight_list, node) {
 		if (!fdev->ops)
 			continue;
 
 		#ifdef OPLUS_PLATFORM_MT6771
-		#ifndef CONFIG_MTK_FLASHLIGHT_MT6370
+		if (!is_project(19531) || !is_project(19151) || !is_project(19350)) {
 		/*Shounan.Yang@Camera add for read deivce id in factory mode 20191008*/
-		if (strobe_getPartId(1,1) != fdev->dev_id.part)
-			continue;
-		#endif /* CONFIG_MTK_FLASHLIGHT_MT6370 */
+			if (strobe_getPartId(1,1) != fdev->dev_id.part)
+				continue;
+		}
 		#endif /* OPLUS_PLATFORM_MT6771 */
 		pr_debug("Open(%d,%d,%d)\n", fdev->dev_id.type,
 				fdev->dev_id.ct, fdev->dev_id.part);
@@ -1240,11 +1225,11 @@ static int flashlight_release(struct inode *inode, struct file *file)
 		if (!fdev->ops)
 			continue;
 		#ifdef OPLUS_PLATFORM_MT6771
-		#ifndef CONFIG_MTK_FLASHLIGHT_MT6370
+		if (!is_project(19531) || !is_project(19151) || !is_project(19350)) {
 		/*Shounan.Yang@Camera add for read deivce id in factory mode 20191008*/
-		if (strobe_getPartId(1,1) != fdev->dev_id.part)
-			continue;
-		#endif /* CONFIG_MTK_FLASHLIGHT_MT6370 */
+			if (strobe_getPartId(1,1) != fdev->dev_id.part)
+				continue;
+		}
 		#endif /* OPLUS_PLATFORM_MT6771 */
 		pr_debug("Release(%d,%d,%d)\n", fdev->dev_id.type,
 				fdev->dev_id.ct, fdev->dev_id.part);
@@ -1257,9 +1242,9 @@ static int flashlight_release(struct inode *inode, struct file *file)
 	/*Yijun.Tan@Camera.Driver 20180204 add for resolve flash cts verify fail*/
 	/* Regulator disable */
 	/*weiriqin@camera.driver on 20190616, debug flashlight use mt6370 pmic first time*/
-	#ifndef CONFIG_MTK_FLASHLIGHT_MT6370
-	FlashRegulatorCtrl(2);
-	#endif /* CONFIG_MTK_FLASHLIGHT_MT6370 */
+	if (!is_project(19531) || !is_project(19151) || !is_project(19350)) {
+		FlashRegulatorCtrl(2);
+	}
 	#endif /* OPLUS_PLATFORM_MT6771 */
 	return 0;
 }
@@ -1479,11 +1464,11 @@ static ssize_t flashlight_charger_show(
 		if (!fdev->ops)
 			continue;
 		#ifdef OPLUS_PLATFORM_MT6771
-		#ifndef CONFIG_MTK_FLASHLIGHT_MT6370
+		if (!is_project(19531) || !is_project(19151) || !is_project(19350)) {
 		/*Shounan.Yang@Camera add for read deivce id in factory mode 20191008*/
-		if (strobe_getPartId(1,1) != fdev->dev_id.part)
-			continue;
-		#endif /* CONFIG_MTK_FLASHLIGHT_MT6370 */
+			if (strobe_getPartId(1,1) != fdev->dev_id.part)
+				continue;
+		}
 		#endif /*OPLUS_PLATFORM_MT6771*/
 
 		flashlight_update_charger_status(fdev);
@@ -1609,11 +1594,11 @@ static ssize_t flashlight_capability_show(
 		if (!fdev->ops)
 			continue;
 		#ifdef OPLUS_PLATFORM_MT6771
-		#ifndef CONFIG_MTK_FLASHLIGHT_MT6370
+		if (!is_project(19531) || !is_project(19151) || !is_project(19350)) {
 		/*Shounan.Yang@Camera add for read deivce id in factory mode 20191008*/
-		if (strobe_getPartId(1,1) != fdev->dev_id.part)
-			continue;
-		#endif /* CONFIG_MTK_FLASHLIGHT_MT6370 */
+			if (strobe_getPartId(1,1) != fdev->dev_id.part)
+				continue;
+		}
 		#endif /* OPLUS_PLATFORM_MT6771 */
 
 		fl_dev_arg.channel = fdev->dev_id.channel;
@@ -1923,11 +1908,11 @@ static ssize_t flashlight_sw_disable_store(struct device *dev,
 		if (!fdev->ops)
 			continue;
 		#ifdef OPLUS_PLATFORM_MT6771
-		#ifndef CONFIG_MTK_FLASHLIGHT_MT6370
+		if (!is_project(19531) || !is_project(19151) || !is_project(19350)) {
 		/*Shounan.Yang@Camera add for read deivce id in factory mode 20191008*/
-		if (strobe_getPartId(1,1) != fdev->dev_id.part)
-			continue;
-		#endif /* CONFIG_MTK_FLASHLIGHT_MT6370 */
+			if (strobe_getPartId(1,1) != fdev->dev_id.part)
+				continue;
+		}
 		#endif /* OPLUS_PLATFORM_MT6771 */
 		if (fl_arg.type == fdev->dev_id.type) {
 			if (sw_disable_status_tmp == FLASHLIGHT_SW_DISABLE_ON)
@@ -1953,7 +1938,6 @@ static struct cdev *flashlight_cdev;
 
 #ifdef OPLUS_PLATFORM_MT6771
 /*weiriqin@camera.driver on 20190616, debug flashlight use mt6370 pmic first time*/
-#ifndef CONFIG_MTK_FLASHLIGHT_MT6370
 /*Yijun.Tan@Camera.Driver 20180204 add for resolve flash cts verify fail*/
 /******************************************************************************
  * Flashlight operations
@@ -1994,7 +1978,6 @@ void FlashRegulatorCtrl(int Stage)
 		}
 	}
 }
-#endif /* CONFIG_MTK_FLASHLIGHT_MT6370 */
 #endif /* OPLUS_PLATFORM_MT6771 */
 
 static int fl_init(void)
@@ -2009,18 +1992,18 @@ static int fl_uninit(void)
 	mutex_lock(&fl_mutex);
 	#ifdef OPLUS_PLATFORM_MT6771
 	/*weiriqin@camera.driver on 20190616, debug flashlight use mt6370 pmic first time*/
-	#ifndef CONFIG_MTK_FLASHLIGHT_MT6370
+	if (!is_project(19531) || !is_project(19151) || !is_project(19350)) {
 	/*Yijun.Tan@Camera add for resolve flash can not be close when power off 20180427*/
-	FlashRegulatorCtrl(1);
-	#endif /* CONFIG_MTK_FLASHLIGHT_MT6370 */
+		FlashRegulatorCtrl(1);
+	}
 	#endif /* OPLUS_PLATFORM_MT6771 */
 	list_for_each_entry_safe(fdev, n, &flashlight_list, node) {
 		#ifdef OPLUS_PLATFORM_MT6771
-		#ifndef CONFIG_MTK_FLASHLIGHT_MT6370
+		if (!is_project(19531) || !is_project(19151) || !is_project(19350)) {
 		/*Shounan.Yang@Camera add for read deivce id in factory mode 20191008*/
-		if (strobe_getPartId(1,1) != fdev->dev_id.part)
-			continue;
-		#endif /* CONFIG_MTK_FLASHLIGHT_MT6370 */
+			if (strobe_getPartId(1,1) != fdev->dev_id.part)
+				continue;
+		}
 		#endif /* OPLUS_PLATFORM_MT6771 */
 		/* uninit device */
 		if (fdev->ops) {
@@ -2038,10 +2021,10 @@ static int fl_uninit(void)
 	}
 	#ifdef OPLUS_PLATFORM_MT6771
 	/*weiriqin@camera.driver on 20190516, debug flashlight use mt6370 pmic first time*/
-	#ifndef CONFIG_MTK_FLASHLIGHT_MT6370
+	if (!is_project(19531) || !is_project(19151) || !is_project(19350)) {
 	/*Yijun.Tan@Camera add for resolve flash can not be close when power off 20180427*/
-	FlashRegulatorCtrl(2);
-	#endif /* CONFIG_MTK_FLASHLIGHT_MT6370 */
+		FlashRegulatorCtrl(2);
+	}
 	#endif /* OPLUS_PLATFORM_MT6771 */
 	mutex_unlock(&fl_mutex);
 
@@ -2139,11 +2122,11 @@ static int flashlight_probe(struct platform_device *dev)
 	fl_init();
 	#ifdef OPLUS_PLATFORM_MT6771
 	/*weiriqin@camera.driver on 20190616, debug flashlight use mt6370 pmic first time*/
-	#ifndef CONFIG_MTK_FLASHLIGHT_MT6370
-	/*Yijun.Tan@Camera.Driver 20180204 add for resolve flash cts verify fail*/
-	/* Regulator get */
-	FlashRegulatorCtrl(0);
-	#endif /* CONFIG_MTK_FLASHLIGHT_MT6370 */
+	if (!is_project(19531) || !is_project(19151) || !is_project(19350)) {
+		/*Yijun.Tan@Camera.Driver 20180204 add for resolve flash cts verify fail*/
+		/* Regulator get */
+		FlashRegulatorCtrl(0);
+	}
 	#endif /* OPLUS_PLATFORM_MT6771 */
 
 	pr_debug("Probe done\n");
@@ -2203,11 +2186,10 @@ static int flashlight_remove(struct platform_device *dev)
 
 	#ifdef OPLUS_PLATFORM_MT6771
 	/*weiriqin@camera.driver on 20190616, debug flashlight use mt6370 pmic first time*/
-	#ifndef CONFIG_MTK_FLASHLIGHT_MT6370
-	/*Yijun.Tan@Camera.Driver 20180204 add for resolve flash cts verify fail*/
+	if (!is_project(19531) || !is_project(19151) || !is_project(19350)) {
 	/* Regulator put */
-	FlashRegulatorCtrl(3);
-	#endif /* CONFIG_MTK_FLASHLIGHT_MT6370 */
+		FlashRegulatorCtrl(3);
+	}
 	#endif /* OPLUS_PLATFORM_MT6771 */
 
 	return 0;
@@ -2254,10 +2236,7 @@ static int __init flashlight_init(void)
 	int ret;
 	#ifdef OPLUS_PLATFORM_MT6771
 	/*weiriqin@camera.driver on 20190616, debug flashlight use mt6370 pmic first time*/
-	#ifndef CONFIG_MTK_FLASHLIGHT_MT6370
-	/*Yijun.Tan@Camera.Driver 20180322 add for resove flash cann't be closed sometimes after poweroff */
 	struct device_node *node = NULL;
-	#endif /* CONFIG_MTK_FLASHLIGHT_MT6370 */
 	#endif /* OPLUS_PLATFORM_MT6771 */
 
 	pr_debug("Init start\n");
@@ -2290,12 +2269,12 @@ static int __init flashlight_init(void)
 
 	#ifdef OPLUS_PLATFORM_MT6771
 	/*weiriqin@camera.driver on 20190616, debug flashlight use mt6370 pmic first time*/
-	#ifndef CONFIG_MTK_FLASHLIGHT_MT6370
+	if (!is_project(19531) || !is_project(19151) || !is_project(19350)) {
 	/*Yijun.Tan@Camera.Driver 20180322 add for resove flash cann't be closed sometimes after poweroff */
-	node = of_find_matching_node(node, flashlight_of_match);
-	pin_gpio_strobe = of_get_named_gpio(node, "gpio_strob", 0);
-	pr_debug("pin_gpio_strobe = %d \n",pin_gpio_strobe);
-	#endif /* CONFIG_MTK_FLASHLIGHT_MT6370 */
+		node = of_find_matching_node(node, flashlight_of_match);
+		pin_gpio_strobe = of_get_named_gpio(node, "gpio_strob", 0);
+		pr_debug("pin_gpio_strobe = %d \n",pin_gpio_strobe);
+	}
 	#endif /* OPLUS_PLATFORM_MT6771 */
 
 	pr_debug("Init done\n");

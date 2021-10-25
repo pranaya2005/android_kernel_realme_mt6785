@@ -208,26 +208,6 @@ static void *vpu_mesg_pa_to_va(struct vpu_mem *work_buf, unsigned int phys_addr)
 	return (void *)(ret);
 }
 
-static struct vpu_message_ctrl *vpu_mesg(struct vpu_device *vd)
-{
-	if (!vd || !vd->iova_work.m.va)
-		return NULL;
-
-	return (struct vpu_message_ctrl *)(vd->iova_work.m.va +
-		VPU_LOG_OFFSET + VPU_LOG_HEADER_SIZE);
-}
-
-static void vpu_mesg_init(struct vpu_device *vd)
-{
-	struct vpu_message_ctrl *msg = vpu_mesg(vd);
-
-	if (!msg)
-		return;
-	memset(msg, 0, vd->wb_log_data);
-	msg->level_mask = (1 << VPU_DBG_MSG_LEVEL_CTRL);
-	vpu_iova_sync_for_device(vd->dev, &vd->iova_work);
-}
-
 static void vpu_mesg_clr(struct vpu_device *vd)
 {
 	char *data = NULL;

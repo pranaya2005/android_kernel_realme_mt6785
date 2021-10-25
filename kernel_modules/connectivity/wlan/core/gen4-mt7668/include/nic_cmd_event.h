@@ -517,10 +517,13 @@ typedef enum _ENUM_CMD_ID_T {
 	CMD_ID_GET_CHN_LOADING = 0x88,	/* 0x88 (Query) */
 	CMD_ID_GET_BUG_REPORT = 0x89,	/* 0x89 (Query) */
 	CMD_ID_GET_NIC_CAPABILITY_V2 = 0x8A,/* 0x8A (Query) */
+	CMD_ID_GET_TEMPERATURE = 0x8C, /* 0x8C (Query)*/
 
 #if (CFG_SUPPORT_DFS_MASTER == 1)
 	CMD_ID_RDD_ON_OFF_CTRL = 0x8F, /* 0x8F(Set) */
 #endif
+
+	CMD_ID_WFC_KEEP_ALIVE = 0xA0,	/* 0xa0(Set) */
 
 #if CFG_SUPPORT_CAL_RESULT_BACKUP_TO_HOST
 	CMD_ID_CAL_BACKUP_IN_HOST_V2 = 0xAE,	/* 0xAE (Set / Query) */
@@ -652,6 +655,8 @@ typedef enum _ENUM_EVENT_ID_T {
 #endif
 
 	EVENT_ID_TDLS = 0x80,	/* TDLS event_id */
+
+	EVENT_ID_GET_TEMPERATURE = 0x8C,
 
 	EVENT_ID_UPDATE_COEX_PHYRATE = 0x90,	/* 0x90 (Unsolicited) */
 
@@ -3045,6 +3050,11 @@ typedef struct _EVENT_STA_STATISTICS_T {
 	UINT_8 aucReserved[21];
 } EVENT_STA_STATISTICS_T, *P_EVENT_STA_STATISTICS_T;
 
+struct EVENT_TEMPERATURE_T {
+	UINT_8 ucTemperature;
+	UINT_8 aucReserved[3];
+};
+
 #if CFG_AUTO_CHANNEL_SEL_SUPPORT
 typedef struct _EVENT_LTE_SAFE_CHN_T {
 	UINT_8 ucVersion;
@@ -3330,6 +3340,9 @@ VOID nicCmdEventBuildDateCode(IN P_ADAPTER_T prAdapter, IN P_CMD_INFO_T prCmdInf
 
 VOID nicCmdEventQueryStaStatistics(IN P_ADAPTER_T prAdapter, IN P_CMD_INFO_T prCmdInfo, IN PUINT_8 pucEventBuf);
 
+VOID nicCmdEventQueryTemperature(IN P_ADAPTER_T prAdapter,
+	IN P_CMD_INFO_T prCmdInfo, IN PUINT_8 pucEventBuf);
+
 #if CFG_AUTO_CHANNEL_SEL_SUPPORT
 /* 4 Auto Channel Selection */
 VOID nicCmdEventQueryLteSafeChn(IN P_ADAPTER_T prAdapter, IN P_CMD_INFO_T prCmdInfo, IN PUINT_8 pucEventBuf);
@@ -3418,6 +3431,10 @@ VOID nicEventGetGtkDataSync(IN P_ADAPTER_T prAdapter, IN P_WIFI_EVENT_T prEvent)
 VOID nicCmdEventGetTxPwrTbl(IN P_ADAPTER_T prAdapter,
 			    IN P_CMD_INFO_T prCmdInfo,
 			    IN PUINT_8 pucEventBuf);
+
+VOID nicEventGetTemperature(IN P_ADAPTER_T prAdapter,
+			    IN P_WIFI_EVENT_T prEvent);
+
 
 /*******************************************************************************
 *                              F U N C T I O N S

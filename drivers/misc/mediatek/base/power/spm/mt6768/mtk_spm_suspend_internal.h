@@ -24,6 +24,11 @@
 #define spm_is_wakesrc_invalid(wakesrc)     (!!((u32)(wakesrc) & 0xc0003803))
 #define CPU_FOOTPRINT_SHIFT 24
 
+#ifdef VENDOR_EDIT
+#define PCM_32K_TICKS_PER_SEC		(32768)
+#define PCM_TICK_TO_MILLI_SEC(TICK)	((TICK) * (1000) / (PCM_32K_TICKS_PER_SEC))
+#endif
+
 struct spm_wakesrc_irq_list {
 	unsigned int wakesrc;
 	const char *name;
@@ -53,6 +58,10 @@ bool spm_is_md1_sleep(void);
 bool spm_is_md2_sleep(void);
 bool spm_is_conn_sleep(void);
 void spm_ap_mdsrc_req(u8 set);
+#ifdef VENDOR_EDIT
+ssize_t get_oplus_rpm_master_stats(char *ToUserBuf,size_t sz, void *priv);
+ssize_t get_oplus_rpm_stats(char *ToUserBuf,size_t sz, void *priv);
+#endif
 ssize_t get_spm_sleep_count(char *ToUserBuf
 			, size_t sz, void *priv);
 ssize_t get_spm_last_wakeup_src(char *ToUserBuf

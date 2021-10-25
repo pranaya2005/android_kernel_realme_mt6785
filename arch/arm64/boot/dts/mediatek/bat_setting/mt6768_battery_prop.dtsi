@@ -46,7 +46,7 @@ bat_gm30: battery{
 /*	Battery temperature T4*/
 	TEMPERATURE_T5 = <(-10)>;
 /*	Battery temperature T5*/
-	g_FG_PSEUDO100_T0 = <(96)>;
+	g_FG_PSEUDO100_T0 = <(97)>;
 /*	Pseudo 100% percentage at T0*/
 	g_FG_PSEUDO100_T1 = <(99)>;
 /*	Pseudo 100% percentage at T1*/

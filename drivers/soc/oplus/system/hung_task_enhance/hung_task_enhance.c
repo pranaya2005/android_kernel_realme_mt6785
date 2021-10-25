@@ -1,11 +1,15 @@
-// SPDX-License-Identifier: GPL-2.0-only
-/*
- * Copyright (C) 2018-2020 Oplus. All rights reserved.
- */
 /***************************************************************
+** Copyright (C),  2019-2020,  OPPO Mobile Comm Corp.,  Ltd
+** VENDOR_EDIT
 ** File : uboot_log.c
 ** Description : BSP uboot_log back up xbl uefi kernel boot log , cat /proc/boot_dmesg
 ** Version : 1.0
+** Date : 2020/02/25
+** Author : Wen.Luo@PSW.BSP.Kernel.Stability
+**
+** ------------------------------- Revision History: -----------
+**  <author>        <data>        <version >        <desc>
+**   Wen.Luo          2020/02/25        1.0           Build this moudle
 ******************************************************************/
 
 #define pr_fmt(fmt) KBUILD_MODNAME ": " fmt
@@ -31,6 +35,7 @@
 char __read_mostly sysctl_hung_task_oppo_kill[HUNG_TASK_OPPO_KILL_LEN];
 #define TWICE_DEATH_PERIOD	300000000000ULL	 /* 300s */
 #define MAX_DEATH_COUNT	3
+#define MAX_DEATH_COUNT_FOR_AGING 2
 #define DISP_TASK_COMM_LEN_MASK 10
 
 /* Foreground background optimization,change max io count */
@@ -157,20 +162,28 @@ static void oplus_check_hung_task(struct task_struct *t, unsigned long timeout, 
 
 		death_count++;
 		cur_death_time = local_clock();
-		if (death_count >= MAX_DEATH_COUNT) {
+		if ((death_count >= MAX_DEATH_COUNT) 
+			|| (death_count >= MAX_DEATH_COUNT_FOR_AGING && get_eng_version() == AGING)) {
 			if (cur_death_time - last_death_time < TWICE_DEATH_PERIOD) {
 				printk(KERN_ERR "DeathHealer has been triggered %d times, \
 					last time at: %llu\n", death_count, last_death_time);
 				BUG();
+			}else{
+				death_count = 0;
+				printk(KERN_ERR "DeathHealer reset death_count to 0");
 			}
 		}
 		last_death_time = cur_death_time;
 
-                if (get_eng_version() == AGING)
-                        BUG();
+        if (get_eng_version() == AGING)
+            BUG();
 
 		t->flags |= PF_OPPO_KILLING;
-		do_send_sig_info(SIGKILL, SEND_SIG_FORCED, t, true);
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(5, 4, 0))
+		send_sig_info(SIGKILL, SEND_SIG_PRIV, t);
+#else
+		send_sig_info(SIGKILL, SEND_SIG_FORCED, t);
+#endif
 		wake_up_process(t);
 	}
 #endif
@@ -243,3 +256,4 @@ void io_block_panic(unsigned int *iowait_count, unsigned int sys_mamxiowait_coun
 	return;
 }
 EXPORT_SYMBOL(io_block_panic);
+

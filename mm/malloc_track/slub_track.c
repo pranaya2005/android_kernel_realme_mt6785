@@ -9,11 +9,11 @@
 #include <linux/jhash.h>
 #include <linux/version.h>
 
-#if defined(CONFIG_MEMLEAK_DETECT_THREAD) && defined(CONFIG_OPPO_SVELTE)
+#if defined(CONFIG_MEMLEAK_DETECT_THREAD) && defined(CONFIG_SVELTE)
 extern void dump_meminfo_to_logger(const char *tag, char *msg, size_t len);
 #endif
 
-/* 
+/*
  * sort the locations with count from more to less.
  */
 #define LOCATIONS_TRACK_BUF_SIZE(s) ((s->object_size == 128) ? (PAGE_SIZE << 10) : (PAGE_SIZE * 128))
@@ -41,7 +41,7 @@ struct kd_loc_track {
 	struct kd_location *loc;
 };
 
-/* 
+/*
  * kmalloc_debug_info add debug to slab name.
  */
 const struct kmalloc_info_struct kmalloc_debug_info[] = {
@@ -61,7 +61,7 @@ const struct kmalloc_info_struct kmalloc_debug_info[] = {
 	{"kmalloc-debug-64M",      67108864}
 };
 
-/* 
+/*
  * kmalloc_debug_caches store the kmalloc caches with debug flag.
  */
 atomic64_t kmalloc_debug_caches[NR_KMALLOC_TYPES][KMALLOC_SHIFT_HIGH + 1] = {{ATOMIC64_INIT(0)}};
@@ -70,6 +70,7 @@ EXPORT_SYMBOL(kmalloc_debug_caches);
 int kmalloc_debug_enable = 0;
 EXPORT_SYMBOL(kmalloc_debug_enable);
 
+struct task_struct *memleak_detect_task = NULL;
 static DEFINE_MUTEX(debug_mutex);
 
 extern unsigned long calculate_kmalloc_slab_size(struct kmem_cache *s);
@@ -117,7 +118,7 @@ static int kd_add_location(struct kd_loc_track *t, struct kmem_cache *s,
 {
 	long start, end, pos;
 	struct kd_location *l;
-	/* 
+	/*
          * save the stack depth and hash.
 	 */
 	u32 hash;
@@ -158,7 +159,7 @@ static int kd_add_location(struct kd_loc_track *t, struct kmem_cache *s,
 			}
 			return 0;
 		}
-		/* 
+		/*
 		 * use hash value to record the stack.
 		 */
 		if (track->hash < hash)
@@ -259,7 +260,7 @@ static int kd_list_locations(struct kmem_cache *s, char *buf, int buff_len)
 	}
 	vfree(map);
 
-	/* 
+	/*
 	 * sort the locations with count from more to less.
 	 */
 	sort(&t.loc[0], t.count, sizeof(struct kd_location), kd_location_cmp,
@@ -326,7 +327,7 @@ int kbuf_dump_kmalloc_debug(struct kmem_cache *s, char *kbuf, int buff_len)
 	return kd_list_locations(s, kbuf, buff_len);
 }
 
-#if defined(CONFIG_MEMLEAK_DETECT_THREAD) && defined(CONFIG_OPPO_SVELTE)
+#if defined(CONFIG_MEMLEAK_DETECT_THREAD) && defined(CONFIG_SVELTE)
 #define KMALLOC_DEBUG_MIN_WATERMARK 100u
 #define KMALLOC_DEBUG_DUMP_STEP 20u
 #define BUFLEN(total, len) (total - len - 81)
@@ -496,8 +497,8 @@ static struct kmem_cache *create_kmalloc_debug_caches(size_t size,
 
 	if (s->flags & SLAB_STORE_USER) {
 		pr_warn("%s slab is enable SLAB_STORE_USER, do not "\
-			"create a new debug slab and size %lu.\n",
-			s->name, size);
+				"create a new debug slab and size %lu.\n",
+				s->name, size);
 		return NULL;
 	}
 
@@ -527,7 +528,7 @@ static struct kmem_cache *create_kmalloc_debug_caches(size_t size,
 #define KMALLOC_DEBUG_R_LEN 1024
 
 static ssize_t kmalloc_debug_create_read(struct file *file,
-			char __user *buffer, size_t count, loff_t *off)
+		char __user *buffer, size_t count, loff_t *off)
 {
 	char *kbuf;
 	struct kmem_cache *s;
@@ -638,6 +639,7 @@ static const struct file_operations kmalloc_debug_create_operations = {
 extern void dump_vmalloc_debug(char *dump_buff, int len);
 #endif
 extern void enable_vmalloc_debug(void);
+extern void disable_vmalloc_debug(void);
 #endif
 
 #ifdef CONFIG_KMALLOC_DEBUG
@@ -645,7 +647,13 @@ extern void enable_vmalloc_debug(void);
 extern void kmalloc_debug_watermark_init(void);
 extern void dump_kmalloc_debug_info(struct kmem_cache *s, int index,
 		char *dump_buff, int len);
+#if LINUX_VERSION_CODE < KERNEL_VERSION(5,4,0)
 extern void dump_ion_info(char *dump_buff, int len);
+#endif
+#endif
+
+#if defined(CONFIG_MEMLEAK_DETECT_THREAD) && defined(CONFIG_SVELTE)
+static const struct file_operations memleak_detect_thread_operations;
 #endif
 
 extern int kbuf_dump_kmalloc_debug(struct kmem_cache *s, char *kbuf, int buff_len);
@@ -795,7 +803,7 @@ static int kmalloc_origin_open(struct inode *inode, struct file *file)
 }
 
 static ssize_t kmalloc_debug_enable_write(struct file *file,
-	const char __user *buff, size_t len, loff_t *ppos)
+		const char __user *buff, size_t len, loff_t *ppos)
 {
 	char kbuf[KD_VALUE_LEN] = {'0'};
 	long val;
@@ -817,7 +825,7 @@ static ssize_t kmalloc_debug_enable_write(struct file *file,
 }
 
 static ssize_t kmalloc_debug_enable_read(struct file *file,
-			char __user *buffer, size_t count, loff_t *off)
+		char __user *buffer, size_t count, loff_t *off)
 {
 	char kbuf[KD_VALUE_LEN] = {'0'};
 	int len;
@@ -839,7 +847,7 @@ static ssize_t kmalloc_debug_enable_read(struct file *file,
 }
 
 static ssize_t kmalloc_used_read(struct file *file,
-			char __user *buffer, size_t count, loff_t *off)
+		char __user *buffer, size_t count, loff_t *off)
 {
 	char kbuf[512];
 	int len = 0;
@@ -916,6 +924,9 @@ int __init create_kmalloc_debug(struct proc_dir_entry *parent)
 	struct proc_dir_entry *cpentry;
 	struct proc_dir_entry *epentry;
 	struct proc_dir_entry *upentry;
+#if defined(CONFIG_MEMLEAK_DETECT_THREAD) && defined(CONFIG_SVELTE)
+	struct proc_dir_entry *mpentry;
+#endif
 
 	dpentry = proc_create("kmalloc_debug", S_IRUGO, parent,
 			&kmalloc_debug_operations);
@@ -932,8 +943,9 @@ int __init create_kmalloc_debug(struct proc_dir_entry *parent)
 		return -ENOMEM;
 	}
 
-	epentry = proc_create("kmalloc_debug_enable", S_IRUGO|S_IWUGO, parent,
-			&kmalloc_debug_enable_operations);
+	epentry = proc_create("kmalloc_debug_enable",
+			S_IRUSR|S_IWUSR|S_IRGRP|S_IWGRP|S_IROTH|S_IWOTH,
+			parent,	&kmalloc_debug_enable_operations);
 	if (!epentry) {
 		pr_err("create kmalloc_debug_enable proc failed.\n");
 		proc_remove(opentry);
@@ -963,12 +975,25 @@ int __init create_kmalloc_debug(struct proc_dir_entry *parent)
 		return -ENOMEM;
 	}
 
+#if defined(CONFIG_MEMLEAK_DETECT_THREAD) && defined(CONFIG_SVELTE)
+	mpentry = proc_create("memleak_detect_thread", S_IRUGO|S_IWUGO, parent,
+			&memleak_detect_thread_operations);
+	if (!cpentry) {
+		pr_err("create memleak_detect_thread_operations proc failed.\n");
+		proc_remove(cpentry);
+		proc_remove(upentry);
+		proc_remove(epentry);
+		proc_remove(opentry);
+		proc_remove(dpentry);
+		return -ENOMEM;
+	}
+#endif
 	return 0;
 }
 EXPORT_SYMBOL(create_kmalloc_debug);
 #endif
 
-#if defined(CONFIG_MEMLEAK_DETECT_THREAD) && defined(CONFIG_OPPO_SVELTE)
+#if defined(CONFIG_MEMLEAK_DETECT_THREAD) && defined(CONFIG_SVELTE)
 #define DUMP_BUFF_LEN (PAGE_SIZE << 1)
 
 static int memleak_detect_thread(void *arg)
@@ -1025,7 +1050,9 @@ static int memleak_detect_thread(void *arg)
 		}
 #endif
 
+#if LINUX_VERSION_CODE < KERNEL_VERSION(5,4,0)
 		dump_ion_info(dump_buff, DUMP_BUFF_LEN);
+#endif
 		vfree(dump_buff);
 	} while (!kthread_should_stop());
 
@@ -1037,10 +1064,9 @@ static inline void init_kmalloc_debug_caches(slab_flags_t flags)
 	int i, type;
 	struct kmem_cache *s;
 
-	mutex_lock(&debug_mutex);
 	for (type = KMALLOC_NORMAL; type <= KMALLOC_RECLAIM; type++) {
 		for (i = KMALLOC_SHIFT_LOW; i <= KMALLOC_SHIFT_HIGH; i++) {
-			s = create_kmalloc_debug_caches(kmalloc_info[i].size,
+			s = create_kmalloc_debug_caches(kmalloc_debug_info[i].size,
 					flags, type);
 
 			/*
@@ -1049,10 +1075,10 @@ static inline void init_kmalloc_debug_caches(slab_flags_t flags)
 			 * earlier power of two caches
 			 */
 			if (KMALLOC_MIN_SIZE <= 32 && !kmalloc_caches[type][1] && i == 6)
-				s = create_kmalloc_debug_caches(kmalloc_info[i].size,
+				s = create_kmalloc_debug_caches(kmalloc_debug_info[i].size,
 						flags, type);
 			if (KMALLOC_MIN_SIZE <= 64 && !kmalloc_caches[type][2] && i == 7)
-				s = create_kmalloc_debug_caches(kmalloc_info[i].size,
+				s = create_kmalloc_debug_caches(kmalloc_debug_info[i].size,
 						flags, type);
 
 			if (!s)
@@ -1062,36 +1088,89 @@ static inline void init_kmalloc_debug_caches(slab_flags_t flags)
 		}
 	}
 	kmalloc_debug_enable = 1;
-	mutex_unlock(&debug_mutex);
 }
 
-static int __init memleak_detect_init(void)
+static ssize_t memleak_detect_thread_read(struct file *file,
+		char __user *buffer, size_t count, loff_t *off)
 {
-	struct task_struct *thread;
+	char kbuf[16];
+	int len = 0;
+
+	if (count > 15)
+		count = 15;
+
+	len = scnprintf(kbuf, count, "%d\n", memleak_detect_task ? 1 : 0);
+	kbuf[len++] = '\0';
+
+	if (len > *off)
+		len -= *off;
+	else
+		len = 0;
+
+	if (copy_to_user(buffer, kbuf, len))
+		return -EFAULT;
+
+	*off += len;
+	return len;
+}
+
+static ssize_t memleak_detect_thread_write(struct file *file, const char __user *buff,
+		size_t len, loff_t *ppos)
+{
+	char kbuf[16] = {'0'};
+	long val;
+	int ret;
+
+	if (len > 15)
+		len = 15;
+
+	if (copy_from_user(&kbuf, buff, len))
+		return -EFAULT;
+	kbuf[len] = '\0';
+
+	ret = kstrtol(kbuf, 10, &val);
+	if (ret)
+		return -EINVAL;
+
+	mutex_lock(&debug_mutex);
+	if (val > 0) {
+		if (memleak_detect_task)
+			goto out;
 
 #ifdef CONFIG_VMALLOC_DEBUG
-	enable_vmalloc_debug();
+		enable_vmalloc_debug();
 #endif
-
 #ifdef CONFIG_KMALLOC_DEBUG
-	init_kmalloc_debug_caches(SLAB_STORE_USER);
-	kmalloc_debug_watermark_init();
+		init_kmalloc_debug_caches(SLAB_STORE_USER);
+		kmalloc_debug_watermark_init();
 #endif
 
-	thread = kthread_create(memleak_detect_thread, NULL, "memleak_detect");
-	if (thread != NULL)
-		wake_up_process(thread);
-	else
-		pr_warn("[kmalloc_debug][vmalloc_debug] memleak_detect_init failed.\n");
+		memleak_detect_task = kthread_create(memleak_detect_thread, NULL,
+				"memleak_detect");
+		if (memleak_detect_task != NULL)
+			wake_up_process(memleak_detect_task);
+		else
+			pr_warn("[kmalloc_debug][vmalloc_debug] memleak_detect_init failed.\n");
+	} else if (memleak_detect_task) {
+#ifdef CONFIG_VMALLOC_DEBUG
+		disable_vmalloc_debug();
+#endif
+#ifdef CONFIG_KMALLOC_DEBUG
+		kmalloc_debug_enable = 0;
+#endif
+		kthread_stop(memleak_detect_task);
+		memleak_detect_task = NULL;
+	}
 
-	return 0;
+out:
+	mutex_unlock(&debug_mutex);
+	return len;
 }
-#else
-static int __init memleak_detect_init(void)
-{
-	return 0;
-}
+
+static const struct file_operations memleak_detect_thread_operations = {
+	.read		= memleak_detect_thread_read,
+	.write          = memleak_detect_thread_write,
+};
 #endif /* CONFIG_MEMLEAK_DETECT_THREAD */
-module_init(memleak_detect_init);
 #endif /* CONFIG_KMALLOC_DEBUG || CONFIG_VMALLOC_DEBUG */
 #endif /* _SLUB_TRACK_ */

@@ -60,6 +60,22 @@ config OPLUS_CHARGER_MTK6769
 	  smart battery.
 	  Set No to disable OPLUS_CHARGER_MTK6769 features
 
+config OPLUS_CHARGER_MTK6768
+        bool "OPLUS_CHARGER_MTK6768"
+        default n
+        help
+          Set yes to support OPLUS_CHARGER_MTK6768 features
+          smart battery.
+          Set No to disable OPLUS_CHARGER_MTK6768 features
+
+config OPLUS_CHARGER_MTK6769R
+        bool "OPLUS_CHARGER_MTK6769R"
+        default n
+        help
+          Set yes to support OPLUS_CHARGER_MTK6769R features
+          smart battery.
+          Set No to disable OPLUS_CHARGER_MTK6769R features
+
 config OPLUS_CHARGER_MTK6889
 	bool "OPLUS_CHARGER_MTK6889"
 	default n

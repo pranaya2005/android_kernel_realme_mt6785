@@ -20,13 +20,8 @@
 #include <soc/oplus/system/oplus_project.h>
 #include <linux/debugfs.h>
 #include <linux/module.h>
-#include <linux/version.h>
-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(5, 4, 0))
-#include <soc/oplus/system/qcom_pmicwd.h>
-#else
 #include <linux/regmap.h>
 #include <linux/input/qpnp-power-on.h>
-#endif
 
 #define QPNP_PON_WD_RST_S1_TIMER(pon)		((pon)->base + 0x54)
 #define QPNP_PON_WD_RST_S2_TIMER(pon)		((pon)->base + 0x55)
@@ -47,35 +42,10 @@ const struct dev_pm_ops qpnp_pm_ops;
 struct qpnp_pon *sys_reset_dev;
 EXPORT_SYMBOL(sys_reset_dev);
 
-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(5, 4, 0))
-#define PON_GEN3_PBS                            0x08
-#define PON_GEN3_HLOS                           0x09
-#define QPNP_PON_WD_EN                          BIT(7)
-
-static bool is_pon_gen3(struct qpnp_pon *pon)
-{
-        return pon->subtype == PON_GEN3_PBS ||
-                pon->subtype == PON_GEN3_HLOS;
-}
-
 static int oplus_qpnp_pon_wd_config(bool enable)
 {
-        if (!sys_reset_dev)
-                return -EPROBE_DEFER;
-
-        if (is_pon_gen3(sys_reset_dev))
-                return -EPERM;
-
-        return qpnp_pon_masked_write(sys_reset_dev,
-                                QPNP_PON_WD_RST_S2_CTL2(sys_reset_dev),
-                                QPNP_PON_WD_EN, enable ? QPNP_PON_WD_EN : 0);
+	return qpnp_pon_wd_config(enable);
 }
-#else
-static int oplus_qpnp_pon_wd_config(bool enable)
-{
-        return qpnp_pon_wd_config(enable);
-}
-#endif
 
 int qpnp_pon_wd_timer(unsigned char timer, enum pon_power_off_type reset_type)
 {

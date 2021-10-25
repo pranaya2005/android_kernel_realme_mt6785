@@ -1199,7 +1199,7 @@ uint32_t kalRxIndicateOnePkt(IN struct GLUE_INFO
 #endif
 
 #if (CFG_SUPPORT_STATISTICS == 1)
-	StatsEnvRxTime2Host(prGlueInfo->prAdapter, prSkb);
+	StatsEnvRxTime2Host(prGlueInfo->prAdapter, prSkb, prNetDev);
 #endif
 
 #if KERNEL_VERSION(4, 11, 0) <= CFG80211_VERSION_CODE
@@ -1287,7 +1287,7 @@ uint32_t kalRxIndicateOnePkt(IN struct GLUE_INFO
 		kal_gro_flush(prGlueInfo->prAdapter, prNetDev);
 		spin_unlock_bh(&prNetDevPrivate->napi_spinlock);
 		preempt_enable();
-		DBGLOG_LIMITED(INIT, INFO, "napi_gro_receive:%p\n", prNetDev);
+		DBGLOG_LIMITED(INIT, TRACE, "napi_gro_receive:%p\n", prNetDev);
 		return WLAN_STATUS_SUCCESS;
 	}
 #endif
@@ -3900,6 +3900,7 @@ int hif_thread(void *data)
 					 netdev_priv(dev));
 	struct ADAPTER *prAdapter = prGlueInfo->prAdapter;
 	int ret = 0;
+	bool fgEnInt;
 #if defined(CONFIG_ANDROID) && (CFG_ENABLE_WAKE_LOCK)
 	KAL_WAKE_LOCK_T *prHifThreadWakeLock;
 
@@ -3960,7 +3961,10 @@ int hif_thread(void *data)
 		wlanAcquirePowerControl(prAdapter);
 
 		/* Handle Interrupt */
+		fgEnInt = (prGlueInfo->ulFlag | GLUE_FLAG_INT_BIT) != 0;
 		if (test_and_clear_bit(GLUE_FLAG_INT_BIT,
+				       &prGlueInfo->ulFlag) ||
+				       test_and_clear_bit(GLUE_FLAG_DRV_INT_BIT,
 				       &prGlueInfo->ulFlag)) {
 			kalTraceBegin("INT");
 			/* the Wi-Fi interrupt is already disabled in mmc
@@ -3977,7 +3981,7 @@ int hif_thread(void *data)
 			} else {
 				/* DBGLOG(INIT, INFO, ("HIF Interrupt!\n")); */
 				prGlueInfo->TaskIsrCnt++;
-				wlanIST(prAdapter);
+				wlanIST(prAdapter, fgEnInt);
 			}
 			kalTraceEnd();
 		}
@@ -4367,7 +4371,7 @@ int main_thread(void *data)
 					"ignore pending interrupt\n");
 			} else {
 				prGlueInfo->TaskIsrCnt++;
-				wlanIST(prGlueInfo->prAdapter);
+				wlanIST(prGlueInfo->prAdapter, true);
 			}
 			kalTraceEnd();
 		}
@@ -5103,6 +5107,18 @@ void kalSetIntEvent(struct GLUE_INFO *pr)
 
 	set_bit(GLUE_FLAG_INT_BIT, &pr->ulFlag);
 
+	/* when we got interrupt, we wake up servie thread */
+#if CFG_SUPPORT_MULTITHREAD
+	wake_up_interruptible(&pr->waitq_hif);
+#else
+	wake_up_interruptible(&pr->waitq);
+#endif
+}
+
+void kalSetDrvIntEvent(struct GLUE_INFO *pr)
+{
+	KAL_WAKE_LOCK(pr->prAdapter, pr->rIntrWakeLock);
+	set_bit(GLUE_FLAG_DRV_INT_BIT, &pr->ulFlag);
 	/* when we got interrupt, we wake up servie thread */
 #if CFG_SUPPORT_MULTITHREAD
 	wake_up_interruptible(&pr->waitq_hif);
@@ -8954,6 +8970,39 @@ static void kalDumpHifStats(IN struct ADAPTER *prAdapter)
 			CFG_RX_MAX_PKT_NUM);
 	DBGLOG(HAL, INFO, "%s\n", buf);
 	kalMemFree(buf, VIR_MEM_TYPE, u4BufferSize);
+}
+
+uint32_t kalSetSuspendFlagToEMI(IN struct ADAPTER
+					*prAdapter, IN u_int8_t fgSuspend)
+{
+#if CFG_MTK_ANDROID_EMI
+	uint32_t u4Offset = prAdapter->u4HostStatusEmiOffset
+				& WIFI_EMI_ADDR_MASK;
+	uint32_t suspendFlag = 0;
+
+	if (!gConEmiPhyBase) {
+#if (CFG_SUPPORT_CONNINFRA == 1)
+		conninfra_get_phy_addr(
+			(unsigned int *)&gConEmiPhyBase,
+			(unsigned int *)&gConEmiSize);
+#endif
+
+		if (!gConEmiPhyBase) {
+			DBGLOG(INIT, ERROR,
+				"[EMI_Suspend] gConEmiPhyBase invalid\n");
+			return WLAN_STATUS_FAILURE;
+		}
+	}
+	suspendFlag = (fgSuspend == TRUE) ? 0x11111111 : 0x22222222;
+
+	DBGLOG(INIT, TRACE,
+		"[EMI_Suspend] EmiPhyBase:0x%llx offset:0x%x set 0x%x",
+		(uint64_t)gConEmiPhyBase, u4Offset, suspendFlag);
+
+	wf_ioremap_write((gConEmiPhyBase + u4Offset), suspendFlag);
+
+#endif /* CFG_MTK_ANDROID_EMI */
+	return WLAN_STATUS_SUCCESS;
 }
 
 #if KERNEL_VERSION(5, 4, 0) <= CFG80211_VERSION_CODE

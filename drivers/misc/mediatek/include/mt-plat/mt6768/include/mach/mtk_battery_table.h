@@ -115,7 +115,7 @@ int g_FG_PSEUDO1[MAX_TABLE][TOTAL_BATTERY_NUMBER] = {
 /*Yong.Liu@BSP.CHG.Basic, 2020/09/29, Modify for battery capacity*/
 int g_FG_PSEUDO100[MAX_TABLE][TOTAL_BATTERY_NUMBER] = {
 	/*bat1,   bat2,   bat3,    bat4*/
-	{ 96, 96, 96, 96},/*T0*/
+	{ 97, 97, 97, 97},/*T0*/
 	{ 99, 99, 99, 99},/*T1*/
 	{ 94, 94, 94, 94},/*T2*/
 	{ 90, 90, 90, 90},/*T3*/

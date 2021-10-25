@@ -293,6 +293,10 @@ void mtk_idle_post_process_by_chip(
 	/* get spm info */
 	__spm_get_wakeup_status(&wakesta);
 
+	__spm_save_ap_sleep_info(&wakesta);
+	if (idle_type == IDLE_MODEL_BUS26M)
+		__spm_save_26m_sleep_info();
+
 	/* clean up spm */
 	spm_idle_pcm_setup_after_wfi(idle_type, pwrctrl, op_cond);
 

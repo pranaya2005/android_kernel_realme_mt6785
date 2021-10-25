@@ -583,6 +583,11 @@ int disp_ccorr_set_color_matrix(struct mtk_ddp_comp *comp,
 	bool need_refresh = false;
 	bool identity_matrix = true;
 	int id = index_of_ccorr(comp->id);
+/* #ifdef OPLUS_BUG_STABILITY */
+/* Zepu.Zhang@MM.LCD.Display.Stability, 2020/11/23, add for bug569933 from mtk case ALPS05430722 */
+	struct drm_crtc *crtc = &comp->mtk_crtc->base;
+	struct mtk_crtc_state *state = to_mtk_crtc_state(crtc->state);
+/* #endif */
 
 	if (handle == NULL) {
 		DDPPR_ERR("%s: cmdq can not be NULL\n", __func__);
@@ -632,6 +637,11 @@ int disp_ccorr_set_color_matrix(struct mtk_ddp_comp *comp,
 			bypass_color = true;
 		}
 	}
+
+/* #ifdef OPLUS_BUG_STABILITY */
+/* Zepu.Zhang@MM.LCD.Display.Stability, 2020/11/23, add for bug569933 from mtk case ALPS05430722 */
+	state->ccorr_ident_mode = identity_matrix;
+/* #endif */
 
 #if defined(CONFIG_MACH_MT6885) || defined(CONFIG_MACH_MT6873) \
 	|| defined(CONFIG_MACH_MT6893) || defined(CONFIG_MACH_MT6853) \

@@ -157,7 +157,7 @@ struct IMGSENSOR_HW_DEVICE {
 int pascal_project(void);
 extern struct IMGSENSOR_HW_CFG       imgsensor_custom_config[];
 extern struct IMGSENSOR_HW_CFG       imgsensor_custom_config_monetx[];
-extern struct IMGSENSOR_HW_CFG       imgsensor_custom_config_pascalC[];
+extern struct IMGSENSOR_HW_CFG       imgsensor_custom_config_even[];
 extern struct IMGSENSOR_HW_POWER_SEQ platform_power_sequence[];
 extern struct IMGSENSOR_HW_POWER_SEQ sensor_power_sequence[];
 extern enum IMGSENSOR_RETURN

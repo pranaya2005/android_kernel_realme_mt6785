@@ -189,6 +189,25 @@
 /* Enable WOW Support */
 #define CFG_WOW_SUPPORT			1
 
+/* Enable Mdns offload */
+#ifndef CFG_SUPPORT_MDNS_OFFLOAD
+#define CFG_SUPPORT_MDNS_OFFLOAD	0
+#endif
+
+#if CFG_SUPPORT_MDNS_OFFLOAD
+#ifndef CFG_SUPPORT_MDNS_OFFLOAD_GVA
+#define CFG_SUPPORT_MDNS_OFFLOAD_GVA 0
+#endif
+
+#if CFG_SUPPORT_MDNS_OFFLOAD_GVA
+#define CFG_SUPPORT_MDNS_OFFLOAD_TV 0
+#else
+#define CFG_SUPPORT_MDNS_OFFLOAD_TV 1
+#endif
+
+#define TEST_CODE_FOR_MDNS			0
+#endif
+
 /* Enable A-MSDU RX Reordering Support */
 #define CFG_SUPPORT_RX_AMSDU		1
 
@@ -594,6 +613,7 @@
 #define CFG_HOTSPOT_OPTIMIZATION_DTIM           1
 #define CFG_AUTO_CHANNEL_SEL_SUPPORT            1
 
+#define CFG_SUPPORT_SOFTAP_WPA3				0
 /*------------------------------------------------------------------------------
  * Configuration Flags (Linux Only)
  *------------------------------------------------------------------------------
@@ -729,6 +749,8 @@
 #define CFG_SUPPORT_802_11AC                1
 #define CFG_STRICT_CHECK_CAPINFO_PRIVACY    0
 
+#define CFG_SUPPORT_DPP                     1
+
 #define CFG_SUPPORT_WFD                     1
 #define CFG_SUPPORT_WFD_COMPOSE_IE          1
 
@@ -739,6 +761,11 @@
 #define CFG_MTK_STAGE_SCAN					1
 
 #define CFG_SUPPORT_MULTITHREAD             1	/* Enable driver support multicore */
+
+/* add cfg80211 tx/rx api to work queue */
+#ifndef CFG_SUPPORT_CFG80211_QUEUE
+#define CFG_SUPPORT_CFG80211_QUEUE	0
+#endif
 
 #define CFG_SUPPORT_MTK_SYNERGY             1
 
@@ -751,6 +778,10 @@
 #define MAX_DISCONNECT_RECORD          5
 #endif
 
+/* Flags of WAC (Wireless Accessory Configuration) feature */
+#ifndef CFG_SUPPORT_WAC
+#define	CFG_SUPPORT_WAC						0
+#endif
 /*------------------------------------------------------------------------------
  * Flags of bus error tolerance
  *------------------------------------------------------------------------------
@@ -1017,7 +1048,6 @@
 #define CFG_SCAN_CHANNEL_SPECIFIED 1
 #endif
 
-
 /*------------------------------------------------------------------------------
  * Support EFUSE / EEPROM Auto Detect
  *------------------------------------------------------------------------------
@@ -1026,11 +1056,47 @@
 #define CFG_EFUSE_AUTO_MODE_SUPPORT 1
 #endif
 
+
 #ifndef CFG_SUPPORT_CSI
 #define CFG_SUPPORT_CSI 1
 #endif
 
 
+
+/*---------------------------------------------------------------------------
+ * Support thermal API, some project needs enable this config for thermal query
+ *---------------------------------------------------------------------------
+ */
+#ifndef CFG_THERMAL_API_SUPPORT
+#define CFG_THERMAL_API_SUPPORT 0
+#endif
+/*
+*   For Ref project -> Default : 0
+*/
+#define CFG_DC_WOW_CALLBACK 0
+
+/* Multi 7668 driver support */
+#ifndef CFG_SUPPORT_DUAL_CARD_DUAL_DRIVER_A
+#define CFG_SUPPORT_DUAL_CARD_DUAL_DRIVER_A 0
+#endif
+
+#ifndef CFG_SUPPORT_DUAL_CARD_DUAL_DRIVER_B
+#define CFG_SUPPORT_DUAL_CARD_DUAL_DRIVER_B 0
+#endif
+
+/* Multi dongle support (eg. 7668/7663) */
+#ifndef CFG_SUPPORT_MULTI_DONGLE
+#define CFG_SUPPORT_MULTI_DONGLE 0
+#endif
+
+
+/*------------------------------------------------------------------------------
+ * Support platform power off control scenario
+ *------------------------------------------------------------------------------
+ */
+#ifndef CFG_POWER_OFF_CTRL_SUPPORT
+#define CFG_POWER_OFF_CTRL_SUPPORT	0
+#endif
 
 /*******************************************************************************
 *                             D A T A   T Y P E S

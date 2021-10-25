@@ -119,13 +119,17 @@ static int uboot_kboot_buffer_init()
 static int kboot_seq_read(struct seq_file *s, void *v)
 {
 	int i = 0;
-
 	uboot_log_buf[uboot_log_buf_len-1] = '\0';
 	seq_printf(s, "xbl_uefi boot log begin: \n");
-	while (!uboot_log_buf[i] && i < uboot_log_buf_len) {
-		i++;
+	while (i < uboot_log_buf_len -1) {
+		while (!uboot_log_buf[i] && i < uboot_log_buf_len -1) {
+			i++;
+		}
+		seq_printf(s, "%s\n", uboot_log_buf+i);
+		while (uboot_log_buf[i] && i < uboot_log_buf_len -1) {
+			i++;
+		}
 	}
-	seq_printf(s, "%s\n", uboot_log_buf+i);
 
 
 	i = 0 ;
@@ -163,7 +167,7 @@ const struct file_operations kboot_fops = {
 /*
  * Dont printk any log int this thread
  */
-int ubootback_thread_fn()
+int ubootback_thread_fn(void *data)
 {
 	size_t line_len = 0;
 	u32 idx =0;

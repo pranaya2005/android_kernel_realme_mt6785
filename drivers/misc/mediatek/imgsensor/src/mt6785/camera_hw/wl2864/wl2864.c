@@ -113,11 +113,9 @@ static enum IMGSENSOR_RETURN wl2864_set(
 			|| operator == OPERATOR_20682_SALA_A_All_BAND
 			|| operator == OPERATOR_20682_SALA_A_All_BAND_VIETNAM
 			|| operator == OPERATOR_20682_SALA_A_INTERNATIONAL
-			|| operator == OPERATOR_20682_SALA_LITE_INTERNATIONAL
-			|| operator == OPERATOR_20682_SALA_LITE_VODAFONE) {
+			|| operator == OPERATOR_20682_SALA_LITE_INTERNATIONAL) {
 			ldolist_20682[6].wl2864ldo = CAMERA_LDO_AVDD1;
 		}
-
 		pr_debug("%s ++++++wl2864 sala-a compatible with sala main2(AVDD) ldo(%d) operator=%d\n",__func__,
 							ldolist_20682[6].wl2864ldo, operator);
 		for(i=0;i<(sizeof(ldolist_20682)/sizeof(ldolist_20682[0]));i++) {

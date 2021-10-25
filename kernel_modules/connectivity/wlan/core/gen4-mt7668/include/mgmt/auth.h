@@ -136,12 +136,20 @@ authSendDeauthFrame(IN P_ADAPTER_T prAdapter,
 
 WLAN_STATUS authProcessRxDeauthFrame(IN P_SW_RFB_T prSwRfb, IN UINT_8 aucBSSID[], OUT PUINT_16 pu2ReasonCode);
 
+#if CFG_SUPPORT_SOFTAP_WPA3
+WLAN_STATUS
+authProcessRxAuthFrame(IN P_ADAPTER_T prAdapter,
+					   IN P_SW_RFB_T prSwRfb,
+					   IN P_BSS_INFO_T prP2pBssInfo,
+					   OUT PUINT_16 pu2ReturnStatusCode);
+#else
 WLAN_STATUS
 authProcessRxAuth1Frame(IN P_ADAPTER_T prAdapter,
 			IN P_SW_RFB_T prSwRfb,
 			IN UINT_8 aucExpectedBSSID[],
 			IN UINT_16 u2ExpectedAuthAlgNum,
 			IN UINT_16 u2ExpectedTransSeqNum, OUT PUINT_16 pu2ReturnStatusCode);
+#endif
 
 /*******************************************************************************
 *                              F U N C T I O N S

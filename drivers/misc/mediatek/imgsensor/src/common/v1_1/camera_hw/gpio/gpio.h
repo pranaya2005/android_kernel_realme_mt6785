@@ -22,7 +22,6 @@
 #include "imgsensor_hw.h"
 #include "imgsensor_common.h"
 #include <imgsensor_platform.h>
-
 enum GPIO_CTRL_STATE_CAM {
 	/* Main */
 	GPIO_CTRL_STATE_PDN_H,
@@ -75,7 +74,7 @@ struct GPIO {
 #ifdef OPLUS_FEATURE_CAMERA_COMMON
 //Henry.Chang@Cam.Drv, 20200729, add for porting 20131 sensor
 	#ifdef SENSOR_PLATFORM_5G_H
-	struct pinctrl_state *pinctrl_state_ldo_enable[2];
+	struct pinctrl_state *pinctrl_state_ldo_enable;
 	#endif
 #endif
 	struct mutex         *pgpio_mutex;

@@ -154,6 +154,14 @@ config CHARGER_RT9471
 	  which RT9470D, RT9471D and RT9472D support BC1.2
 	  It depends on config MTK_CHARGER.
 
+config CHARGER_SY6974
+        bool "Charger Driver for Richtek SY6974 Charger IC"
+        default n
+        depends on MTK_CHARGER
+        help
+          Say Yes to enable SY6974 driver.
+          It depends on config MTK_CHARGER.
+
 config CHARGER_RT9759
 	bool "Richtek RT9759 Divider Charger Driver"
 	depends on MTK_CHARGER
@@ -223,10 +231,11 @@ config CHARGER_BQ2591X
 	  Say Yes to enable BQ2591X driver.
 	  It depends on config MTK_CHARGER.
 
-config CHARGER_SY6974
-        bool "Charger Driver for Richtek SY6974 Charger IC"
+config CHARGER_SY6970
+        bool "Charger Driver for sy6970 Charger IC"
         default n
         depends on MTK_CHARGER
         help
-          Say Yes to enable SY6974 driver.
+          Say Yes to enable sy6970 driver.
           It depends on config MTK_CHARGER.
+

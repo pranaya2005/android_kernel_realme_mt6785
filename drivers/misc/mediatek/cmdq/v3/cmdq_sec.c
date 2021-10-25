@@ -127,14 +127,14 @@ static struct cmdq *g_cmdq;
 
 #if IS_ENABLED(CONFIG_MACH_MT6779) || IS_ENABLED(CONFIG_MACH_MT6785)
 static const s32 cmdq_max_task_in_secure_thread[
-    CMDQ_MAX_SECURE_THREAD_COUNT] = {10, 10, 4, 10};
+	CMDQ_MAX_SECURE_THREAD_COUNT] = {10, 10, 4, 10};
 static const s32 cmdq_tz_cmd_block_size[CMDQ_MAX_SECURE_THREAD_COUNT] = {
-    4 << 12, 4 << 12, 20 << 12, 4 << 12};
+	4 << 12, 4 << 12, 20 << 12, 4 << 12};
 #else
 static const s32 cmdq_max_task_in_secure_thread[
-    CMDQ_MAX_SECURE_THREAD_COUNT] = {10, 10, 4};
+	CMDQ_MAX_SECURE_THREAD_COUNT] = {10, 10, 4};
 static const s32 cmdq_tz_cmd_block_size[CMDQ_MAX_SECURE_THREAD_COUNT] = {
-    4 << 12, 4 << 12, 20 << 12};
+	4 << 12, 4 << 12, 20 << 12};
 #endif
 
 const u32 isp_iwc_buf_size[] = {
@@ -1376,7 +1376,7 @@ static s32 cmdq_sec_remove_handle_from_thread_by_cookie(
 	struct cmdq_task *task;
 
 	if (!thread || index < 0 || index >=  cmdq_max_task_in_secure_thread[
-        thread->idx - CMDQ_MIN_SECURE_THREAD_ID]) {
+		thread->idx - CMDQ_MIN_SECURE_THREAD_ID]) {
 		CMDQ_ERR(
 			"remove task from thread array, invalid param THR:0x%p task_slot:%d\n",
 			thread, index);
@@ -2149,7 +2149,7 @@ static void cmdq_sec_thread_irq_handle_by_cookie(
 	u32 task_done_cnt, i;
 	unsigned long flags;
 	u32 max_task_cnt = cmdq_max_task_in_secure_thread[
-        thread->idx - CMDQ_MIN_SECURE_THREAD_ID];
+		thread->idx - CMDQ_MIN_SECURE_THREAD_ID];
 	struct cmdq_task *task;
 
 	spin_lock_irqsave(&cmdq_sec_task_list_lock, flags);

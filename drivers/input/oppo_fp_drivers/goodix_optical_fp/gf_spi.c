@@ -59,6 +59,10 @@
 #define VER_MINOR   2
 #define PATCH_LEVEL 9
 
+#ifndef MSM_DRM_ONSCREENFINGERPRINT_EVENT
+#define MSM_DRM_ONSCREENFINGERPRINT_EVENT 0x10
+#endif
+
 #define WAKELOCK_HOLD_TIME 500 /* in ms */
 #define SENDCMD_WAKELOCK_HOLD_TIME 1000 /* in ms */
 
@@ -370,7 +374,7 @@ static long gf_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
     }
 
     if (gf_dev->device_available == 0) {
-        if ((cmd == GF_IOC_ENABLE_POWER) || (cmd == GF_IOC_DISABLE_POWER)) {
+        if ((cmd == GF_IOC_ENABLE_POWER) || (cmd == GF_IOC_DISABLE_POWER) || (cmd == GF_IOC_POWER_RESET)) {
             pr_info("power cmd\n");
         } else {
             pr_info("Sensor is power off currently. \n");
@@ -401,9 +405,13 @@ static long gf_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
             pr_info("%s GF_IOC_RESET. \n", __func__);
             gf_hw_reset(gf_dev, 10);
             break;
+        case GF_IOC_POWER_RESET:
+            pr_info("%s GF_IOC_POWER_RESET. \n", __func__);
+            gf_power_reset(gf_dev);
+            gf_dev->device_available = 1;
+            break;
         case GF_IOC_INPUT_KEY_EVENT:
-            if (copy_from_user(&gf_key, (struct gf_key *)arg, sizeof(struct gf_key)))
-            {
+            if (copy_from_user(&gf_key, (struct gf_key *)arg, sizeof(struct gf_key))) {
                 pr_info("Failed to copy input key event from user to kernel\n");
                 retval = -EFAULT;
                 break;

@@ -991,8 +991,15 @@ VOID halRxUSBProcessEventDataComplete(IN P_ADAPTER_T prAdapter,
 	static UINT_32 s_u4OutOfSwRfbPrintLimit;
 	static UINT_32 s_u4OutOfSwRfbBeginTime;
 
+	/* lock with rRxDataQLock if processing queue is data queue */
+	/* and vice versa                                           */
+	spinlock_t *prLock =
+		(prCompleteQ == &prHifInfo->rRxDataCompleteQ) ?
+		(&prHifInfo->rRxDataQLock) :
+		(&prHifInfo->rRxEventQLock);
+
 	/* Process complete event/data */
-	prUsbReq = glUsbDequeueReq(prHifInfo, prCompleteQ, &prHifInfo->rRxEventQLock);
+	prUsbReq = glUsbDequeueReq(prHifInfo, prCompleteQ, prLock);
 	while (prUsbReq) {
 		prUrb = prUsbReq->prUrb;
 		prBufCtrl = prUsbReq->prBufCtrl;
@@ -1003,8 +1010,10 @@ VOID halRxUSBProcessEventDataComplete(IN P_ADAPTER_T prAdapter,
 		if (prUrb->status != 0) {
 			DBGLOG(RX, ERROR, "[%s] receive EVENT/DATA fail (status = %d)\n", __func__, prUrb->status);
 
-			glUsbEnqueueReq(prHifInfo, prFreeQ, prUsbReq, &prHifInfo->rRxEventQLock, FALSE);
-			prUsbReq = glUsbDequeueReq(prHifInfo, prCompleteQ, &prHifInfo->rRxEventQLock);
+			glUsbEnqueueReq(prHifInfo, prFreeQ, prUsbReq, prLock,
+				FALSE);
+			prUsbReq = glUsbDequeueReq(prHifInfo, prCompleteQ,
+				prLock);
 			continue;
 		}
 
@@ -1030,12 +1039,14 @@ VOID halRxUSBProcessEventDataComplete(IN P_ADAPTER_T prAdapter,
 			    SW_RFB_BLOCKING_LIMIT_MS) {
 				DBGLOG(RX, WARN, "Discard Rx packets (%u bytes)!\n",
 				       prUrb->actual_length - prBufCtrl->u4ReadSize);
-				glUsbEnqueueReq(prHifInfo, prFreeQ, prUsbReq, &prHifInfo->rRxEventQLock, FALSE);
+				glUsbEnqueueReq(prHifInfo, prFreeQ, prUsbReq,
+					prLock, FALSE);
 				s_fgOutOfSwRfb = FALSE;
 				break;
 			}
 
-			glUsbEnqueueReq(prHifInfo, prCompleteQ, prUsbReq, &prHifInfo->rRxEventQLock, TRUE);
+			glUsbEnqueueReq(prHifInfo, prCompleteQ, prUsbReq,
+				prLock, TRUE);
 
 			set_bit(GLUE_FLAG_RX_BIT, &prGlueInfo->ulFlag);
 			wake_up_interruptible(&prGlueInfo->waitq);
@@ -1047,8 +1058,8 @@ VOID halRxUSBProcessEventDataComplete(IN P_ADAPTER_T prAdapter,
 		if (unlikely(s_fgOutOfSwRfb == TRUE))
 			s_fgOutOfSwRfb = FALSE;
 
-		glUsbEnqueueReq(prHifInfo, prFreeQ, prUsbReq, &prHifInfo->rRxEventQLock, FALSE);
-		prUsbReq = glUsbDequeueReq(prHifInfo, prCompleteQ, &prHifInfo->rRxEventQLock);
+		glUsbEnqueueReq(prHifInfo, prFreeQ, prUsbReq, prLock, FALSE);
+		prUsbReq = glUsbDequeueReq(prHifInfo, prCompleteQ, prLock);
 	}
 }
 

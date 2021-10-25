@@ -37,6 +37,11 @@
 
 #define MTK_SOLUTION 1
 
+#ifdef OPLUS_FEATURE_TP_BASIC
+//Cong.Dai@psw.bsp.tp 2018/08/30 modified for stop system enter sleep before low irq handled
+__attribute__((weak)) int check_touchirq_triggered(void) {return 0;}
+#endif /* OPLUS_FEATURE_TP_BASIC */
+
 const char * const pm_labels[] = {
 	[PM_SUSPEND_TO_IDLE] = "freeze",
 	[PM_SUSPEND_STANDBY] = "standby",
@@ -442,7 +447,13 @@ static int suspend_enter(suspend_state_t state, bool *wakeup)
 
 	arch_suspend_disable_irqs();
 	BUG_ON(!irqs_disabled());
-
+#ifdef OPLUS_FEATURE_TP_BASIC
+//Cong.Dai@psw.bsp.tp 2018/08/30 modified for stop system enter sleep before low irq handled
+	if (check_touchirq_triggered()) {
+		error = -EBUSY;
+		goto Enable_irqs;
+	}
+#endif /* OPLUS_FEATURE_TP_BASIC */
 	error = syscore_suspend();
 	if (!error) {
 		*wakeup = pm_wakeup_pending();
@@ -457,7 +468,10 @@ static int suspend_enter(suspend_state_t state, bool *wakeup)
 		}
 		syscore_resume();
 	}
-
+#ifdef OPLUS_FEATURE_TP_BASIC
+//Cong.Dai@psw.bsp.tp 2018/08/30 modified for stop system enter sleep before low irq handled
+ Enable_irqs:
+#endif /* OPLUS_FEATURE_TP_BASIC */
 	arch_suspend_enable_irqs();
 	BUG_ON(irqs_disabled());
 

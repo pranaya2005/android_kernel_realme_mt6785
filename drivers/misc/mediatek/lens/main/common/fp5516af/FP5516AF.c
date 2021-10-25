@@ -308,9 +308,9 @@ int FP5516AF_Release(struct inode *a_pstInode, struct file *a_pstFile)
     #else
         g_SR = 5;
         s4AF_WriteReg(200);
-        //msleep(20);
+        msleep(20);
         s4AF_WriteReg(100);
-        //msleep(20);
+        msleep(20);
     #endif
     }
 

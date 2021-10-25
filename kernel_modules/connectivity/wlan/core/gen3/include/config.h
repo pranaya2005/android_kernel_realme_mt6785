@@ -489,8 +489,15 @@
  * Auto Channel Selection maximun channel number
  *------------------------------------------------------------------------------
  */
+#ifndef OPLUS_BUG_COMPATIBILITY
+//kongxianghui@CONNECTIVITY.WIFI.BASE.SoftAP.773336, 2020/12/9
+//add for: set softap max 2.4G band 11 channel
 #define MAX_CHN_NUM                             39 /* CH1~CH14, CH36~CH48, CH52~CH64, CH100~CH144, CH149~CH165 */
 #define MAX_2G_BAND_CHN_NUM                     14
+#else /* OPLUS_BUG_COMPATIBILITY */
+#define MAX_CHN_NUM                             36 /* CH1~CH11, CH36~CH48, CH52~CH64, CH100~CH144, CH149~CH165 */
+#define MAX_2G_BAND_CHN_NUM                     11
+#endif /* OPLUS_BUG_COMPATIBILITY */
 #define ACS_PRINT_BUFFER_LEN                   200
 
 /*------------------------------------------------------------------------------

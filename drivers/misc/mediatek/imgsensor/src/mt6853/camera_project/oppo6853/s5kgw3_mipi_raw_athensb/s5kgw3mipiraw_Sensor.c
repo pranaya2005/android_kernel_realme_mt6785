@@ -293,7 +293,7 @@ static struct SET_PD_BLOCK_INFO_T imgsensor_pd_info =
     .i4Crop = { {0,8}, {0,8}, {0, 432}, {0, 0}, {0, 0}, {0, 8}, {400, 656}, {0, 0}, {320, 240}, {0, 0}},
 };
 
-#ifdef OPLUS_FEATURE_CAMERA_COMMON
+#ifdef VENDOR_EDIT
 /* fuxiang@Camera.Driver,2020-07-13, add for get otp info */
 #define S5KGW3_XTC_START_ADDR  0x1920
 #define S5KGW3_XTC_DATA_SIZE  2612
@@ -5863,7 +5863,7 @@ static kal_uint32 get_imgsensor_id(UINT32 *sensor_id)
                 }
                 */
                 //read_eepromData();
-                #ifdef OPLUS_FEATURE_CAMERA_COMMON
+                #ifdef VENDOR_EDIT
                 /* fuxiang@Camera.Driver,2020-07-13, add for get otp info */
                 read_4cell_from_eeprom_s5kgw3();
                 #endif /* VENDOR_EDIT */
@@ -6741,7 +6741,7 @@ static kal_uint32 feature_control(MSDK_SENSOR_FEATURE_ENUM feature_id,
         *(feature_data + 1) = imgsensor_info.min_shutter;
         break;
     case SENSOR_FEATURE_GET_OFFSET_TO_START_OF_EXPOSURE:
-        *(MUINT32 *)(uintptr_t)(*(feature_data + 1)) = 0;
+        *(MUINT32 *)(uintptr_t)(*(feature_data + 1)) = -17440000;
         break;
     case SENSOR_FEATURE_GET_SEAMLESS_SCENARIOS:
         pScenarios = (MUINT32 *)((uintptr_t)(*(feature_data+1)));
@@ -7057,7 +7057,7 @@ static kal_uint32 feature_control(MSDK_SENSOR_FEATURE_ENUM feature_id,
                     (UINT32) (*(feature_data + 1)),
                     (BOOL) (*(feature_data + 2)));
         break;
-    #ifdef OPLUS_FEATURE_CAMERA_COMMON
+    #ifdef VENDOR_EDIT
     /* fuxiang@Camera.Driver,2020-07-13, add for get otp info */
     case SENSOR_FEATURE_GET_4CELL_DATA:
         {

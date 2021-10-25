@@ -31,12 +31,6 @@
 
 #include "flashlight-core.h"
 #include "flashlight-dt.h"
-
-#ifdef OPLUS_FEATURE_CAMERA_COMMON
-#include <soc/oplus/system/oplus_project.h>
-#include <soc/oplus/system/oplus_project_oldcdt.h>
-#endif
-
 /* device tree should be defined in flashlight-dt.h */
 #ifndef MONET_DTNAME
 #define MONET_DTNAME "mediatek,flashlights_monet"
@@ -194,7 +188,7 @@ static const int *monet_current;
 static const unsigned char *monet_torch_level;
 static const unsigned char *monet_flash_level;
 static const int aw3643_current[MONET_LEVEL_NUM] = {
-	22,  46,  70,  100,  116,  140, 163, 198, 245, 304,
+	22,  46,  70,  93,  116,  140, 163, 198, 245, 304,
 	351, 398, 445, 503, 550,  597, 656, 703, 750, 796,
 	855, 902, 949, 996, 1054, 1101
 };
@@ -209,7 +203,7 @@ static const unsigned char aw3643_flash_level[MONET_LEVEL_NUM] = {
 	0x48, 0x4C, 0x50, 0x54, 0x59, 0x5D};
 
 static const int ocp81373_current[MONET_LEVEL_NUM] = {
-	24,  46,  70,  100,  116,  140, 164, 199, 246, 304,
+	24,  46,  70,  93,  116,  140, 164, 199, 246, 304,
 	351, 398, 445, 504, 551,  598, 656, 703, 750, 797,
 	856, 903, 949, 996, 1055, 1102
 };
@@ -813,7 +807,7 @@ err_node_put:
 	return -EINVAL;
 }
 
-#ifdef OPLUS_FEATURE_CAMERA_COMMON
+#ifdef ODM_WT_EDIT
 #ifdef OPPO_FLASHLIGHT_TEST
 /* Xingyu.Liu@Camera.Driver, 2019/10/10, add for [wingtech ATO factory app camera] */
 int high_cct_led_strobe_enable_part1(void)
@@ -914,7 +908,6 @@ static int monet_chip_id(void)
 }
 static int monet_i2c_probe(struct i2c_client *client, const struct i2c_device_id *id)
 {
-
 	struct monet_chip_data *chip;
 	struct monet_platform_data *pdata = client->dev.platform_data;
 	int err;
@@ -994,16 +987,16 @@ static int monet_i2c_probe(struct i2c_client *client, const struct i2c_device_id
 			if (flashlight_dev_register_by_device_id(
 						&pdata->dev_id[i],
 						&monet_ops)) {
-				pr_err("Failed to register flashlight device.\n");
+                pr_err("Failed to register flashlight device.\n");
 				err = -EFAULT;
 				goto err_free;
 			}
 	} else {
-			if (flashlight_dev_register(MONET_NAME, &monet_ops)) {
-				pr_err("Failed to register flashlight device.\n");
-				err = -EFAULT;
-				goto err_free;
-			}
+		if (flashlight_dev_register(MONET_NAME, &monet_ops)) {
+			pr_err("Failed to register flashlight device.\n");
+			err = -EFAULT;
+			goto err_free;
+		}
 	}
 
     monet_create_sysfs(client);
@@ -1030,20 +1023,18 @@ static int monet_i2c_remove(struct i2c_client *client)
 	client->dev.platform_data = NULL;
 
 	/* unregister flashlight device */
-	if (pdata && pdata->channel_num) {
+	if (pdata && pdata->channel_num)
 		for (i = 0; i < pdata->channel_num; i++)
 			flashlight_dev_unregister_by_device_id(
 					&pdata->dev_id[i]);
-	} else {
+	else
 		flashlight_dev_unregister(MONET_NAME);
-	}
 	/* flush work queue */
 	flush_work(&monet_work_ch1);
 	flush_work(&monet_work_ch2);
 
 	/* unregister flashlight operations */
 	flashlight_dev_unregister(MONET_NAME);
-
 
 	/* free resource */
 	if (chip->no_pdata)
@@ -1085,14 +1076,6 @@ static struct i2c_driver monet_i2c_driver = {
  *****************************************************************************/
 static int monet_probe(struct platform_device *dev)
 {
-
-#ifdef OPLUS_FEATURE_CAMERA_COMMON
-	if ((!is_project(19741)) && (!is_project(19742)) && (!is_project(19740)) && (!is_project(19673)) && (!is_project(19674))
-		&& (!is_project(19747)) && (!is_project(19748)) && (!is_project(19746)) && (!is_project(19677)) && (!is_project(19678))
-		&& (!is_project(19749)) && (!is_project(19600))) {
-		return -1;
-	}
-#endif
 	pr_info("Probe start.\n");
 
 	/* init pinctrl */

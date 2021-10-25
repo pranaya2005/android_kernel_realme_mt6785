@@ -76,6 +76,8 @@ typedef struct platform_driver anc_driver_t;
 #endif
 
 
+static int anc_gpio_pwr_flag = 0;
+
 static const char * const pctl_names[] = {
     "anc_reset_reset",
     "anc_reset_active",
@@ -120,9 +122,8 @@ struct anc_data {
     int irq;
     atomic_t irq_enabled;
 #endif
-#ifdef ANC_USE_POWER_GPIO
+
     int pwr_gpio;
-#endif
     int rst_gpio;
     struct mutex lock;
 
@@ -476,11 +477,11 @@ static DEVICE_ATTR(hw_reset, S_IWUSR, NULL, hw_reset_set);
 static void anc_power_onoff(struct anc_data *data, int power_onoff)
 {
     pr_info("%s: power_onoff = %d \n", __func__, power_onoff);
-#ifdef ANC_USE_POWER_GPIO
-    gpio_set_value(data->pwr_gpio, power_onoff);
-#else
-    vreg_setup(data, ANC_VREG_LDO_NAME, power_onoff);
-#endif
+    if (anc_gpio_pwr_flag == 1) {
+        gpio_set_value(data->pwr_gpio, power_onoff);
+    } else {
+        vreg_setup(data, ANC_VREG_LDO_NAME, power_onoff);
+    }
 }
 
 static void device_power_up(struct anc_data *data)
@@ -655,6 +656,12 @@ static int anc_gpio_init(struct device *dev, struct anc_data *data)
         goto exit;
     }
 
+    if (of_property_read_bool(dev->of_node, "anc,enable-via-gpio")) {
+        dev_err(dev, "%s, Using GPIO Power \n", __func__);
+        anc_gpio_pwr_flag = 1;
+    }
+
+
     rc = anc_request_named_gpio(data, "anc,gpio_rst", &data->rst_gpio);
     if (rc)
         goto exit;
@@ -669,15 +676,15 @@ static int anc_gpio_init(struct device *dev, struct anc_data *data)
         goto exit;
 #endif
 
-#ifdef ANC_USE_POWER_GPIO
-    rc = anc_request_named_gpio(data, "anc,gpio_pwr", &data->pwr_gpio);
-    if (rc)
-        goto exit;
+    if (anc_gpio_pwr_flag == 1 ) {
+        rc = anc_request_named_gpio(data, "anc,gpio_pwr", &data->pwr_gpio);
+        if (rc)
+            goto exit;
 
-    rc = gpio_direction_output(data->pwr_gpio, 0);
-    if (rc)
-        goto exit;
-#endif
+        rc = gpio_direction_output(data->pwr_gpio, 0);
+        if (rc)
+            goto exit;
+    }
 
     data->fingerprint_pinctrl = devm_pinctrl_get(dev);
     if (IS_ERR(data->fingerprint_pinctrl)) {
@@ -1012,10 +1019,6 @@ static int anc_probe(anc_device_t *pdev)
         goto exit;
     }
 
-    /*if (of_property_read_bool(dev->of_node, "anc,enable-on-boot")) {
-        dev_info(dev, "%s, Enabling hardware\n", __func__);
-        device_power_up(dev_data);
-    }*/
     dev_info(dev, "%s, Enabling hardware\n", __func__);
     device_power_up(dev_data);
 
@@ -1127,14 +1130,13 @@ static anc_driver_t anc_driver = {
 
 static int __init ancfp_init(void)
 {
+    int rc;
 
-    int rc = 0;
-
-    if (FP_JIIOV_0302 != get_fpsensor_type()){
+    if (FP_JIIOV_0302 != get_fpsensor_type()) {
         pr_err("%s, found not jiiov sensor\n", __func__);
-        return -EINVAL;
+        rc = -EINVAL;
+        return rc;
     }
-
 
 #ifdef ANC_USE_SPI
     rc = spi_register_driver(&anc_driver);
@@ -1152,7 +1154,6 @@ static int __init ancfp_init(void)
     /*Register for receiving tp touch event.
      * Must register after get_fpsensor_type filtration as only one handler can be registered.
     */
-
     opticalfp_irq_handler_register(anc_opticalfp_tp_handler);
     pr_info("register tp event handler");
 #endif

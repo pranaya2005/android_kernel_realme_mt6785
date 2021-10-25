@@ -320,9 +320,6 @@ static struct LCM_setting_table init_setting_vdo[] = {
 	{0x4E,0x01,{0x11}},
 	{0x40,0x01,{0x54}},
 	{0xFF,0x03,{0x98,0x82,0x03}},
-	{0x80, 01, {0x35}},
-	{0x81, 01, {0x35}},
-	{0x82, 01, {0x35}},
 	{0x83,0x01,{0x20}},    //12bit
 	{0x84,0x01,{0x00}},
 	{0x85,01,{0x40}},//cabc begain
@@ -330,15 +327,15 @@ static struct LCM_setting_table init_setting_vdo[] = {
 	{0x87,01,{0x10}},
 	{0xAF,01,{0x18}},
 	{0x88,01,{0xCC}},
-	{0x89, 01, {0xED}},
-	{0x8A, 01, {0xE5}},
+	{0x89,01,{0xE5}},
+	{0x8A,01,{0xED}},
 	{0x8B,01,{0xE5}},
 	{0x8C,01,{0x9B}},
 	{0x8D,01,{0xBA}},
 	{0x8E,01,{0x99}},
 	{0x8F,01,{0xA7}},
 	{0x90,01,{0xB2}},
-	{0x91, 01, {0xB2}},
+	{0x91,01,{0xC5}},
 	{0x92,01,{0xD5}},
 	{0x93,01,{0xE6}},
 	{0x94,01,{0xF6}},
@@ -348,14 +345,11 @@ static struct LCM_setting_table init_setting_vdo[] = {
 	{0x98,01,{0x93}},
 	{0x99,01,{0xA0}},
 	{0x9A,01,{0xA3}},
-	{0x9B, 01, {0xA3}},
+	{0x9B,01,{0xBD}},
 	{0x9C,01,{0xCD}},
 	{0x9D,01,{0xDD}},
 	{0x9E,01,{0xEE}},
 	{0x9F,01,{0xEE}},//cabc end
-	{0xAC, 01, {0xFA}}, /* UI mode white */
-	{0xAD, 01, {0xE0}}, /* Still mode white */
-	{0xAE, 01, {0xD3}}, /* Moving mode white */
 	{0xFF,0x03,{0x98,0x82,0x05}},
 	{0x03,0x01,{0x00}},
 	{0x04,0x01,{0xF5}},
@@ -392,7 +386,6 @@ static struct LCM_setting_table init_setting_vdo[] = {
 	{0x68,02,{0x04,0x01}},
 	{0x51,02,{0x00,0x00}},
 	{0x53,01,{0x24}},
-	{0x35, 01, {0x00}},/* Te */
 	{0x11,01,{0x00}},
 	{REGFLAG_DELAY,120,{}},
 	{0x29,01,{0x00}}, 
@@ -545,13 +538,12 @@ static void lcm_init_power(void)
 	MDELAY(3);
 	SET_LCM_VSN_PIN(1);
 }
-extern void lcd_queue_load_tp_fw(void);
-extern int tp_gesture_enable_flag(void);
+
 static void lcm_suspend_power(void)
 {
-	pr_debug("%s: tp_gesture_enable_flag = %d \n", __func__, tp_gesture_enable_flag());
-	if (0 == tp_gesture_enable_flag()) {
 	pr_debug("lcm_suspend_power\n");
+	if(!tp_gesture){
+		printk("lcm_tp_suspend_power_on\n");
 		SET_LCM_VSN_PIN(0);
 		MDELAY(2);
 		SET_LCM_VSP_PIN(0);
@@ -566,9 +558,8 @@ static void lcm_resume_power(void)
 	MDELAY(3);
 	SET_LCM_VSN_PIN(1);
 	//base voltage = 4.0 each step = 100mV; 4.0+20 * 0.1 = 6.0v;
-	if (display_bias_setting(0x14)) {
-		pr_err("fatal error: lcd gate ic setting failed \n");
-	}
+//	if ( display_bias_setting(0x14) )
+//		pr_err("fatal error: lcd gate ic setting failed \n");
 	MDELAY(5);
 }
 
@@ -580,7 +571,7 @@ static void lcm_init(void)
 	SET_RESET_PIN(1);
 
 	MDELAY(5);
-	lcd_queue_load_tp_fw();
+//	ili_resume_by_ddi();
 	MDELAY(10);
 
 	if (lcm_dsi_mode == CMD_MODE) {
@@ -607,27 +598,14 @@ static void lcm_resume(void)
 	lcm_init();
 }
 
-extern int __attribute((weak)) cabc_sun_flag;
 static void lcm_setbacklight_cmdq(void *handle, unsigned int level)
 {
-	static unsigned int level_last = 0;
-
 	bl_level[0].para_list[0] = 0x000F&(level >> 8);
 	bl_level[0].para_list[1] = 0x00FF&(level);
-	if (level_last == 0) {
-		MDELAY(16);
-		pr_err("[ HW check backlight ili9882n_txd]need delay 16ms\n");
-	}
-	if (level > 3343) {
-		cabc_sun_flag = 1;
-	} else {
-		cabc_sun_flag = 0;
-	}
+	//MDELAY(5);
 	pr_err("[ HW check backlight ili9882n_txd]level=%d,para_list[0]=%x,para_list[1]=%x\n",level,bl_level[0].para_list[0],bl_level[0].para_list[1]);
 	//push_table(handle, bl_level, sizeof(bl_level) / sizeof(struct LCM_setting_table), 1);
 	push_table_cust(handle, bl_level, sizeof(bl_level) / sizeof(struct LCM_setting_table_V3), 0);
-
-	 level_last = level;
 	//dump_stack();
 
 }
@@ -709,38 +687,6 @@ static unsigned int lcm_esd_recover(void)
 #endif
 }
 
-#ifdef OPLUS_BUG_STABILITY
-/* Hao.Liang@ODM_WT.MM.Display.LCD, 2020/7/15, add LCD dimming control */
-static struct LCM_setting_table_V3 set_gamma_enter[] = {
-	{0x39, 0xFF, 0x03, {0x98, 0x82, 0x08}},
-	{0x39, 0xE0, 0x1B, {0x55, 0x7a, 0x81, 0x88, 0x94, 0x55, 0xa2, 0xae, 0xc1, 0xd3, 0xA9, 0xf5,
-		0x16, 0x39, 0x5e, 0xea, 0x89, 0xbf, 0xe1, 0x0a, 0xFf, 0x2d, 0x58, 0x8c, 0xb8, 0x03, 0xec}},
-	{0x39, 0xE1, 0x1B, {0x55, 0x7a, 0x81, 0x88, 0x94, 0x55, 0xa2, 0xae, 0xc1, 0xd3, 0xA9, 0xf5,
-		0x16, 0x39, 0x5e, 0xea, 0x89, 0xbf, 0xe1, 0x0a, 0xFf, 0x2d, 0x58, 0x8c, 0xb8, 0x03, 0xec}},
-	{0x39, 0xFF, 0x03, {0x98, 0x82, 0x00}},
-};
-
-static struct LCM_setting_table_V3 set_gamma_exit[] = {
-	{0x39, 0xFF, 0x03, {0x98, 0x82, 0x08}},
-	{0x39, 0xE0, 0x1B, {0x00, 0x24, 0x4F, 0x74, 0xA6, 0x50, 0xD3, 0xF9, 0x26, 0x4C, 0x95, 0x8B,
-		0xBF, 0xEF, 0x1F, 0xAA, 0x51, 0x8C, 0xB1, 0xDF, 0xFF, 0x05, 0x36, 0x72, 0xA4, 0x03, 0xEC}},
-	{0x39, 0xE1, 0x1B, {0x00, 0x24, 0x4F, 0x74, 0xA6, 0x50, 0xD3, 0xF9, 0x26, 0x4C, 0x95, 0x8B,
-		0xBF, 0xEF, 0x1F, 0xAA, 0x51, 0x8C, 0xB1, 0xDF, 0xFF, 0x05, 0x36, 0x72, 0xA4, 0x03, 0xEC}},
-	{0x39, 0xFF, 0x03, {0x98, 0x82, 0x00}},
-};
-
-static void lcm_set_gamma_mode_cmdq(void *handle, unsigned int level)
-{
-	pr_err("%s [lcd] gamma_mode is %d \n", __func__, level);
-
-	if (1 == level)
-	    push_table_cust(handle, set_gamma_enter, sizeof(set_gamma_enter) / sizeof(struct LCM_setting_table_V3), 0);
-	else
-	    push_table_cust(handle, set_gamma_exit, sizeof(set_gamma_exit) / sizeof(struct LCM_setting_table_V3), 0);
-}
-
-#endif
-
 struct LCM_DRIVER ilt9882n_txd_psc_ac_hdp_dsi_vdo_lcm_drv = {
 	.name = "ilt9882n_txd_psc_ac_hdp_dsi_vdo_lcm",
 	.set_util_funcs = lcm_set_util_funcs,
@@ -755,7 +701,6 @@ struct LCM_DRIVER ilt9882n_txd_psc_ac_hdp_dsi_vdo_lcm_drv = {
 	.set_backlight_cmdq = lcm_setbacklight_cmdq,
 	//.set_cabc_cmdq = lcm_set_cabc_cmdq,
 	.set_cabc_mode_cmdq = lcm_set_cabc_cmdq,
-	.set_gamma_mode_cmdq = lcm_set_gamma_mode_cmdq,
 	.get_cabc_status = lcm_get_cabc_status,
 };
 

@@ -132,7 +132,8 @@ extern bool pmic_chrdet_status(void);
 extern int oplus_get_prop_status(void);
 extern bool oplus_chg_check_chip_is_null(void);
 extern signed int battery_get_bat_voltage(void);
-#if defined(CONFIG_OPLUS_CHARGER_MTK6771) || defined(CONFIG_OPLUS_CHARGER_MTK6769)
+#if defined(CONFIG_OPLUS_CHARGER_MTK6771) || defined(CONFIG_OPLUS_CHARGER_MTK6769) \
+	|| defined(CONFIG_OPLUS_CHARGER_MTK6768) || defined (CONFIG_OPLUS_CHARGER_MTK6769R)
 extern signed int battery_meter_get_battery_current(void);
 #endif
 

@@ -1384,6 +1384,11 @@ void kalDumpAhbDebugInfo(P_GLUE_INFO_T prGlueInfo, UINT_16 u2ChipID)
 	UINT_32 val;
 	UINT_32 u4InfraPseOffset = 0x0394;
 
+	if (prGlueInfo->rHifInfo.HifRegBaseAddr == NULL) {
+		DBGLOG(HAL, ERROR, "HifRegBaseAddr == NULL!\n");
+		return;
+	}
+
 	DBGLOG(HAL, ERROR, "HIF_DBGCR00:0x%08X HIF_DBGCR01:0x%08X\n",
 		CONNSYS_REG_READ(prGlueInfo->rHifInfo.HifRegBaseAddr,
 			CONN_HIF_DBGCR00),
@@ -1423,6 +1428,13 @@ void kalDumpAhbDebugInfo(P_GLUE_INFO_T prGlueInfo, UINT_16 u2ChipID)
 		       u4InfraPseOffset, u2ChipID);
 		break;
 	}
+
+	if ((prGlueInfo->rHifInfo.InfraRegBaseAddr == NULL)
+		|| (prGlueInfo->rHifInfo.ConnCfgRegBaseAddr == NULL)) {
+		DBGLOG(HAL, ERROR, "HifRegBaseAddr or ConnCfgRegBaseAddr is NULL!\n");
+		return;
+	}
+
 	if (u2ChipID == 0x6771) {
 		val = 0x800c;
 		CONNSYS_REG_WRITE(prGlueInfo->rHifInfo.InfraRegBaseAddr,

@@ -744,6 +744,7 @@
 #define STATUS_CODE_DESTINATION_STA_NOT_PRESENT     49	/* Destination STA is not present within this QBSS */
 #define STATUS_CODE_DESTINATION_STA_NOT_QSTA        50	/* Destination STA is not a QSTA */
 #define STATUS_CODE_ASSOC_DENIED_LARGE_LIS_INTERVAL 51	/* Association denied because the ListenInterval is too large */
+#define STATUS_INVALID_PMKID			    53	/* Invalid pairwise master key identifier (PMKID) */
 
 /* proprietary definition of reserved field of Status Code */
 #define STATUS_CODE_JOIN_FAILURE                    0xFFF0	/* Join failure */

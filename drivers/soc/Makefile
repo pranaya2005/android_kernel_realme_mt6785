@@ -53,5 +53,10 @@ obj-$(CONFIG_OPLUS_FEATURE_MIDAS) 	+= oplus/oplus_midas/
 #endif /* OPLUS_FEATURE_MIDAS */
 
 #ifdef OPLUS_FEATURE_LOWMEM_DBG
+
+#Hailong.Liu@BSP.Kernel.MM, 2020/06/17, Add for dump mem when shrink
 obj-$(CONFIG_OPLUS_FEATURE_LOWMEM_DBG)	+=  oplus/lowmem_dbg/
 #endif /* OPLUS_FEATURE_LOWMEM_DBG */
+
+#Add for NandSwap
+obj-$(CONFIG_NANDSWAP)		+= oplus/oplus_nandswap/

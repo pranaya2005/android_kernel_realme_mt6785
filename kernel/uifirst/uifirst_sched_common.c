@@ -397,11 +397,13 @@ int set_ux_task_cpu_common(struct task_struct *task, int prev_cpu, int *target_c
 
 	if (*target_cpu != prev_cpu)
 		return -1;
-
 	for_each_cpu(i, cpu_active_mask) {
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(5, 4, 0))
+		if (!cpumask_test_cpu(i, task->cpus_ptr))
+#else
 		if (!cpumask_test_cpu(i, &task->cpus_allowed))
+#endif
 			continue;
-
 		curr = cpu_rq(i)->curr;
 		if (curr && (curr->sched_class == &fair_sched_class) && (curr->prio > lowest_prio)) {
 			lowest_prio = curr->prio;
@@ -412,7 +414,7 @@ int set_ux_task_cpu_common(struct task_struct *task, int prev_cpu, int *target_c
 	return *target_cpu;
 }
 
-bool is_sf( struct task_struct *p)
+bool is_sf(struct task_struct *p)
 {
 	char sf_name[] = "surfaceflinger";
 	return p && (strcmp(p->comm, sf_name) == 0) && (p->pid == p->tgid);
@@ -420,15 +422,14 @@ bool is_sf( struct task_struct *p)
 #ifdef CONFIG_CAMERA_OPT
 inline void set_camera_opt( struct task_struct *p)
 {
-        struct task_struct *grp_leader = p->group_leader;
-
+        struct task_struct *grp_leader = p->group_leader; 
 	if (strstr(grp_leader->comm, CAMERA_PROVIDER_NAME) && strstr(p->comm, CAMERA_PROVIDER_NAME)) {
 		p->camera_opt = 1;
 		return ;
 	}
 }
-#else
-inline void set_camera_opt( struct task_struct *p)
+#else 
+inline void set_camera_opt(struct task_struct *p)
 {
 	return;
 }
@@ -475,6 +476,26 @@ static inline u64 max_vruntime(u64 max_vruntime, u64 vruntime)
 	return max_vruntime;
 }
 
+#define MALI_THREAD_NAME "mali-cmar-backe"
+#define LAUNCHER_THREAD_NAME "m.oppo.launcher"
+void sched_assist_target_comm(struct task_struct *task)
+{
+	struct task_struct *grp_leader = task->group_leader;
+
+	if (!grp_leader)
+		return;
+
+#ifndef CONFIG_OPLUS_SYSTEM_KERNEL_QCOM
+	/* mali thread only exist in mtk platform */
+	if (strstr(grp_leader->comm, LAUNCHER_THREAD_NAME) && strstr(task->comm, MALI_THREAD_NAME)) {
+		task->static_ux = 1;
+		return;
+	}
+#endif
+
+	return;
+}
+
 #ifdef CONFIG_FAIR_GROUP_SCHED
 /* An entity is a task if it doesn't "own" a runqueue */
 #define oplus_entity_is_task(se)	(!se->my_q)
@@ -486,6 +507,7 @@ void place_entity_adjust_ux_task(struct cfs_rq *cfs_rq, struct sched_entity *se,
 {
 	u64 vruntime = cfs_rq->min_vruntime;
 	unsigned long thresh = sysctl_sched_latency;
+	unsigned long launch_adjust = 0;
 	struct task_struct *se_task = NULL;
 
 	if (unlikely(!sysctl_uifirst_enabled))
@@ -494,14 +516,21 @@ void place_entity_adjust_ux_task(struct cfs_rq *cfs_rq, struct sched_entity *se,
 	if (!oplus_entity_is_task(se) || initial)
 		return;
 
+	if (sysctl_launcher_boost_enabled)
+		launch_adjust = sysctl_sched_latency;
+
 	se_task = task_of(se);
 #ifdef CONFIG_CAMERA_OPT
 	if (se_task->static_ux == 1 || (se_task->camera_opt == 1 && sysctl_camera_opt_enabled)) {
 #else
 	if (se_task->static_ux == 1) {
 #endif
+		vruntime -= 3 * thresh;
+		se->vruntime = vruntime - (launch_adjust >> 1);
+		return;
+	} else if (test_task_ux(se_task)) {
 		vruntime -= 2 * thresh;
-		se->vruntime = vruntime;
+		se->vruntime = vruntime - (launch_adjust >> 1);
 		return;
 	}
 
@@ -514,6 +543,11 @@ void place_entity_adjust_ux_task(struct cfs_rq *cfs_rq, struct sched_entity *se,
 	}
 }
 
+bool should_ux_task_skip_further_check(struct sched_entity *se)
+{
+	return oplus_entity_is_task(se) && (task_of(se)->static_ux == 1);
+}
+
 bool should_ux_preempt_wakeup(struct task_struct *wake_task, struct task_struct *curr_task)
 {
 	bool wake_ux = false;
@@ -521,7 +555,6 @@ bool should_ux_preempt_wakeup(struct task_struct *wake_task, struct task_struct 
 
 	if (!sysctl_uifirst_enabled)
 		return false;
-
 #ifdef CONFIG_CAMERA_OPT
 	wake_ux = test_task_ux(wake_task) || curr_task->camera_opt;
 	curr_ux = test_task_ux(curr_task) || curr_task->camera_opt;
@@ -529,7 +562,6 @@ bool should_ux_preempt_wakeup(struct task_struct *wake_task, struct task_struct 
 	wake_ux = test_task_ux(wake_task);
 	curr_ux = test_task_ux(curr_task);
 #endif
-
 	/* ux can preemt cfs */
 	if (wake_ux && !curr_ux)
 		return true;
@@ -543,6 +575,18 @@ bool should_ux_preempt_wakeup(struct task_struct *wake_task, struct task_struct 
 		return true;
 
 	return false;
+}
+
+bool ux_skip_sync_wakeup(struct task_struct *task, int *sync)
+{
+	bool ret = false;
+
+	if (test_dynamic_ux(task, DYNAMIC_UX_BINDER)) {
+		*sync = 0;
+		ret = true;
+	}
+
+	return ret;
 }
 
 /*
@@ -628,8 +672,7 @@ static int proc_camera_opt_open(struct inode* inode, struct file *filp)
 {
         return single_open(filp, proc_camera_opt_show, inode);
 }
-static ssize_t proc_camera_opt_read(struct file* file, char __user *buf,
-                size_t count, loff_t *ppos)
+static ssize_t proc_camera_opt_read(struct file* file, char __user *buf, size_t count, loff_t *ppos)
 {
         char buffer[128];
         struct task_struct *task = NULL;

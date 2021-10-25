@@ -14,7 +14,9 @@
 #include "oppo_foreground_io_opt.h"
 
 #define SYSTEM_APP_UID 1000
-
+#ifdef CONFIG_FG_TASK_UID
+extern bool is_fg(int uid);
+#endif /*CONFIG_FG_TASK_UID*/
 static bool is_system_uid(struct task_struct *t)
 {
 	int cur_uid;

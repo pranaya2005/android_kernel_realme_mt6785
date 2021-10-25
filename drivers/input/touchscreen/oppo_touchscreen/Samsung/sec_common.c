@@ -454,71 +454,6 @@ static const struct file_operations tp_auto_test_proc_fops = {
     .release = single_release,
 };
 
-static int calibrate_fops_read_func(struct seq_file *s, void *v)
-{
-    struct touchpanel_data *ts = s->private;
-    struct sec_proc_operations *sec_ops = (struct sec_proc_operations *)ts->private_data;
-
-    if (!sec_ops->calibrate)
-        return 0;
-
-    disable_irq_nosync(ts->irq);
-    mutex_lock(&ts->mutex);
-    if (!ts->touch_count) {
-        sec_ops->calibrate(s, ts->chip_data);
-    } else {
-        seq_printf(s, "1 error, release touch on the screen\n");
-    }
-    mutex_unlock(&ts->mutex);
-    enable_irq(ts->irq);
-
-    return 0;
-}
-
-static int proc_calibrate_fops_open(struct inode *inode, struct file *file)
-{
-    return single_open(file, calibrate_fops_read_func, PDE_DATA(inode));
-}
-
-static const struct file_operations proc_calibrate_fops = {
-    .owner = THIS_MODULE,
-    .open  = proc_calibrate_fops_open,
-    .read  = seq_read,
-    .release = single_release,
-};
-
-static int cal_status_read_func(struct seq_file *s, void *v)
-{
-    bool cal_needed = false;
-    struct touchpanel_data *ts = s->private;
-    struct sec_proc_operations *sec_ops = (struct sec_proc_operations *)ts->private_data;
-
-    if (!sec_ops->get_cal_status)
-        return 0;
-
-    mutex_lock(&ts->mutex);
-    cal_needed = sec_ops->get_cal_status(s, ts->chip_data);
-    if (cal_needed) {
-        seq_printf(s, "1 error, need do calibration\n");
-    } else {
-        seq_printf(s, "0 error, calibration data is ok\n");
-    }
-    mutex_unlock(&ts->mutex);
-
-    return 0;
-}
-
-static int proc_cal_status_fops_open(struct inode *inode, struct file *file)
-{
-    return single_open(file, cal_status_read_func, PDE_DATA(inode));
-}
-
-static const struct file_operations proc_cal_status_fops = {
-    .owner = THIS_MODULE,
-    .open  = proc_cal_status_fops_open,
-    .read  = seq_read,
-    .release = single_release,
-};
 
 static ssize_t proc_curved_control_read(struct file *file, char __user *user_buf, size_t count, loff_t *ppos)
 {
@@ -670,18 +605,6 @@ int sec_create_proc(struct touchpanel_data *ts, struct sec_proc_operations *sec_
     struct proc_dir_entry *prEntry_tmp = NULL;
     ts->private_data = sec_ops;
     prEntry_tmp = proc_create_data("baseline_test", 0666, ts->prEntry_tp, &tp_auto_test_proc_fops, ts);
-    if (prEntry_tmp == NULL) {
-        ret = -ENOMEM;
-        TPD_INFO("%s: Couldn't create proc entry, %d\n", __func__, __LINE__);
-    }
-
-    prEntry_tmp = proc_create_data("calibration", 0666, ts->prEntry_tp, &proc_calibrate_fops, ts);
-    if (prEntry_tmp == NULL) {
-        ret = -ENOMEM;
-        TPD_INFO("%s: Couldn't create proc entry, %d\n", __func__, __LINE__);
-    }
-
-    prEntry_tmp = proc_create_data("calibration_status", 0666, ts->prEntry_tp, &proc_cal_status_fops, ts);
     if (prEntry_tmp == NULL) {
         ret = -ENOMEM;
         TPD_INFO("%s: Couldn't create proc entry, %d\n", __func__, __LINE__);

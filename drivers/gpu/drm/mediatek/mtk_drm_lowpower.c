@@ -43,7 +43,11 @@ static void mtk_drm_vdo_mode_enter_idle(struct drm_crtc *crtc)
 
 	if (mtk_drm_helper_get_opt(priv->helper_opt,
 				   MTK_DRM_OPT_IDLEMGR_BY_REPAINT) &&
-	    atomic_read(&state->plane_enabled_num) > 1) {
+/* #ifdef OPLUS_BUG_STABILITY */
+/* Zepu.Zhang@MM.LCD.Display.Stability, 2020/11/23, add for bug569933 from mtk case ALPS05430722 */
+		atomic_read(&state->plane_enabled_num) > 1 &&
+			state->ccorr_ident_mode) {
+/* #endif */
 		atomic_set(&priv->idle_need_repaint, 1);
 		drm_trigger_repaint(DRM_REPAINT_FOR_IDLE, crtc->dev);
 	}

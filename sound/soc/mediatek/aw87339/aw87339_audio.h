@@ -183,7 +183,5 @@ extern unsigned char aw87339_audio_kspk(void);
 extern unsigned char aw87339_audio_drcv(void);
 extern unsigned char aw87339_audio_abrcv(void);
 extern unsigned char aw87339_audio_rcvspk(void);
-/* wuhui@Multimedia.AudioDriver 2021/01/02,Add for aw87339 prob */
-extern int aw87339_audio_probe_get(void);
 #endif /* __AW87339_H__ */
 

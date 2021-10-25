@@ -7648,7 +7648,7 @@ static kal_uint32 feature_control(MSDK_SENSOR_FEATURE_ENUM feature_id,
         break;
     #endif
     case SENSOR_FEATURE_GET_OFFSET_TO_START_OF_EXPOSURE:
-        *(MUINT32 *)(uintptr_t)(*(feature_data + 1)) = 0;
+        *(MUINT32 *)(uintptr_t)(*(feature_data + 1)) = -7415000;
         break;
     case SENSOR_FEATURE_GET_SEAMLESS_SCENARIOS:
         pScenarios = (MUINT32 *)((uintptr_t)(*(feature_data+1)));

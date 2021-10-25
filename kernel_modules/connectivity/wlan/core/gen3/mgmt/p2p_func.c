@@ -1052,7 +1052,11 @@ VOID p2pFuncStopGO(IN P_ADAPTER_T prAdapter, IN P_BSS_INFO_T prP2pBssInfo)
 
 		DBGLOG(P2P, INFO, "Re activate P2P Network.\n");
 		nicDeactivateNetwork(prAdapter, prP2pBssInfo->ucBssIndex);
-
+                #ifdef OPLUS_BUG_STABILITY
+                //kongxianghui@CONNECTIVITY.WIFI.BASE.CRASH.773336, 2020/12/9
+                //add for: release CNM channel
+                nicUpdateBss(prAdapter, prP2pBssInfo->ucBssIndex);
+                #endif /* OPLUS_BUG_STABILITY */
 		nicActivateNetwork(prAdapter, prP2pBssInfo->ucBssIndex);
 
 	} while (FALSE);
@@ -1260,6 +1264,12 @@ p2pFuncProcessBeacon(IN P_ADAPTER_T prAdapter,
 		ASSERT_BREAK((prAdapter != NULL) && (prP2pBssInfo != NULL) && (prBcnUpdateInfo != NULL));
 
 		prBcnMsduInfo = prP2pBssInfo->prBeacon;
+
+		if (prBcnMsduInfo == NULL) {
+			DBGLOG(P2P, ERROR, "prBcnMsduInfo is NULL.\n");
+			return WLAN_STATUS_FAILURE;
+		}
+
 		prBcnFrame = (P_WLAN_BEACON_FRAME_T) ((ULONG) prBcnMsduInfo->prPacket + MAC_TX_RESERVED_FIELD);
 
 		if (!pucNewBcnBody) {
@@ -1269,6 +1279,8 @@ p2pFuncProcessBeacon(IN P_ADAPTER_T prAdapter,
 			pucNewBcnBody = prBcnUpdateInfo->pucBcnBody;
 			ASSERT(u4NewBodyLen == 0);
 			u4NewBodyLen = prBcnUpdateInfo->u4BcnBodyLen;
+		} else {
+			prBcnUpdateInfo->u4BcnBodyLen = u4NewBodyLen;
 		}
 
 		pucCachedIEBuf = kalMemAlloc(MAX_IE_LENGTH, VIR_MEM_TYPE);

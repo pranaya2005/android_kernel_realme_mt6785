@@ -669,6 +669,10 @@ uint32_t assocSendReAssocReqFrame(IN struct ADAPTER *prAdapter,
 					       &u2PayloadLen);
 
 	/* 4 <3> Update information of MSDU_INFO_T */
+	nicTxSetPktLifeTime(prMsduInfo, 100);
+	nicTxSetPktRetryLimit(prMsduInfo, TX_DESC_TX_COUNT_NO_LIMIT);
+	nicTxSetForceRts(prMsduInfo, TRUE);
+
 	TX_SET_MMPDU(prAdapter,
 		     prMsduInfo,
 		     prStaRec->ucBssIndex,
@@ -1266,6 +1270,10 @@ uint32_t assocSendDisAssocFrame(IN struct ADAPTER *prAdapter,
 	u2PayloadLen = REASON_CODE_FIELD_LEN;
 
 	/* 4 <3> Update information of MSDU_INFO_T */
+	nicTxSetPktLifeTime(prMsduInfo, 100);
+	nicTxSetPktRetryLimit(prMsduInfo, TX_DESC_TX_COUNT_NO_LIMIT);
+	nicTxSetForceRts(prMsduInfo, TRUE);
+
 	TX_SET_MMPDU(prAdapter,
 		     prMsduInfo,
 		     prStaRec->ucBssIndex,
@@ -1961,6 +1969,10 @@ uint32_t assocSendReAssocRespFrame(IN struct ADAPTER *prAdapter,
 			&u2PayloadLen);
 
 	/* 4 <3> Update information of MSDU_INFO_T */
+	nicTxSetPktLifeTime(prMsduInfo, 100);
+	nicTxSetPktRetryLimit(prMsduInfo, TX_DESC_TX_COUNT_NO_LIMIT);
+	nicTxSetForceRts(prMsduInfo, TRUE);
+
 	TX_SET_MMPDU(prAdapter,
 		     prMsduInfo,
 		     prStaRec->ucBssIndex,
@@ -1985,6 +1997,13 @@ uint32_t assocSendReAssocRespFrame(IN struct ADAPTER *prAdapter,
 			txAssocRespIETable[i].pfnAppendIE(prAdapter,
 							  prMsduInfo);
 
+	}
+
+	DBGLOG(AAA, TRACE, "Dump assoc response frame\n");
+
+	if (aucDebugModule[DBG_P2P_IDX] & DBG_CLASS_TRACE) {
+		dumpMemory8((uint8_t *) prMsduInfo->prPacket,
+			(uint32_t) prMsduInfo->u2FrameLength);
 	}
 
 #if CFG_SUPPORT_WFD

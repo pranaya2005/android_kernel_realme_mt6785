@@ -70,6 +70,19 @@ extern struct pwr_ctrl pwrctrl_bus26m;
 extern struct pwr_ctrl pwrctrl_syspll;
 extern struct pwr_ctrl pwrctrl_dram;
 
+struct md_sleep_status {
+	u32 slp_sleep_info1;
+	u32 slp_cnt_high;
+	u32 slp_cnt_low;
+	u32 slp_cnt_reserve1;
+	u32 slp_cnt_reserve2;
+	u32 slp_sleep_time_high;
+	u32 slp_sleep_time_low;
+	u32 slp_sleep_time_reserve1;
+	u32 slp_sleep_time_reserve2;
+	u32 slp_sleep_info2;
+};
+
 /* SMC secure magic number */
 #define SPM_LP_SMC_MAGIC	0xDAF10000
 
@@ -191,6 +204,8 @@ void __spm_set_pwrctrl_pcm_flags(struct pwr_ctrl *pwrctrl, u32 flags);
 void __spm_set_pwrctrl_pcm_flags1(struct pwr_ctrl *pwrctrl, u32 flags);
 void __spm_sync_pcm_flags(struct pwr_ctrl *pwrctrl);
 void __spm_get_wakeup_status(struct wake_status *wakesta);
+void __spm_save_ap_sleep_info(struct wake_status *wakesta);
+void __spm_save_26m_sleep_info(void);
 unsigned int __spm_output_wake_reason(
 	const struct wake_status *wakesta, bool suspend, const char *scenario);
 unsigned int __spm_get_wake_period(int pwake_time, unsigned int last_wr);
@@ -321,5 +336,9 @@ int is_spm_enabled(void);
  ***********************************************************/
 extern struct spm_lp_scen __spm_suspend;
 
+extern u64 spm_26M_off_count;
+extern u64 spm_26M_off_duration;
+extern u64 ap_pd_count;
+extern u64 ap_slp_duration;
 
 #endif /* __MTK_SPM_INTERNAL_H__ */

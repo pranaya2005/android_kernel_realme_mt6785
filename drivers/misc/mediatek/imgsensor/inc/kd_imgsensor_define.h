@@ -102,6 +102,16 @@ enum MSDK_SCENARIO_ID_ENUM {
 	MSDK_SCENARIO_ID_CUSTOM3,
 	MSDK_SCENARIO_ID_CUSTOM4,
 	MSDK_SCENARIO_ID_CUSTOM5,
+        MSDK_SCENARIO_ID_CUSTOM6,
+        MSDK_SCENARIO_ID_CUSTOM7,
+        MSDK_SCENARIO_ID_CUSTOM8,
+        MSDK_SCENARIO_ID_CUSTOM9,
+        MSDK_SCENARIO_ID_CUSTOM10,
+        MSDK_SCENARIO_ID_CUSTOM11,
+        MSDK_SCENARIO_ID_CUSTOM12,
+        MSDK_SCENARIO_ID_CUSTOM13,
+        MSDK_SCENARIO_ID_CUSTOM14,
+        MSDK_SCENARIO_ID_CUSTOM15,
 	MSDK_SCENARIO_ID_MAX,
 
 	/* Legacy scenario */
@@ -459,6 +469,26 @@ struct ACDK_SENSOR_RESOLUTION_INFO_STRUCT {
 	MUINT16 SensorCustom4Height;
 	MUINT16 SensorCustom5Width;
 	MUINT16 SensorCustom5Height;
+	MUINT16 SensorCustom6Width;
+	MUINT16 SensorCustom6Height;
+	MUINT16 SensorCustom7Width;
+	MUINT16 SensorCustom7Height;
+	MUINT16 SensorCustom8Width;
+	MUINT16 SensorCustom8Height;
+	MUINT16 SensorCustom9Width;
+	MUINT16 SensorCustom9Height;
+	MUINT16 SensorCustom10Width;
+	MUINT16 SensorCustom10Height;
+	MUINT16 SensorCustom11Width;
+	MUINT16 SensorCustom11Height;
+	MUINT16 SensorCustom12Width;
+	MUINT16 SensorCustom12Height;
+	MUINT16 SensorCustom13Width;
+	MUINT16 SensorCustom13Height;
+	MUINT16 SensorCustom14Width;
+	MUINT16 SensorCustom14Height;
+	MUINT16 SensorCustom15Width;
+	MUINT16 SensorCustom15Height;
 	MUINT16 Sensor3DPreviewWidth;
 	MUINT16 Sensor3DPreviewHeight;
 	MUINT16 Sensor3DFullWidth;
@@ -563,6 +593,16 @@ struct ACDK_SENSOR_INFO_STRUCT {
 	MUINT32 Custom3DelayFrame;
 	MUINT32 Custom4DelayFrame;
 	MUINT32 Custom5DelayFrame;
+	MUINT32 Custom6DelayFrame;
+	MUINT32 Custom7DelayFrame;
+	MUINT32 Custom8DelayFrame;
+	MUINT32 Custom9DelayFrame;
+	MUINT32 Custom10DelayFrame;
+	MUINT32 Custom11DelayFrame;
+	MUINT32 Custom12DelayFrame;
+	MUINT32 Custom13DelayFrame;
+	MUINT32 Custom14DelayFrame;
+	MUINT32 Custom15DelayFrame;
 	MUINT16 SensorGrabStartX;
 	MUINT16 SensorGrabStartY;
 	MUINT16 SensorGrabStartX_PRV;
@@ -585,6 +625,26 @@ struct ACDK_SENSOR_INFO_STRUCT {
 	MUINT16 SensorGrabStartY_CST4;
 	MUINT16 SensorGrabStartX_CST5;
 	MUINT16 SensorGrabStartY_CST5;
+	MUINT16 SensorGrabStartX_CST6;
+	MUINT16 SensorGrabStartY_CST6;
+	MUINT16 SensorGrabStartX_CST7;
+	MUINT16 SensorGrabStartY_CST7;
+	MUINT16 SensorGrabStartX_CST8;
+	MUINT16 SensorGrabStartY_CST8;
+	MUINT16 SensorGrabStartX_CST9;
+	MUINT16 SensorGrabStartY_CST9;
+	MUINT16 SensorGrabStartX_CST10;
+	MUINT16 SensorGrabStartY_CST10;
+	MUINT16 SensorGrabStartX_CST11;
+	MUINT16 SensorGrabStartY_CST11;
+	MUINT16 SensorGrabStartX_CST12;
+	MUINT16 SensorGrabStartY_CST12;
+	MUINT16 SensorGrabStartX_CST13;
+	MUINT16 SensorGrabStartY_CST13;
+	MUINT16 SensorGrabStartX_CST14;
+	MUINT16 SensorGrabStartY_CST14;
+	MUINT16 SensorGrabStartX_CST15;
+	MUINT16 SensorGrabStartY_CST15;
 	MUINT16 SensorDrivingCurrent;
 	MUINT8 SensorMasterClockSwitch;
 
@@ -732,6 +792,16 @@ enum ACDK_SENSOR_OPERATION_MODE_ENUM {
 	ACDK_SENSOR_OPERATION_MODE_CUSTOM3,
 	ACDK_SENSOR_OPERATION_MODE_CUSTOM4,
 	ACDK_SENSOR_OPERATION_MODE_CUSTOM5,
+	ACDK_SENSOR_OPERATION_MODE_CUSTOM6,
+	ACDK_SENSOR_OPERATION_MODE_CUSTOM7,
+	ACDK_SENSOR_OPERATION_MODE_CUSTOM8,
+	ACDK_SENSOR_OPERATION_MODE_CUSTOM9,
+	ACDK_SENSOR_OPERATION_MODE_CUSTOM10,
+	ACDK_SENSOR_OPERATION_MODE_CUSTOM11,
+	ACDK_SENSOR_OPERATION_MODE_CUSTOM12,
+	ACDK_SENSOR_OPERATION_MODE_CUSTOM13,
+	ACDK_SENSOR_OPERATION_MODE_CUSTOM14,
+	ACDK_SENSOR_OPERATION_MODE_CUSTOM15,
 	ACDK_SENSOR_OPERATION_MODE_MAX
 };
 
@@ -1143,8 +1213,14 @@ struct IMAGESENSOR_GET_SUPPORTED_ISP_CLK {
 #define CAMERA_EEPPROM_COMDATA_LENGTH         (40)
 /*pankaj.kumar@Camera.Driver 20200918 adding for 18531*/
 #define GC5035_STEREO_START_ADDR              (0x1600)
+/*shuzhang.liu@Camera.Driver 2020/11/16 adding for 18531*/
+#define S5KGM1_STEREO_START_ADDR              (0x1640)
 /*Henry.Chang@Cam.Drv add for 20131/20255 dualcali write eeprom 20200810*/
 #define OV64B_STEREO_START_ADDR               (0x2000)
+#define OV64B_STEREO_START_ADDR_20730         (0x2000)
+#define OV8856_STEREO_START_ADDR_20730        (0x3A00)
+#define CALI_DATA_MASTER_LENGTH_20730         (1689)
+#define CALI_DATA_SLAVE_LENGTH_20730          (1413)
 #define IMX319_STEREO_START_ADDR              (0x2600)
 #define HI846_STEREO_START_ADDR               (0x1E80)
 #define OV48B_STEREO_START_ADDR               (0x2840)
@@ -1169,46 +1245,127 @@ typedef struct {
   } ACDK_SENSOR_ENGMODE_STEREO_STRUCT, *PACDK_SENSOR_ENGMODE_STEREO_STRUCT;
 #endif
 
+#ifdef OPLUS_FEATURE_CAMERA_COMMON
+//Niepengfei@Camera.Drv, 2020.11.12, dd for dualcali
+#define HI846_STEREO_START_ADDR_19131         (0x1A48)
+#define IMGSENSOR_MODULE_SN_LENGTH            (16)
+#define AESYNC_DATA_LENGTH_SINGLE             (36)
+#define AESYNC_DATA_LENGTH_MASTER             (35)
+#define AESYNC_DATA_LENGTH_WIDE               (35)
+#define AESYNC_DATA_LENGTH_TELE               (23)
+#define DUALCAM_CALI_DATA_LENGTH_QCOM         (1561 + 128)
+#define DUALCAM_CALI_HEADER_DATA_LENGTH       (40)
+#define DUALCAM_CALI_EXTERNALCOEF_DATA_LENGTH (24)
+#define DUALCAM_CALI_INTERNALCOEF_DATA_LENGTH (1517)
+#define DUALCAM_CALI_TAIL_DATA_LENGTH         (4)
+#define DUALCAM_CALI_EEPROM_DATA_LENGTH     (1589)  //1561+20+8
+#define DUALCAM_CALI_DATA_DACCODE_OFFSET      (43)
+#define CALI_DATA_MASTER_LENGTH_8ALIGN        (1560)
+#define CALI_DATA_MASTER_LENGTH_QCOM_8ALIGN   (1560+128)
+#define CALI_DATA_SLAVE_LENGTH_8ALIGN         (1552)
+#define CALI_DATA_SLAVE_TELE_LENGTH_8ALIGN    (896)
+#define CAMERA_EEPROM_MAIN_LENGTH             (3164)
+#define CAMERA_EEPROM_NORMAL_LENGTH           (1596)
+#define CAMERA_EEPROM_NORMAL_LENGTH_QCOM      (1596+128)
+#define CAMERA_EEPROM_TELE_LENGTH             (924)
+#define EEPROM_WRITE_FUNCTION_NUM (3)
+#define WRITE_DATA_MAX_LENGTH     (16)
+#define REAR__PORTRAIT_CALIMODE           (1)
+#define MAIN_AND_WIDE_CALIMODE            (11)
+#define MAIN_AND_TELE_CALIMODE            (12)
+#define FRONT_PORTRAIT_MODE               (10)
+#define WRITE_EEPROM_AE_SYNC_MASTER       (14)
+#define WRITE_EEPROM_AE_SYNC_WIDE         (15)
+#define WRITE_EEPROM_AE_SYNC_TELE         (16)
+#define SENSOR_DEV_MAIN4_IDX              (0x20)
+#define NORMAL_STEREO_CALIDATA_PATH       "mnt/vendor/persist/camera/dual_calibration/stereoParams.bin"
+#define NORMAL_STEREO_AFTERSALE_PATH      "mnt/vendor/persist/camera/stereoParams_aftersale.bin"
+#define TRICAM_MW_STEREO_CALIDATA_PATH    "mnt/vendor/persist/camera/mwStereoParams.bin"
+#define TRICAM_MW_STEREO_AFTERSALE_PATH   "mnt/vendor/persist/camera/mwStereoParams_aftersale.bin"
+#define TRICAM_MT_STEREO_CALIDATA_PATH    "mnt/vendor/persist/camera/mtStereoParams.bin"
+#define TRICAM_MT_STEREO_AFTERSALE_PATH   "mnt/vendor/persist/camera/mtStereoParams_aftersale.bin"
+#define FRONT_STEREO_CALIDATA_PATH        "mnt/vendor/persist/camera/front_dual_calibration/stereoParams.bin"
+#define FRONT_STEREO_AFTERSALE_PATH       "mnt/vendor/persist/camera/frontStereoParams_aftersale.bin"
+#define MAIN_AESYNC_CALIDATA_PATH         "mnt/vendor/persist/camera/master.bin"
+#define WIDE_AESYNC_CALIDATA_PATH         "mnt/vendor/persist/camera/wide.bin"
+#define TELE_AESYNC_CALIDATA_PATH         "mnt/vendor/persist/camera/tele.bin"
+#define NORMAL_AFCODE_AFTERSALEDATA_PATH  "/mnt/vendor/persist/camera/DAC_code.bin"
+#define TRICAM_MW_AFCODE_AFTERSALEDATA_PATH  "/mnt/vendor/persist/camera/mwDAC_code.bin"
+#define TRICAM_MT_AFCODE_AFTERSALEDATA_PATH  "/mnt/vendor/persist/camera/mtDAC_code.bin"
+#define FRONT_AFCODE_AFTERSALEDATA_PATH      "/mnt/vendor/persist/camera/frontDAC_code.bin"
+enum ACDK_WRITE_EEPROM_RETURN_ENUM{
+  /* Normal Handle enum */
+  ENGMODE_EEPROMINFO_HANDLE_SCUESS                = 0x0,
+  ENGMODE_EEPROMINFO_HANDLE_FAILED,
+  ENGMODE_WRITE_EEPROM_SCUESS,                   /* Write eep scuess */
+  ENGMODE_WRITE_EEPROM_FAILED,                   /* Write eep failed */
+  ENGMODE_WRITE_EEPROM_INVALIDINFO,              /* Invalid Info */
+
+  /* Normal Dualcam enum */
+  ENGMODE_WRITE_EEPROM_DUALCAM_FRONT  = FRONT_PORTRAIT_MODE, /*FrontDualCam*/
+  ENGMODE_WRITE_EEPROM_DUALCAM_REAR   = REAR__PORTRAIT_CALIMODE, /*RearDualCam*/
+
+  /* Tricam enum */
+  ENGMODE_WRITE_EEPROM_TRICAM_M       = MAIN_AND_WIDE_CALIMODE, /*TriCam_MW*/
+  ENGMODE_WRITE_EEPROM_TRICAM_MT      = MAIN_AND_TELE_CALIMODE, /*TriCam_MT*/
+
+  /* AESync enum */
+  ENGMODE_WRITE_EEPROM_AESYNC_MASTER  = WRITE_EEPROM_AE_SYNC_MASTER, /*Aesync_Master*/
+  ENGMODE_WRITE_EEPROM_AESYNC_WIDE,                /*Aesync_Wide*/
+  ENGMODE_WRITE_EEPROM_AESYNC_TELE,                /*Aesync_Tele*/
+
+  ENGMODE_WRITE_EEPROM_ENUM_MAX
+};
+typedef struct {
+        MINT32 i4SensorIdx[2];
+        MINT32 i4SensorDev[2];
+        MINT32 i4SensorID[2];
+        MINT32 i4WriteOtp_Addr[2];
+        MINT32 i4WriteOtp_DataLens[2];
+        MUINT8 uData[DUALCAM_CALI_DATA_LENGTH_TOTAL_QCOM];
+        MUINT8 uDataAesync[DUALCAM_CALI_DATA_LENGTH_TOTAL_QCOM];
+}DUALCAMCALI_WRITEEEPROM_STRUCT, *PDUALCAMCALI_WRITEEEPROM_STRUCT;
+#endif
+
 #ifdef CONFIG_COMPAT
 
 struct COMPAT_IMGSENSOR_GET_CONFIG_INFO_STRUCT {
-	MUINT32 SensorId;
-	enum MSDK_SCENARIO_ID_ENUM ScenarioId;
-	compat_uptr_t pInfo;
-	compat_uptr_t pConfig;
+        MUINT32 SensorId;
+        enum MSDK_SCENARIO_ID_ENUM ScenarioId;
+        compat_uptr_t pInfo;
+        compat_uptr_t pConfig;
 };
 
 /* Redifne structures for compat_ioctl */
 struct COMPAT_ACDK_SENSOR_GETINFO_STRUCT {
-	enum MSDK_SCENARIO_ID_ENUM ScenarioId[KDIMGSENSOR_MAX_INVOKE_DRIVERS];
-	compat_uptr_t pInfo[KDIMGSENSOR_MAX_INVOKE_DRIVERS];
-	compat_uptr_t pConfig[KDIMGSENSOR_MAX_INVOKE_DRIVERS];
+        enum MSDK_SCENARIO_ID_ENUM ScenarioId[KDIMGSENSOR_MAX_INVOKE_DRIVERS];
+        compat_uptr_t pInfo[KDIMGSENSOR_MAX_INVOKE_DRIVERS];
+        compat_uptr_t pConfig[KDIMGSENSOR_MAX_INVOKE_DRIVERS];
 };
 
 struct COMPAT_IMAGESENSOR_GETINFO_STRUCT {
-	MUINT32 SensorId;
-	compat_uptr_t pInfo;
-	compat_uptr_t pSensorResolution;
+        MUINT32 SensorId;
+        compat_uptr_t pInfo;
+        compat_uptr_t pSensorResolution;
 };
 
 struct COMPAT_ACDK_SENSOR_FEATURECONTROL_STRUCT {
-	MUINT32 InvokeCamera;
-	enum ACDK_SENSOR_FEATURE_ENUM FeatureId;
-	compat_uptr_t pFeaturePara;
-	compat_uptr_t pFeatureParaLen;
+        MUINT32 InvokeCamera;
+        enum ACDK_SENSOR_FEATURE_ENUM FeatureId;
+        compat_uptr_t pFeaturePara;
+        compat_uptr_t pFeatureParaLen;
 };
 
 struct COMPAT_ACDK_SENSOR_CONTROL_STRUCT {
-	MUINT32 InvokeCamera;
-	enum MSDK_SCENARIO_ID_ENUM ScenarioId;
-	compat_uptr_t pImageWindow;
-	compat_uptr_t pSensorConfigData;
+        MUINT32 InvokeCamera;
+        enum MSDK_SCENARIO_ID_ENUM ScenarioId;
+        compat_uptr_t pImageWindow;
+        compat_uptr_t pSensorConfigData;
 };
 
 struct COMPAT_ACDK_SENSOR_PRESOLUTION_STRUCT {
-	compat_uptr_t pResolution[KDIMGSENSOR_MAX_INVOKE_DRIVERS];
+        compat_uptr_t pResolution[KDIMGSENSOR_MAX_INVOKE_DRIVERS];
 };
-
 #endif
 
 

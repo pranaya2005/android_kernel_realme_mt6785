@@ -698,8 +698,6 @@ int set_sched_boost(unsigned int val)
 
 	if (sched_boost_type == val)
 		return 0;
-	if (val == SCHED_ALL_BOOST)
-		return 0;
 	mutex_lock(&sched_boost_mutex);
 	/* back to original setting*/
 	if (sched_boost_type == SCHED_ALL_BOOST)

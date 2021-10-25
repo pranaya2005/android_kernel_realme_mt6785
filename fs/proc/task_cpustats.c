@@ -6,7 +6,6 @@
 #include <linux/seq_file.h>
 #include <linux/sched/topology.h>
 #include <linux/sched/energy.h>
-
 #include "../../drivers/misc/mediatek/base/power/include/mtk_upower.h"
 
 /* FIXME get max_pid on the runtime.*/
@@ -221,5 +220,4 @@ static int __init proc_task_cpustat_init(void)
 }
 fs_initcall(proc_task_cpustat_init);
 #endif
-
 

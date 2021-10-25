@@ -68,6 +68,9 @@
 #define NETLINK_OPLUS_APPS_MONITOR  35      /* Apps monitor NETLINK SOCK */
 //#endif /* OPLUS_FEATURE_APP_MONITOR */
 
+/*#Zhao.Pan@MULTIMEDIA.AUDIODRIVER.FEATURE.FEEDBACK, 2020.10.28, add for multimedia kevent*/
+/* #define OPLUS_NETLINK_MM_KEVENT 41  (defined in oplus_mm_kevent.h file) */
+
 //#define MAX_LINKS 32
 #define MAX_LINKS 42
 

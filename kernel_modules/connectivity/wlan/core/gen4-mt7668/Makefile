@@ -71,17 +71,19 @@ else
     ccflags-y += -DCFG_SUPPORT_AEE=0
     $(info DCFG_SUPPORT_AEE=0)
 endif
-
+CONFIG_MTK_WPA3_SUPPORT=y
 ifeq ($(CONFIG_MTK_WPA3_SUPPORT), y)
     ccflags-y += -DCFG_SUPPORT_CFG80211_AUTH=1
     ccflags-y += -DCFG_SUPPORT_SAE=1
     ccflags-y += -DCFG_SUPPORT_OWE=1
     ccflags-y += -DCFG_SUPPORT_SUITB=1
+    ccflags-y += -DCFG_SUPPORT_CFG80211_QUEUE=1
 else
     ccflags-y += -DCFG_SUPPORT_CFG80211_AUTH=0
     ccflags-y += -DCFG_SUPPORT_SAE=0
     ccflags-y += -DCFG_SUPPORT_OWE=0
     ccflags-y += -DCFG_SUPPORT_SUITB=0
+    ccflags-y += -DCFG_SUPPORT_CFG80211_QUEUE=0
 endif
 
 # Disable ASSERT() for user load, enable for others
@@ -287,7 +289,9 @@ MGMT_OBJS += $(MGMT_DIR)wapi.o
 
 ifeq ($(CONFIG_MTK_COMBO_WIFI_HIF), sdio)
 HIF_OBJS :=  $(HIF_DIR)arm.o \
-             $(HIF_DIR)sdio.o
+             $(HIF_DIR)sdio.o \
+             $(HIF_DIR)sdio_test_driver_core.o \
+             $(HIF_DIR)sdio_test_driver_ops.o
 else ifeq ($(CONFIG_MTK_COMBO_WIFI_HIF), pcie)
 HIF_OBJS :=  $(HIF_DIR)arm.o \
              $(HIF_DIR)pcie.o

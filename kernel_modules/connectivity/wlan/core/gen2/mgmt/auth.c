@@ -731,6 +731,9 @@ authComposeDeauthFrameHeaderAndFF(IN PUINT_8 pucBuffer,
 	P_WLAN_DEAUTH_FRAME_T prDeauthFrame;
 	UINT_16 u2FrameCtrl;
 
+	if (!aucBssid)
+		return;
+
 	prDeauthFrame = (P_WLAN_DEAUTH_FRAME_T) pucBuffer;
 
 	/* 4 <1> Compose the frame header of the Deauthentication frame. */

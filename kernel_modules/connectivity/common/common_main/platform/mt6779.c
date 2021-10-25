@@ -1977,14 +1977,11 @@ static VOID consys_ic_clock_fail_dump(VOID)
 
 static INT32 consys_is_connsys_reg(UINT32 addr)
 {
-	if (addr > 0x18000000 && addr < 0x180FFFFF) {
-		if (addr >= 0x18007000 && addr <= 0x18007FFF)
-			return 0;
+    if (addr > 0x18000000 && addr < 0x180FFFFF)
 
-		return 1;
-	}
+        return 1;
 
-	return 0;
+    return 0;
 }
 
 static INT32 consys_is_host_csr(SIZE_T addr)

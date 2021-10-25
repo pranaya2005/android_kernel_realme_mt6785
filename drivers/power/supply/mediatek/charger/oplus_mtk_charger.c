@@ -235,7 +235,7 @@ void charger_log_flash(const char *fmt, ...)
 
 void _wake_up_charger(struct charger_manager *info)
 {
-#ifdef CONFIG_OPLUS_CHARGER_MTK6769
+#if defined (CONFIG_OPLUS_CHARGER_MTK6769) || defined (CONFIG_OPLUS_CHARGER_MTK6768) || defined (CONFIG_OPLUS_CHARGER_MTK6769R)
 /* Junbo.Guo@ODM_WT.BSP.CHG.Basic, 20191109,Add for release charger wakelock */
 	return;
 #else
@@ -427,7 +427,7 @@ int charger_manager_enable_charging(struct charger_consumer *consumer,
 /* Jianchao.Shi@BSP.CHG.Basic, 2019/06/10, sjc Modify for charging */
 	return -EBUSY;
 #endif
-#ifdef CONFIG_OPLUS_CHARGER_MTK6769
+#if defined (CONFIG_OPLUS_CHARGER_MTK6769) || defined (CONFIG_OPLUS_CHARGER_MTK6768) || defined (CONFIG_OPLUS_CHARGER_MTK6769R)
 	/*Sidong.Zhao@ODM_WT.BSP.CHG 2019/11/4,forbidden use*/
 		return -EBUSY;
 #endif /*CONFIG_OPLUS_CHARGER_MTK6769*/
@@ -447,7 +447,7 @@ int charger_manager_set_input_current_limit(struct charger_consumer *consumer,
 /* Jianchao.Shi@BSP.CHG.Basic, 2019/06/10, sjc Modify for charging */
 	return -EBUSY;
 #endif
-#ifdef CONFIG_OPLUS_CHARGER_MTK6769
+#if defined (CONFIG_OPLUS_CHARGER_MTK6769) || defined (CONFIG_OPLUS_CHARGER_MTK6768) || defined (CONFIG_OPLUS_CHARGER_MTK6769R)
 /*Sidong.Zhao@ODM_WT.BSP.CHG 2019/11/4,forbidden use*/
 	return -EBUSY;
 #endif /*CONFIG_OPLUS_CHARGER_MTK6769*/
@@ -490,7 +490,7 @@ int charger_manager_set_charging_current_limit(
 /* Jianchao.Shi@BSP.CHG.Basic, 2019/06/10, sjc Modify for charging */
 	return -EBUSY;
 #endif
-#ifdef CONFIG_OPLUS_CHARGER_MTK6769
+#if defined (CONFIG_OPLUS_CHARGER_MTK6769) || defined (CONFIG_OPLUS_CHARGER_MTK6768) || defined (CONFIG_OPLUS_CHARGER_MTK6769R)
 	/*Sidong.Zhao@ODM_WT.BSP.CHG 2019/11/4,forbidden use*/
 		return -EBUSY;
 #endif /*CONFIG_OPLUS_CHARGER_MTK6769*/
@@ -524,7 +524,7 @@ int charger_manager_get_charger_temperature(struct charger_consumer *consumer,
 /* Jianchao.Shi@BSP.CHG.Basic, 2019/06/10, sjc Modify for charging */
 	return -EBUSY;
 #endif
-#ifdef CONFIG_OPLUS_CHARGER_MTK6769
+#if defined (CONFIG_OPLUS_CHARGER_MTK6769) || defined (CONFIG_OPLUS_CHARGER_MTK6768) || defined (CONFIG_OPLUS_CHARGER_MTK6769R)
 	/*Sidong.Zhao@ODM_WT.BSP.CHG 2019/11/4,forbidden use*/
 		return -EBUSY;
 #endif /*CONFIG_OPLUS_CHARGER_MTK6769*/
@@ -1266,7 +1266,7 @@ int charger_psy_event(struct notifier_block *nb, unsigned long event, void *v)
 /* Jianchao.Shi@BSP.CHG.Basic, 2019/07/25, sjc Modify for charging */
 void oplus_wake_up_usbtemp_thread(void);
 #endif
-#ifdef CONFIG_OPLUS_CHARGER_MTK6769
+#if defined (CONFIG_OPLUS_CHARGER_MTK6769) || defined (CONFIG_OPLUS_CHARGER_MTK6768) || defined (CONFIG_OPLUS_CHARGER_MTK6769R)
 /*Shouli.Wang@ODM_WT.BSP.CHG 2019/12/05, add for wake usbtemp thread*/
 void oplus_wake_up_usbtemp_thread(void);
 #endif /*CONFIG_OPLUS_CHARGER_MTK6769*/
@@ -1295,7 +1295,7 @@ void mtk_charger_int_handler(void)
 		mutex_unlock(&pinfo->cable_out_lock);
 		charger_manager_notifier(pinfo, CHARGER_NOTIFY_STOP_CHARGING);
 	} else{
-#ifdef CONFIG_OPLUS_CHARGER_MTK6769
+#if defined (CONFIG_OPLUS_CHARGER_MTK6769) || defined (CONFIG_OPLUS_CHARGER_MTK6768) || defined (CONFIG_OPLUS_CHARGER_MTK6769R)
 /*Shouli.Wang@ODM_WT.BSP.CHG 2019/12/05, add for wake usbtemp thread*/
 		oplus_wake_up_usbtemp_thread();
 #endif /*CONFIG_OPLUS_CHARGER_MTK6769*/
@@ -1864,7 +1864,7 @@ static int charger_routine_thread(void *arg)
 }
 #endif /* VENDOR_EDIT && !CONFIG_OPLUS_CHARGER_MT6370_TYPEC */
 
-#ifdef CONFIG_OPLUS_CHARGER_MTK6769
+#if defined (CONFIG_OPLUS_CHARGER_MTK6769) || defined (CONFIG_OPLUS_CHARGER_MTK6768) || defined (CONFIG_OPLUS_CHARGER_MTK6769R)
 /*Sidong.Zhao@ODM_WT.BSP.CHG 2019/11/4,for quick charge*/
 static int mtk_charger_parse_dt(struct charger_manager *info,
 				struct device *dev)
@@ -4470,6 +4470,22 @@ static void oplus_mt_power_off(void)
 	}
 }
 
+int oplus_chg_get_charger_subtype(void)
+{
+	if (!pinfo)
+		return CHARGER_SUBTYPE_DEFAULT;
+
+	if (pinfo->pd_type == MTK_PD_CONNECT_PE_READY_SNK ||
+		pinfo->pd_type == MTK_PD_CONNECT_PE_READY_SNK_PD30 ||
+		pinfo->pd_type == MTK_PD_CONNECT_PE_READY_SNK_APDO)
+		return CHARGER_SUBTYPE_PD;
+#ifdef CONFIG_OPLUS_HVDCP_SUPPORT
+	if (mt6360_get_hvdcp_type() == POWER_SUPPLY_TYPE_USB_HVDCP)
+		return CHARGER_SUBTYPE_QC;
+#endif
+	return CHARGER_SUBTYPE_DEFAULT;
+}
+
 #ifdef CONFIG_OPLUS_SHORT_C_BATT_CHECK
 /* This function is getting the dynamic aicl result/input limited in mA.
  * If charger was suspended, it must return 0(mA).
@@ -4543,7 +4559,7 @@ close_time:
 //====================================================================//
 #endif /* VENDOR_EDIT && CONFIG_OPLUS_CHARGER_MT6370_TYPEC */
 
-#ifdef CONFIG_OPLUS_CHARGER_MTK6769
+#if defined (CONFIG_OPLUS_CHARGER_MTK6769) || defined (CONFIG_OPLUS_CHARGER_MTK6768) || defined (CONFIG_OPLUS_CHARGER_MTK6769R)
 /*Shouli.Wang@ODM_WT.BSP.CHG 2019/11/11, add for typec_cc_orientation node*/
 int oplus_get_typec_cc_orientation(void)
 {
@@ -4676,6 +4692,7 @@ struct oplus_chg_operations  mt6370_chg_ops = {
 	.get_rtc_soc = get_rtc_spare_oplus_fg_value,
 	.set_rtc_soc = set_rtc_spare_oplus_fg_value,
 	.set_power_off = oplus_mt_power_off,
+	.get_charger_subtype = oplus_chg_get_charger_subtype,
 	//.usb_connect = mt_usb_connect,
 	//.usb_disconnect = mt_usb_disconnect,
 #else /* CONFIG_OPLUS_CHARGER_MTK */
@@ -4701,7 +4718,7 @@ struct oplus_chg_operations  mt6370_chg_ops = {
 //====================================================================//
 #endif /* VENDOR_EDIT && CONFIG_OPLUS_CHARGER_MT6370_TYPEC */
 
-#ifdef CONFIG_OPLUS_CHARGER_MTK6769
+#if defined (CONFIG_OPLUS_CHARGER_MTK6769) || defined (CONFIG_OPLUS_CHARGER_MTK6768) || defined (CONFIG_OPLUS_CHARGER_MTK6769R)
 /*Sidong.Zhao@ODM_WT.BSP.CHG 2019/11/4,for charger type detection*/
 static int mtk_charger_probe(struct platform_device *pdev)
 {
@@ -4785,7 +4802,7 @@ static int mtk_charger_probe(struct platform_device *pdev)
 	if (mtk_pe40_init(info) == false)
 		info->enable_pe_4 = false;
 
-#ifdef CONFIG_OPLUS_CHARGER_MTK6769
+#if defined (CONFIG_OPLUS_CHARGER_MTK6769) || defined (CONFIG_OPLUS_CHARGER_MTK6768) || defined (CONFIG_OPLUS_CHARGER_MTK6769R)
 	/*Shouli.Wang@ODM_WT.BSP.CHG 2019/10/28, add for hvdcp charge*/
 	mtk_hvdcp_v20_init(info);
 #endif /*CONFIG_OPLUS_CHARGER_MTK6769*/

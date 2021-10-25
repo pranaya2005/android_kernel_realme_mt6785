@@ -143,7 +143,7 @@ static u32 target_clk;
 #define LOG_VRB(format, args...) \
 		pr_debug(MyTag "[%s] " format, __func__, ##args)
 
-#define ISP_DEBUG
+// #define ISP_DEBUG
 #ifdef ISP_DEBUG
 #define LOG_DBG(format, args...) \
 		pr_info(MyTag "[%s] " format, __func__, ##args)
@@ -1495,6 +1495,16 @@ static int ISP_ReadReg(struct ISP_REG_IO_STRUCT *pRegIo)
 		return -EFAULT;
 	}
 
+	if ((pRegIo->pData == NULL) ||
+			(pRegIo->Count == 0) ||
+			(pRegIo->Count > ISP_REG_RANGE)) {
+		LOG_NOTICE(
+			"pRegIo->pData is NULL, Count:%d!!\n",
+			pRegIo->Count);
+		Ret = -EFAULT;
+		goto EXIT;
+	}
+
 	pData = (struct ISP_REG_STRUCT *)pRegIo->pData;
 
 	if (pData == NULL) {
@@ -1672,7 +1682,7 @@ static int ISP_WriteReg(struct ISP_REG_IO_STRUCT *pRegIo)
 	int Ret = 0;
 	struct ISP_REG_STRUCT *pData = NULL;
 
-	if (pRegIo->Count > 0xFFFFFFFF) {
+	if ((pRegIo->Count * sizeof(struct ISP_REG_STRUCT)) > 0xFFFFF000) {
 		LOG_NOTICE("pRegIo->Count error");
 		Ret = -EFAULT;
 		goto EXIT;
@@ -2778,6 +2788,7 @@ static long ISP_ioctl(struct file *pFile, unsigned int Cmd, unsigned long Param)
 			/* 2nd layer behavoir of copy from user
 			 * is implemented in ISP_ReadReg(...)
 			 */
+			RegIo.Count = 0;
 			Ret = ISP_ReadReg(&RegIo);
 		} else {
 			LOG_NOTICE("copy_from_user failed\n");
@@ -7247,7 +7258,7 @@ irqreturn_t ISP_Irq_CAMSV(
 			(unsigned int)(sec);
 
 		if (IspInfo.DebugMask & ISP_DBG_INT) {
-			IRQ_LOG_KEEPER(module, m_CurrentPPB, _LOG_INF,
+			IRQ_LOG_KEEPER(module, m_CurrentPPB, _LOG_DBG,
 				"%s P1_DON_%d(0x%08x_0x%08x) stamp[0x%08x]\n",
 				str,
 				(sof_count[module]) ?
@@ -7280,7 +7291,7 @@ irqreturn_t ISP_Irq_CAMSV(
 			}
 
 			IRQ_LOG_KEEPER(
-				module, m_CurrentPPB, _LOG_INF,
+				module, m_CurrentPPB, _LOG_DBG,
 				"%s P1_SOF_%d_%d(0x%08x_0x%08x,0x%08x),int_us:0x%08x, stamp[0x%08x]\n",
 				str,
 				sof_count[module], cur_v_cnt,

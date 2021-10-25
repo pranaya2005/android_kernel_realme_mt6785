@@ -21,8 +21,6 @@
 #include <linux/time.h>
 #include <linux/jiffies.h>
 #include <linux/sched/clock.h>
-#include <linux/usb/typec.h>
-#include <linux/usb/usbpd.h>
 #endif
 
 enum print_reason {
@@ -533,7 +531,6 @@ struct smb_charger {
 	unsigned long long hvdcp_detach_time;
 	bool hvdcp_detect_ok;
 	struct delayed_work hvdcp_disable_work;
-	struct delayed_work regist_pd;
 #endif
 
 	/* pd */
@@ -547,8 +544,7 @@ struct smb_charger {
 	bool			ok_to_pd;
 	bool			typec_legacy;
 	bool			typec_irq_en;
-	struct	usbpd	*oplus_pd;
-	struct	usbpd_svid_handler	oplus_svid_handler;
+
 	/* cached status */
 	bool			system_suspend_supported;
 	int			boost_threshold_ua;

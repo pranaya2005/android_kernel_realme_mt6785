@@ -91,7 +91,7 @@
 	};
 	vibrator0:vibrator@0 {
 		compatible = "mediatek,vibrator";
-		vib_timer = <50>;
+		vib_timer = <25>;
 		vib_limit = <9>;
 		vib_vol= <9>;
 	};
@@ -107,8 +107,6 @@
 		BMI2XY,
 		LSM6DSO,
 		BMA2X2,
-		KX022,
-		SC7A20,
 	};
 	*/
 	gsensor_1: gsensor_1 {
@@ -122,29 +120,6 @@
 		config_miso = <1>;
 		correct_y_bias = <1>;
 	};
-	gsensor_2: gsensor_2 {
-		status = "okay";
-		sensor_name = <8>;//KX022
-		i2c_num = <1>;
-		i2c_addr = <0>;
-		direction = <6>;
-		eint_num = <2>;
-		step_count_7_en = <1>;
-		config_miso = <1>;
-		correct_y_bias = <1>;
-	};
-	gsensor_3: gsensor_3 {
-                status = "okay";
-                sensor_name = <9>;//SC7A20
-                i2c_num = <1>;
-                i2c_addr = <0>;
-                direction = <7>;
-                eint_num = <2>;
-                step_count_7_en = <1>;
-                config_miso = <1>;
-                correct_y_bias = <1>;
-        };
-
 	/*
 	enum {
 		AKM09911,
@@ -158,14 +133,6 @@
 		sensor_name = <0>;//AKM09911
 		i2c_num = <0>;
 		i2c_addr = <0x0c>;
-		direction = <2>;
-		eint_num = <0>;
-	};
-	msensor_2: msensor_2 {
-		status = "okay";
-		sensor_name = <2>;//MMC5603
-		i2c_num = <0>;
-		i2c_addr = <0x30>;
 		direction = <2>;
 		eint_num = <0>;
 	};
@@ -188,28 +155,28 @@
 		i2c_addr = <0x46>;
 		direction = <4>;
 		eint_num = <10>;
-		low_step = <100>;
-		high_step = <150>;
-		low_limit = <150>;
-		high_limit = <250>;
-		dirty_low_step = <100>;
-		dirty_high_step = <150>;
-		ps_dirty_limit = <1023>;
-		ps_ir_limit = <500>;
+		low_step = <300>;
+		high_step = <400>;
+		low_limit = <650>;
+		high_limit = <1050>;
+		dirty_low_step = <300>;
+		dirty_high_step = <400>;
+		ps_dirty_limit = <1800>;
+		ps_ir_limit = <2000>;
 		ps_adjust_min = <0>;
-		ps_adjust_max = <600>;
+		ps_adjust_max = <1850>;
 		sampling_count = <5>;
 		step_max = <400>;
 		step_min = <100>;
-		step_div = <1500>;
-		anti_shake_delta = <80>;
+		step_div = <2000>;
+		anti_shake_delta = <70>;
 		dynamic_cali_max = <2000>;
 		raw2offset_radio = <1000>;
 		offset_max = <60000>;
 		offset_range_min = <0>;
 		offset_range_max = <65534>;
 		force_cali_limit = <2000>;
-		cali_jitter_limit = <30>;
+		cali_jitter_limit = <20>;
 		cal_offset_margin = <3000>;
 	};
 	light_1: light_1 {
@@ -219,7 +186,7 @@
 		i2c_addr = <0x46>;
 		direction = <4>;
 		eint_num = <10>;
-		als_ratio = <83>;
+		als_ratio = <65>;
 		als_buffer_length =<8>;
 		als_type = <1>;//<1-normal;2-under screen;3-normal needed compensation>
 		device_name = "stk33502";
@@ -231,10 +198,6 @@
 	lux_aod: lux_aod {
 		status = "okay";
 		use-proximity = <1>;
-	};
-	mtk_cali: mtk_cali {
-		status = "okay";
-		mtk-cali-supported = <1>;
 	};
 	alsps_arch: alsps_arch {
 		status = "okay";
@@ -322,7 +285,7 @@
 			pinmux = <PINMUX_GPIO95__FUNC_GPIO95>;
 			input-enable;
 			slew-rate = <0>;
-			bias-pull-down;
+			bias-disable;
 		};
 	};
 	uart0_tx_gpio_input:uart0_tx_gpio@gpio96 {
@@ -330,7 +293,7 @@
 			pinmux = <PINMUX_GPIO96__FUNC_GPIO96>;
 			input-enable;
 			slew-rate = <0>;
-			bias-pull-down;
+			bias-disable;
 		};
 	};
 };
@@ -410,12 +373,11 @@
 
 	qcom,little_cool_bat_decidegc = <120>;	/* 12C ~ 16C */
 	qcom,temp_little_cool_vfloat_mv = <4435>;
-	qcom,temp_little_cool_fastchg_current_ma = <2750>;
+	qcom,temp_little_cool_fastchg_current_ma = <2200>;
 	qcom,temp_little_cool_usbchg_current_ma = <550>;
-	qcom,temp_little_cool_fastchg_current_ma_high = <3500>;
-	qcom,temp_little_cool_fastchg_current_ma_low = <3000>;
-        qcom,qc_temp_little_cool_fastchg_current_ma = <3500>;
-	qcom,pd_temp_little_cool_fastchg_current_ma = <3500>;
+	qcom,temp_little_cool_fastchg_current_ma_high = <2200>;
+	qcom,temp_little_cool_fastchg_current_ma_low = <2200>;
+        qcom,qc_temp_little_cool_fastchg_current_ma = <3400>;
 
 	qcom,normal_bat_decidegc = <160>;	/* 16C ~ 45C */
 	qcom,temp_normal_fastchg_current_ma = <2200>;
@@ -428,9 +390,8 @@
 	qcom,temp_warm_vfloat_mv = <4130>;
 	qcom,temp_warm_fastchg_current_ma = <1350>;
 	qcom,temp_warm_usbchg_current_ma = <550>;
-	qcom,temp_warm_fastchg_current_ma_led_on = <1650>;
+	qcom,temp_warm_fastchg_current_ma_led_on = <500>;
         qcom,qc_temp_warm_fastchg_current_ma = <1650>;
-	qcom,pd_temp_warm_fastchg_current_ma = <1650>;
 
 	qcom,hot_bat_decidegc = <530>;  /* > 53C */
 
@@ -516,7 +477,7 @@
 	qcom,ffc_temp_normal_vfloat_mv = <4500>;
 	qcom,ffc_normal_vfloat_over_sw_limit = <4500>;
 
-	qcom,default_iterm_ma = <300>;
+	qcom,default_iterm_ma = <265>;
 	qcom,default_temp_normal_fastchg_current_ma = <2200>;
 	qcom,default_normal_vfloat_sw_limit = <4380>;
 	qcom,default_temp_normal_vfloat_mv = <4435>;
@@ -857,12 +818,6 @@
 		eng-menu = "-1,-1"; /* represents SNR, inclination test item in engineer menu, and 0/1 means off/on */
 		chip-name = "E_520";  /* /proc/fp_id, will be displayed in engineer menu  */
 	};
-        silead_6150 {
-                oplus,fp-id = <0>; /* fp id mapping table */
-                vendor-chip = <21>; /* please refer to the struct fp_vendor_t in oppo_fp_commmon.n */
-                eng-menu = "-1,-1"; /* represents SNR, inclination test item in engineer menu, and 0/1 means off/on */
-                chip-name = "S_gsl6150";  /* /proc/fp_id, will be displayed in engineer menu  */
-        };
 };
 //Qi.zhang@BSP.Biometrics.Fingerprint 2020/09/08 add  fingerprint driver end
 //#endif //OPLUS_FEATURE_FINGERPRINT
@@ -885,19 +840,19 @@
 	#address-cells = <1>;
 	#size-cells = <0>;
 	touchscreen@0 {
-	compatible = "oppo,tp_noflash";
+	compatible = "novatek,nf_nt36525b";
 	reg = <0>; //Same as CS ID
-	chip-name = "OPPO_TP_NOFLASH";
-	status = "ok";
+	chip-name = "NF_NT36525B";
+	status = "ok";		
 	spi-max-frequency = <9600000>;
 	interrupt-parent = <&pio>;
 	interrupts = <1 IRQ_TYPE_EDGE_FALLING 1 0>;
 	irq-gpio = <&pio 1 0x2002>;
 	reset-gpio = <&pio 23 0>;
-	//tp_type = <6>;// type of tp_dev ,TP_JDI = 6;
+	tp_type = <6>;// type of tp_dev ,TP_JDI = 6;
 	platform_support_project = <132780>;
 	platform_support_project_dir = <132780>;
-	platform_support_project_commandline = "default_commandline";
+	platform_support_project_commandline = "nt36525b_hlt";
 	touchpanel,max-num-support = <10>;
 	touchpanel,tx-rx-num = <18 32>;
 	touchpanel,panel-coords = <720 1600>;
@@ -905,23 +860,22 @@
 	touchpanel,touchmajor-limit = <0 54>;
 	pinctrl-names = "default";
 	pinctrl-0 = <&ctp_novatek_spi_mode>;
-
 	incell_screen;
 	irq_need_dev_resume_ok;
-	fw_edge_limit_support;
-	black_gesture_support;
-	charger_pump_support;
-	headset_pump_support;
-	esd_handle_support;
-	black_gesture_test_support;
-	game_switch_support;
-	noflash_support;
-	lcd_trigger_load_tp_fw_support;
-	smart_gesture_support;
-	pressure_report_support;
-	fw_update_app_support;
-	touchpanel,button-type = <4>;
-	fw_update_in_probe_with_headfile;
+		fw_edge_limit_support;
+		black_gesture_support;
+		charger_pump_support;
+		headset_pump_support;
+		esd_handle_support;
+		black_gesture_test_support;
+		game_switch_support;
+		noflash_support;
+		lcd_trigger_load_tp_fw_support;
+		smart_gesture_support;
+		pressure_report_support;
+		fw_update_app_support;
+		touchpanel,button-type = <4>;
+		fw_update_in_probe_with_headfile;
 	};
 };
 
@@ -930,7 +884,7 @@
 /* accdet start */
 &accdet {
 	/* accdet micbias voltage: 0x07,2.7v;0x05,2.5v;0x02,1.9v */
-	accdet-mic-vol = <7>;
+	accdet-mic-vol = <6>;
 	headset-mode-setting = <0x500 0x500 1 0x1f0 0x800 0x800 0x20 0x44>;
 	accdet-plugout-debounce = <1>;
 	/*1:ACC mode, 2:low cost without in bias, 6:low cost with in bias*/
@@ -1076,7 +1030,6 @@
         status = "okay";
 	oplus_display_twelvebits_support;
 	oplus_display_cabc_support;
-	oplus_display_cabc_cmdq_support;
 	oplus_display_panelnum_support;
 };
 
@@ -1175,8 +1128,6 @@
 };
 #include "mediatek/bq2589x.dtsi"
 #include "mediatek/bq25910.dtsi"
-#include "mediatek/oplus_rt9471.dtsi"
-#include "mediatek/oplus_sy6974.dtsi"
 #include <oppo6769_206AC/cust.dtsi>
 #include "mediatek/cust_mt6768_camera_pascal.dtsi"
 //#include "mediatek/cust_mt6768_touch_1080x2160.dtsi"

@@ -1109,7 +1109,7 @@ static struct mtk_panel_params ext_params = {
 	.pll_clk = 464,
 	//.vfp_low_power = 4178,//45hz
 	.cust_esd_check = 0,
-	.esd_check_enable = 0,
+	.esd_check_enable = 1,
 	.lcm_esd_check_table[0] = {
 	.cmd = 0x0A, .count = 1, .para_list[0] = 0x9C, .mask_list[0] = 0x9C,
 	},
@@ -1155,7 +1155,7 @@ static struct mtk_panel_params ext_params = {
 		.switch_en = 1, .vact_timing_fps = 120,
 	},
 	.dyn = {
-		.switch_en = 0,
+		.switch_en = 1,
 		.pll_clk = 428,
 		.hfp = 396,
 		.vfp = 2460,
@@ -1173,7 +1173,7 @@ static struct mtk_panel_params ext_params_90hz = {
 	.pll_clk = 464,
 	.vfp_low_power = 2460,//60hz
 	.cust_esd_check = 0,
-	.esd_check_enable = 0,
+	.esd_check_enable = 1,
 	.lcm_esd_check_table[0] = {
 
 	.cmd = 0x0A, .count = 1, .para_list[0] = 0x9C, .mask_list[0] = 0x9C,
@@ -1221,7 +1221,7 @@ static struct mtk_panel_params ext_params_90hz = {
 		.switch_en = 1, .vact_timing_fps = 120,
 	},
 	.dyn = {
-		.switch_en = 0,
+		.switch_en = 1,
 		.pll_clk = 428,
 		.hfp = 396,
 		.vfp = 846,
@@ -1239,7 +1239,7 @@ static struct mtk_panel_params ext_params_120hz = {
 	.pll_clk = 464,
 	.vfp_low_power = 2460,//idle 60hz
 	.cust_esd_check = 0,
-	.esd_check_enable = 0,
+	.esd_check_enable = 1,
 	.lcm_esd_check_table[0] = {
 		.cmd = 0x0A, .count = 1, .para_list[0] = 0x9C, .mask_list[0] = 0x9C,
 	},
@@ -1285,7 +1285,7 @@ static struct mtk_panel_params ext_params_120hz = {
 		.switch_en = 1, .vact_timing_fps = 120,
 	},
 	.dyn = {
-		.switch_en = 0,
+		.switch_en = 1,
 		.pll_clk = 428,
 		.vfp_lp_dyn = 2460,
 		.hfp = 396,
@@ -1615,7 +1615,7 @@ static struct mtk_panel_funcs ext_funcs = {
 	.panel_poweron = lcm_panel_poweron,
 	.panel_poweroff = lcm_panel_poweroff,
 	.mode_switch = mode_switch,
-	/* .cabc_switch = cabc_switch, */
+	.cabc_switch = cabc_switch,
 };
 #endif
 

@@ -22,7 +22,7 @@
 #define EMBEDDED_SEL 0
 #define PMIC_SHUTDOWN_CURRENT 20	/* 0.01 mA */
 #define FG_METER_RESISTANCE	100
-#define CAR_TUNE_VALUE	100 /*1.00 */
+#define CAR_TUNE_VALUE	99 /*1.00 */
 #define NO_BAT_TEMP_COMPENSATE 0
 /* NO_BAT_TEMP_COMPENSATE 1 = don't need bat_temper compensate, */
 /* but fg_meter_resistance still use for SWOCV */
@@ -199,7 +199,12 @@
 
 #define BATTERY_TMP_TO_DISABLE_GM30 -50
 #define BATTERY_TMP_TO_DISABLE_NAFG -35
+#ifndef OPLUS_FEATURE_CHG_BASIC
+/* Baoquan.Lai@BSP.CHG.Basic, 2020/10/30, return -30C when battery removed */
 #define DEFAULT_BATTERY_TMP_WHEN_DISABLE_NAFG 25
+#else
+#define DEFAULT_BATTERY_TMP_WHEN_DISABLE_NAFG -30
+#endif
 #define BATTERY_TMP_TO_ENABLE_NAFG -20
 /* #define GM30_DISABLE_NAFG */
 

@@ -26,6 +26,11 @@
 
 #define MTK_SUSPEND_FEATURE_ENABLE (0)
 
+#ifdef VENDOR_EDIT
+#define PCM_32K_TICKS_PER_SEC		(32768)
+#define PCM_TICK_TO_MILLI_SEC(TICK)	((TICK) * (1000) / (PCM_32K_TICKS_PER_SEC))
+#endif
+
 enum spm_suspend_step {
 	SPM_SUSPEND_ENTER = 0x00000001,
 	SPM_SUSPEND_ENTER_UART_SLEEP = 0x00000003,
@@ -50,6 +55,10 @@ bool spm_is_conn_sleep(void);
 void spm_ap_mdsrc_req(u8 set);
 ssize_t get_spm_system_stats(char *ToUserBuf, size_t sz, void *priv);
 ssize_t get_spm_subsystem_stats(char *ToUserBuf, size_t sz, void *priv);
+#ifdef VENDOR_EDIT
+ssize_t get_oplus_rpm_master_stats(char *ToUserBuf,size_t sz, void *priv);
+ssize_t get_oplus_rpm_stats(char *ToUserBuf,size_t sz, void *priv);
+#endif
 ssize_t get_spm_sleep_count(char *ToUserBuf, size_t sz, void *priv);
 ssize_t get_spm_last_wakeup_src(char *ToUserBuf, size_t sz, void *priv);
 ssize_t get_spm_last_debug_flag(char *ToUserBuf, size_t sz, void *priv);

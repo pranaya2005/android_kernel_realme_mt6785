@@ -89,6 +89,16 @@ extern unsigned long oplus_silence_mode;
 extern unsigned int oplus_fp_silence_mode;
 #endif /* OPLUS_BUG_STABILITY */
 
+/* #ifdef OPLUS_FEATURE_ONSCREENFINGERPRINT */
+/*
+ * Hao.lin@PSW.MM.Display.LCD.Stability, 2019/11/07,
+ * modify for fingerprint notify frigger
+ */
+#include <linux/fb.h>
+extern bool oplus_fp_notify_up_delay;
+extern void fingerprint_send_notify(struct fb_info *fbi, uint8_t fingerprint_op_mode);
+/* #endif */ /* OPLUS_FEATURE_ONSCREENFINGERPRINT */
+
 #if defined(MTK_FB_SHARE_WDMA0_SUPPORT)
 static int idle_flag = 1;
 static int smartovl_flag;
@@ -102,7 +112,7 @@ static int has_memory_session;
 /* @g_session: SESSION_TYPE | DEVICE_ID */
 static unsigned int g_session[MAX_SESSION_COUNT];
 static DEFINE_MUTEX(disp_session_lock);
-
+static DEFINE_MUTEX(disp_layer_lock);
 static dev_t mtk_disp_mgr_devno;
 static struct cdev *mtk_disp_mgr_cdev;
 static struct class *mtk_disp_mgr_class;
@@ -944,6 +954,17 @@ static int do_frame_config(struct frame_queue_t *frame_node)
 		return -1;
 	}
 
+	/* #ifdef OPLUS_FEATURE_ONSCREENFINGERPRINT */
+	/*
+	* Ling.Guo@PSW.MM.Display.LCD.Stability, 2019/01/21,
+	* add for fingerprint notify frigger
+	*/
+	if (oplus_fp_notify_up_delay && ((cfg->hbm_en & 0x2) == 0)) {
+		oplus_fp_notify_up_delay = false;
+		fingerprint_send_notify(NULL, 0);
+	}
+	/* #endif */ /* OPLUS_FEATURE_ONSCREENFINGERPRINT */
+
 	return 0;
 }
 
@@ -1266,9 +1287,9 @@ int _ioctl_query_valid_layer(unsigned long arg)
 
 	if (disp_helper_get_option(DISP_OPT_ANTILATENCY))
 		antilatency_config_hrt();
-
+	mutex_lock(&disp_layer_lock);
 	layering_rule_start(&disp_info_user, 0);
-
+	mutex_unlock(&disp_layer_lock);
 	if (copy_to_user(argp, &disp_info_user, sizeof(disp_info_user))) {
 		DISPPR_ERROR("[FB] copy_to_user failed! line:%d\n", __LINE__);
 		return -EFAULT;

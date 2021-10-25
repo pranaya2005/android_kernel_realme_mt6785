@@ -110,6 +110,7 @@ const struct NIC_CAPABILITY_V2_REF_TABLE
 #if (CFG_SUPPORT_P2PGO_ACS == 1)
 	{TAG_CAP_P2P, nicCfgChipP2PCap},
 #endif
+	{TAG_CAP_HOST_STATUS_EMI_OFFSET, nicCmdEventHostStatusEmiOffset},
 
 };
 
@@ -3254,6 +3255,21 @@ uint32_t nicCfgChipP2PCap(IN struct ADAPTER *prAdapter,
 	}
 #endif
 
+uint32_t nicCmdEventHostStatusEmiOffset(IN struct ADAPTER *prAdapter,
+					IN uint8_t *pucEventBuf)
+{
+	struct NIC_HOST_STATUS_EMI_OFFSET *prOffset =
+		(struct NIC_HOST_STATUS_EMI_OFFSET *)pucEventBuf;
+
+	prAdapter->u4HostStatusEmiOffset = prOffset->u4EmiOffset;
+
+	DBGLOG(INIT, INFO,
+	       "EMI offset= %x\n",
+	       prAdapter->u4HostStatusEmiOffset);
+
+	return WLAN_STATUS_SUCCESS;
+}
+
 uint32_t nicCfgChipCapMacCap(IN struct ADAPTER *prAdapter,
 			     IN uint8_t *pucEventBuf)
 {
@@ -4649,7 +4665,7 @@ bool nicBeaconTimeoutFilterPolicy(IN struct ADAPTER *prAdapter,
 	prTxCtrl = &prAdapter->rTxCtrl;
 	ASSERT(prTxCtrl);
 
-	GET_CURRENT_SYSTIME(&u4CurrentTime);
+	GET_BOOT_SYSTIME(&u4CurrentTime);
 
 	DBGLOG(NIC, INFO,
 			"u4MonitorWindow: %d, u4CurrentTime: %d, u4LastRxTime: %d, u4LastTxTime: %d",

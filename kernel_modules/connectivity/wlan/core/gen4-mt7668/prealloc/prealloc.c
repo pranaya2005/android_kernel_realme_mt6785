@@ -1,8 +1,10 @@
-/* SPDX-License-Identifier: GPL-2.0 */
-/*
- *Copyright (c) 2019 MediaTek Inc.
+// SPDX-License-Identifier: GPL-2.0
+/* 
+ *Copyright (c) 2020 MediaTek Inc. 
  */
 
+
+#include <linux/kernel.h>
 #include <linux/module.h>
 #include <linux/errno.h>
 #include "precomp.h"

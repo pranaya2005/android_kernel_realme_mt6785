@@ -54,6 +54,7 @@
 //static kal_uint32 Dgain_ratio = 1;
 
 #ifdef OPLUS_FEATURE_CAMERA_COMMON
+#include "imgsensor_eeprom.h"
 /*Shounan.Yang@Camera.Driver  add for 18011  board 20190620*/
 #define DEVICE_VERSION_GC02M0    "gc02m0"
 //extern void register_imgsensor_deviceinfo(char *name, char *version, u8 module_id);
@@ -1287,6 +1288,23 @@ static kal_uint32 set_test_pattern_mode(kal_bool enable)
     return ERROR_NONE;
 }
 
+#ifdef OPLUS_FEATURE_CAMERA_COMMON
+static void read_EepromQSC(void)
+{
+    int i = 0;
+    float externStereo[6] = {0.0135, 0.0045, 0.0045, 9.6018, 0.0780, 0.3515};
+
+    gImgEepromInfo.camNormdata[3][39] = 3;
+    gImgEepromInfo.i4CurSensorIdx = 3;
+    gImgEepromInfo.i4CurSensorId = imgsensor_info.sensor_id;
+    for (i = 0; i < DUALCAM_CALI_INTERNALCOEF_DATA_LENGTH; i++) {
+        gImgEepromInfo.stereoFrontdata[CALI_DATA_MASTER_LENGTH + i] =
+            Eeprom_1ByteDataRead(GC02M0B_STEREO_START_ADDR + i, 0xA8);
+    }
+    memcpy(&gImgEepromInfo.stereoFrontdata[DUALCAM_CALI_DATA_LENGTH_TOTAL - 28], externStereo, 24);
+}
+#endif
+
 /*************************************************************************
 * FUNCTION
 *    get_imgsensor_id
@@ -1319,43 +1337,43 @@ static kal_uint32 get_imgsensor_id(UINT32 *sensor_id)
     }
     #endif*/
 
-    	while (imgsensor_info.i2c_addr_table[i] != 0xff) {
-        	spin_lock(&imgsensor_drv_lock);
-        	imgsensor.i2c_write_id = imgsensor_info.i2c_addr_table[i];
-        	spin_unlock(&imgsensor_drv_lock);
-        	do {
-            	*sensor_id = return_sensor_id();
-            	if (*sensor_id == imgsensor_info.sensor_id) {
-			#ifdef OPLUS_FEATURE_CAMERA_COMMON
-			/*shounan.yang@Camera.Drv, 2019.6.18 add for register device info*/
-			imgsensor_info.module_id = read_module_id();
-			if (deviceInfo_register_value == 0x00) {
-                                /*
-				register_imgsensor_deviceinfo("Cam_f1",
-						DEVICE_VERSION_GC02M0,
-						imgsensor_info.module_id);
-                                */
-				deviceInfo_register_value=0x01;
-			}
-			read_eeprom_SN();
-			read_eeprom_CamInfo();
-			#endif
-                	LOG_INF("i2c write id: 0x%x, sensor id: 0x%x\n", imgsensor.i2c_write_id,*sensor_id);
-                	return ERROR_NONE;
-            	}
-            	LOG_INF("Read sensor id fail, write id: 0x%x, id: 0x%x\n", imgsensor.i2c_write_id,*sensor_id);
-            	retry--;
-        	} while(retry > 0);
-        	i++;
-        	retry = 2;
-    	}
-    	if (*sensor_id != imgsensor_info.sensor_id) {
-        	// if Sensor ID is not correct, Must set *sensor_id to 0xFFFFFFFF
-        	*sensor_id = 0xFFFFFFFF;
-        	return ERROR_SENSOR_CONNECT_FAIL;
-    	}
+    while (imgsensor_info.i2c_addr_table[i] != 0xff) {
+        spin_lock(&imgsensor_drv_lock);
+        imgsensor.i2c_write_id = imgsensor_info.i2c_addr_table[i];
+        spin_unlock(&imgsensor_drv_lock);
+        do {
+            *sensor_id = return_sensor_id();
+            if (*sensor_id == imgsensor_info.sensor_id) {
+                #ifdef OPLUS_FEATURE_CAMERA_COMMON
+                read_EepromQSC();
+                /*shounan.yang@Camera.Drv, 2019.6.18 add for register device info*/
+                imgsensor_info.module_id = read_module_id();
+                if (deviceInfo_register_value == 0x00) {
+                    /*
+                    register_imgsensor_deviceinfo("Cam_f1",DEVICE_VERSION_GC02M0,
+                        imgsensor_info.module_id);
+                    */
+                    deviceInfo_register_value=0x01;
+                }
+                read_eeprom_SN();
+                read_eeprom_CamInfo();
+                #endif
+                LOG_INF("i2c write id: 0x%x, sensor id: 0x%x\n", imgsensor.i2c_write_id,*sensor_id);
+                return ERROR_NONE;
+            }
+            LOG_INF("Read sensor id fail, write id: 0x%x, id: 0x%x\n", imgsensor.i2c_write_id,*sensor_id);
+            retry--;
+        } while(retry > 0);
+        i++;
+        retry = 2;
+     }
+     if (*sensor_id != imgsensor_info.sensor_id) {
+         // if Sensor ID is not correct, Must set *sensor_id to 0xFFFFFFFF
+         *sensor_id = 0xFFFFFFFF;
+         return ERROR_SENSOR_CONNECT_FAIL;
+     }
 
-    	return ERROR_NONE;
+     return ERROR_NONE;
 }
 
 /*************************************************************************

@@ -134,6 +134,7 @@
 #define SPM_DVFS_STA                   (SPM_BASE + 0x1C8)
 #define BUS_PROTECT3_RDY               (SPM_BASE + 0x1CC)
 #define SRC_DDREN_STA                  (SPM_BASE + 0x1E0)
+#define SPM_26M_COUNT                  (SPM_BASE + 0x1DC)
 #define MCUSYS_PWR_CON                 (SPM_BASE + 0x200)
 #define MP0_CPUTOP_PWR_CON             (SPM_BASE + 0x204)
 #define MP0_CPU0_PWR_CON               (SPM_BASE + 0x208)

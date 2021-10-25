@@ -923,7 +923,9 @@ static void check_streamoff(void)
 
 	mdelay(3);
 	for (i = 0; i < timeout; i++) {
-		if (read_cmos_sensor_8(0x0005) == 0xFF)
+		if (read_cmos_sensor_8(0x0005) != 0xFF)
+			mdelay(1);
+		else
 			break;
 	}
 	pr_debug(" %s exit! %d\n", __func__, i);
@@ -935,7 +937,9 @@ static kal_uint32 streaming_control(kal_bool enable)
 	pr_debug("streaming_enable(0=Sw Standby,1=streaming): %d\n", enable);
 
 	if (enable) {
+		mdelay(5);
 		write_cmos_sensor_8(0x0100, 0x01);
+		mdelay(5);
 	} else {
 		if (bIsLongExposure) {
 			pr_debug("brad interrupt in long shutter. \n");
@@ -943,6 +947,7 @@ static kal_uint32 streaming_control(kal_bool enable)
 			write_cmos_sensor_8(0x0100, 0x00); /*stream off*/
 
 			while (1) {
+				mdelay(5);
 				framecnt = read_cmos_sensor_8(0x0005);
 				printk(" Stream Off oning at framecnt=0x%x.\n", framecnt);
 				if (framecnt == 0xFF) {

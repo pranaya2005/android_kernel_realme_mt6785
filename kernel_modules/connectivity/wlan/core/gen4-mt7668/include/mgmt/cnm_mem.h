@@ -228,7 +228,9 @@ struct STA_PMF_CFG {
 	BOOLEAN fgApplyPmf;
 	BOOLEAN fgBipKeyInstalled;
 	BOOLEAN fgRxDeauthResp; /* for certification 4.3.3.1, 4.3.3.2 TX unprotected deauth */
-
+#if CFG_SUPPORT_SOFTAP_WPA3
+	BOOLEAN fgSaeRequireMfp;
+#endif
 	/* For PMF SA query TX request retry a timer */
 	UINT_32 u4SAQueryStart; /* record the start time of 1st SAQ request */
 	UINT_32 u4SAQueryCount;
@@ -495,11 +497,20 @@ struct _STA_RECORD_T {
 	/* When this STA_REC is in use, set to TRUE. */
 	BOOLEAN fgIsValid;
 
-	/* TX key is ready */
+	/* TX key for both Pairwise and Group is ready */
 	BOOLEAN fgIsTxKeyReady;
 
 	/* When the STA is connected or TX key is ready */
 	BOOLEAN fgIsTxAllowed;
+
+	/* Tx Pairwise key is ready */
+	BOOLEAN fgIsTxPairwiseKeyReady;
+
+	/* Tx Group key is ready */
+	BOOLEAN fgIsTxGroupKeyReady;
+
+	/* Count of EVENT_ID_ADD_PKEY_DONE for group key receiving */
+	UINT_8 ucGroupKeyCount;
 
 	/* Per-STA Queues: [0] AC0, [1] AC1, [2] AC2, [3] AC3 */
 	QUE_T arTxQueue[NUM_OF_PER_STA_TX_QUEUES];
@@ -510,6 +521,9 @@ struct _STA_RECORD_T {
 
 	/* Tx packet target queue pointer. Select between arTxQueue & arPendingTxQueue */
 	P_QUE_T aprTargetQueue[NUM_OF_PER_STA_TX_QUEUES];
+
+	/* Pending queue for Tx Direct to store pkts prior to set key done */
+	QUE_T rTxDirectPendingQueue;
 
 	/* Reorder Parameter reference table */
 	P_RX_BA_ENTRY_T aprRxReorderParamRefTbl[CFG_RX_MAX_BA_TID_NUM];

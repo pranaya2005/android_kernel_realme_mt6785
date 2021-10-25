@@ -275,6 +275,7 @@ static void mtk_vif_destructor(struct net_device *dev)
 {
 	struct wireless_dev *prWdev = ERR_PTR(-ENOMEM);
 	UINT_32 u4Idx = 0;
+	P_NETDEV_PRIVATE_GLUE_INFO prNetDevPriv = NULL;
 
 	DBGLOG(P2P, INFO, "mtk_newInf_destructor\n");
 
@@ -284,8 +285,9 @@ static void mtk_vif_destructor(struct net_device *dev)
 #endif
 
 	if (dev) {
+		prNetDevPriv = (P_NETDEV_PRIVATE_GLUE_INFO) netdev_priv(dev);
 		prWdev = dev->ieee80211_ptr;
-		free_netdev(dev);
+
 		if (prWdev) {
 			/* Role[i] and Dev share the same wireless dev by default */
 			for (u4Idx = 0; u4Idx < KAL_P2P_NUM; u4Idx++) {
@@ -293,10 +295,19 @@ static void mtk_vif_destructor(struct net_device *dev)
 					(gprP2pRoleWdev[u4Idx] != gprP2pWdev)) {
 					DBGLOG(P2P, INFO, "mtk_newInf_destructor remove added Wd\n");
 					gprP2pRoleWdev[u4Idx] = gprP2pWdev;
+					if (prNetDevPriv) {
+						prNetDevPriv->prGlueInfo
+						->prP2PInfo[u4Idx]
+						->aprRoleHandler =
+						prNetDevPriv->prGlueInfo
+						->prP2PInfo[u4Idx]
+						->prDevHandler;
+					}
 				}
 			}
 			kfree(prWdev);
 		}
+		free_netdev(dev);
 	}
 }
 
@@ -3044,6 +3055,17 @@ void mtk_p2p_cfg80211_mgmt_frame_register(IN struct wiphy *wiphy,
 				DBGLOG(P2P, TRACE, "Close packet filer action frame.\n");
 			}
 			break;
+#if CFG_SUPPORT_SOFTAP_WPA3
+		case MAC_FRAME_AUTH:
+			if (reg) {
+				*pu4P2pPacketFilter |= PARAM_PACKET_FILTER_AUTH;
+				DBGLOG(P2P, TRACE, "Open packet filer auth frame.\n");
+			} else {
+				*pu4P2pPacketFilter &= ~PARAM_PACKET_FILTER_AUTH;
+				DBGLOG(P2P, TRACE, "Close packet filer AUTH frame.\n");
+			}
+			break;
+#endif
 		default:
 			DBGLOG(P2P, ERROR, "Ask frog to add code for mgmt:%x\n", frame_type);
 			break;
@@ -3442,6 +3464,9 @@ int mtk_p2p_cfg80211_testmode_p2p_sigma_cmd(IN struct wiphy *wiphy, IN void *dat
 	if (data && len)
 		prParams = (P_NL80211_DRIVER_P2P_SIGMA_PARAMS) data;
 
+	if (prParams == NULL)
+		return status;
+
 	index = (INT_32) prParams->idx;
 	value = (INT_32) prParams->value;
 
@@ -3657,6 +3682,9 @@ int mtk_p2p_cfg80211_testmode_hotspot_block_list_cmd(IN struct wiphy *wiphy, IN 
 	if (data && len)
 		prParams = (P_NL80211_DRIVER_hotspot_block_PARAMS) data;
 
+	if (prParams == NULL)
+		return fgIsValid;
+
 	DBGLOG(P2P, TRACE, "mtk_p2p_cfg80211_testmode_hotspot_block_list_cmd\n");
 
 	for (i = 0; i < KAL_P2P_NUM; i++)
@@ -3846,7 +3874,7 @@ int mtk_p2p_cfg80211_testmode_get_best_channel(IN struct wiphy *wiphy, IN void *
 		}
 	}
 
-	u4AcsChnReport[NL80211_TESTMODE_AVAILABLE_CHAN_ATTR_2G_BASE_1 - 1] = fgIsReady ? BIT(31) : 0;
+	u4AcsChnReport[NL80211_TESTMODE_AVAILABLE_CHAN_ATTR_2G_BASE_1 - 1] = BIT(31);
 	if (rPreferChannel.ucChannel > 0)
 		u4AcsChnReport[NL80211_TESTMODE_AVAILABLE_CHAN_ATTR_2G_BASE_1 - 1] |= BIT(rPreferChannel.ucChannel - 1);
 

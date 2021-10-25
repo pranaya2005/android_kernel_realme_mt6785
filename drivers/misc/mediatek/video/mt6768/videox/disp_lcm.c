@@ -1035,28 +1035,6 @@ void load_lcm_resources_from_DT(struct LCM_DRIVER *lcm_drv)
 #endif
 
 #ifdef OPLUS_BUG_STABILITY
-//Tongxing.Liu@ODM_WT.MM.Display.Lcd, 2021/01/25, add gamma interface api
-int disp_lcm_oplus_set_lcm_gamma_cmd(struct disp_lcm_handle *plcm, void *handle, unsigned int level)
-{
-    struct LCM_DRIVER *lcm_drv = NULL;
-    DISPFUNC();
-    pr_err("check disp_lcm_oplus_set_lcm_gamma_cmd in disp_lcm_c\n");
-    if (_is_lcm_inited(plcm)) {
-        lcm_drv = plcm->drv;
-        if (lcm_drv->set_gamma_mode_cmdq) {
-            lcm_drv->set_gamma_mode_cmdq(handle, level);
-        } else {
-            pr_err("FATAL ERROR, lcm_drv->oppo_set_gamma_mode_cmdq is null\n");
-            return -1;
-        }
-
-        return 0;
-    }
-
-    pr_err("lcm_drv is null\n");
-    return -1;
-}
-
 int tp_gesture = 0;
 EXPORT_SYMBOL(tp_gesture);
 char Lcm_name1[256];
@@ -1521,10 +1499,9 @@ int disp_lcm_esd_recover(struct disp_lcm_handle *plcm)
 }
 
 #ifdef OPLUS_BUG_STABILITY
-//Tongxing.Liu@ODM_WT.MM.Display.Lcd, 2019/11/26, display timing adaptation 
+//Haiquan.Chen@ODM_WT.MM.Display.Lcd, 2021/02/02, display timing adaptation
 int disp_lcm_shutdown(struct disp_lcm_handle *plcm)
-{
-    struct LCM_DRIVER *lcm_drv = NULL;
+{   struct LCM_DRIVER *lcm_drv = NULL;
     DISPFUNC();
     if (_is_lcm_inited(plcm)) {
         lcm_drv = plcm->drv;
@@ -1663,64 +1640,47 @@ int disp_lcm_adjust_fps(void *cmdq, struct disp_lcm_handle *plcm, int fps)
 }
 #ifdef OPLUS_BUG_STABILITY
 //Jiantao.Liu@ODM_WT.MM.Display.Lcd, 2020/07/08, LCD backlight support hight light mode with 12bit
-#define BRIGHT_BL_X	2047
-#define BRIGHT_BL_Y	3562
-#define BRIGHT_BL_BIGGER_Y	3343
-#define BRIGHT_BL_X1	2
-#define BRIGHT_BL_Y1	16
-#define BRIGHT_MAX 4095
-#define BRIGHT_MIN 2048
-#define BL_MAX 4095
-#define BL_MIN 3562
-#define BL_BIGGER_MIN 3343
+#define BL_X_MIN  2
+#define BL_X_MID	2047
+#define BL_X_MAX	4095
+
+#define BL_Y_MIN  8
+#define BL_Y_MID  3343
+#define BL_Y_MAX  4095
+
 #define VALUE_MASK 1000000
 #define OPLUS_BRIGHT_TO_BL(out, v, BL_MIN, BL_MAX, BRIGHT_MIN,BRIGHT_MAX) do { \
                     out = (((int)BL_MAX - (int)BL_MIN)*v + \
                     ((int)BRIGHT_MAX*(int)BL_MIN -(int)BRIGHT_MIN*(int)BL_MAX)) \
                     /((int)BRIGHT_MAX - (int)BRIGHT_MIN); \
                     } while (0)
-//Jiantao.Liu@ODM_WT.MM.Display.Lcd, 2020/07/27, switch of LCD backlight current 24.5MA
-#define OPLUS_BRIGHT_TO_BL_BIGGER(out, v, BL_BIGGER_MIN, BL_MAX, BRIGHT_MIN,BRIGHT_MAX) do { \
-                    out = (((int)BL_MAX - (int)BL_BIGGER_MIN)*v + \
-                    ((int)BRIGHT_MAX*(int)BL_BIGGER_MIN -(int)BRIGHT_MIN*(int)BL_MAX)) \
-                    /((int)BRIGHT_MAX - (int)BRIGHT_MIN); \
-                    } while (0)
 
+#define BL_LEVEL_MIN    8
 static unsigned int oplus_private_set_backlight(unsigned int level)
 {
-	unsigned int value_a = 846;
-	unsigned int value_b = 15996616;
+   //Jiantao.Liu@ODM_WT.MM.Display.Lcd, 2020/07/27, switch of LCD backlight current 24.5MA
+	unsigned int value_a = 796;
+	unsigned int value_b = BL_Y_MIN*1000000;
 	unsigned int level_temp;
-//Jiantao.Liu@ODM_WT.MM.Display.Lcd, 2020/07/27, switch of LCD backlight current 24.5MA
-	if(oplus_display_twelvebits_support) {
-		value_a = 794;
-		value_b = 15996824;
-	}
-	if (level > 0) {
-	if ( level < 2048) {
-		level_temp = (value_a * level * level  + value_b) / VALUE_MASK;
-		pr_err("check brightness level_temp == %u \n",level_temp);
-		if (level_temp < 16) {
-			level_temp = 16;
-			pr_err("min brightness level_temp < 16 , level_temp == %u \n",level_temp);
-			return level_temp;
+
+	if ( level > 0) {
+		if ( level < 2048) {
+			level_temp = (value_a * level * level  + value_b) / VALUE_MASK;
+			pr_err("check brightness level= %d, level_temp == %u \n",level,level_temp);
+			if (level_temp < BL_LEVEL_MIN) {
+				level_temp = BL_LEVEL_MIN;
+			}
+		} else if ( (level < 4096) && (level >= 2048) ) {
+			OPLUS_BRIGHT_TO_BL(level_temp, level, BL_Y_MID, BL_Y_MAX, BL_X_MID,BL_X_MAX);
+			pr_err("check brightness level_temp == %u \n",level_temp);
 		}
-		return level_temp;
-	} else if ( (level < 4096) && (level >= 2048) ) {
-//Jiantao.Liu@ODM_WT.MM.Display.Lcd, 2020/07/27, switch of LCD backlight current 24.5MA
-		if (oplus_display_twelvebits_support)
-			OPLUS_BRIGHT_TO_BL_BIGGER(level_temp, level, BL_BIGGER_MIN, BL_MAX, BRIGHT_MIN,BRIGHT_MAX);
-		else
-			OPLUS_BRIGHT_TO_BL(level_temp, level, BL_MIN, BL_MAX, BRIGHT_MIN,BRIGHT_MAX);
-		pr_err("check brightness level_temp == %u \n",level_temp);
-		return level_temp;
-        }
 	} else if (0 == level) {
 		level_temp = level;
 	} else {
 		DISPERR("check brightness level fail level > 4095, level==%u ",level);
 		level_temp = level;
 	}
+
 	return level_temp;
 }
 
@@ -1785,11 +1745,21 @@ int disp_lcm_set_backlight(struct disp_lcm_handle *plcm,
 	int level_temp;
 	#endif /* OPLUS_BUG_STABILITY */
 	struct LCM_DRIVER *lcm_drv = NULL;
+	struct LCM_PARAMS *lcm_params = NULL;
 
 	DISPFUNC();
 	if (!_is_lcm_inited(plcm)) {
 		DISPERR("lcm_drv is null\n");
 		return -1;
+	}
+
+	lcm_params = plcm->params;
+	if(level == 0){
+		level = 0;
+	}else if (level < lcm_params->brightness_min){
+		level = lcm_params->brightness_min;
+	}else if (level > lcm_params->brightness_max){
+		level = lcm_params->brightness_max;
 	}
 
 	lcm_drv = plcm->drv;
@@ -1801,7 +1771,11 @@ int disp_lcm_set_backlight(struct disp_lcm_handle *plcm,
 			level_temp = backlight_remapping_into_tddic_reg(plcm, level);
 		}
 			g_lcd_backlight=level;
-			lcm_drv->set_backlight_cmdq(handle, level_temp);
+#ifndef OPLUS_FEATURE_MULTIBITS_BL
+            lcm_drv->set_backlight_cmdq(handle, level);
+#else
+        lcm_drv->set_backlight_cmdq(handle, level_temp);
+#endif
 		#else
 			lcm_drv->set_backlight_cmdq(handle, level);
 		#endif
@@ -1964,6 +1938,27 @@ int disp_lcm_oplus_set_lcm_cabc_cmd(struct disp_lcm_handle *plcm, void *handle, 
 	return -1;
 }
 #endif
+
+int disp_lcm_get_cabc(struct disp_lcm_handle *plcm, int *status)
+{
+		struct LCM_DRIVER *lcm_drv = NULL;
+
+		DISPFUNC();
+		if (!_is_lcm_inited(plcm)) {
+			DISPERR("lcm_drv is null\n");
+			return -1;
+		}
+
+		lcm_drv = plcm->drv;
+		if (lcm_drv->get_cabc_status) {
+			lcm_drv->get_cabc_status(status);
+		} else {
+			DISPERR("FATAL ERROR, lcm_drv->get_cabc_status is null\n");
+			return -1;
+		}
+
+		return 0;
+}
 
 int disp_lcm_is_partial_support(struct disp_lcm_handle *plcm)
 {

@@ -32,7 +32,12 @@
 
 #define dev_msg(msg, arg...) pr_err("devinfo:" msg, ##arg);
 
+#ifdef CONFIG_OPLUS_CHARGER_MTK6771
+/*Jianwei.Ye@BSP.CHG.Basic  add for Board mcu match*/
+#define BOARD_GPIO_SUPPORT 2
+#else
 #define BOARD_GPIO_SUPPORT 4
+#endif
 #define MAIN_BOARD_SUPPORT 256
 
 static struct proc_dir_entry *g_parent = NULL;
@@ -45,12 +50,15 @@ struct device_info {
 	struct pinctrl_state *idle[BOARD_GPIO_SUPPORT];
 #endif /*OPLUS_FEATURE_TP_BASIC*/
 	struct list_head dev_list;
+#ifdef CONFIG_OPLUS_CHARGER_MTK6771
+/*Jianwei.Ye@BSP.CHG.Basic  add for Board mcu match*/
 	int main_hw_id5;
 	int main_hw_id6;
 	int main_hw_id7;
 	struct pinctrl_state *hw_main_id5_active;
 	struct pinctrl_state *hw_main_id6_active;
 	struct pinctrl_state *hw_main_id7_active;
+#endif
 };
 
 static struct device_info *g_dev_info = NULL;
@@ -346,6 +354,7 @@ static void set_gpios_sleep(struct device_info *dev_info)
 		}
 	}
 }
+/*#endif OPLUS_FEATURE_TP_BASIC*/
 
 #ifdef OPLUS_FEATURE_TP_BASIC
 /*shifan@bsp.tp 2020.1028 add for Aboard tristate match*/
@@ -618,12 +627,13 @@ static int reinit_aboard_id(struct device *dev, struct manufacture_info *info)
 			hw_mask = 2;
 		} else if (active_val == 0 && sleep_val == 0) {		/*external pull-down*/
 			hw_mask = 1;
-		}
-		dev_msg("active_val[%d] sleep_val[%d] hw_mask[%d]\n", active_val, sleep_val, hw_mask);
-		if (hw_mask < 0) {
+		} else {
+			dev_msg("not match!!,active_val[%d] sleep_val[%d] hw_mask[%d]\n",
+				active_val, sleep_val, hw_mask);
 			ret = -EINVAL;
 			goto read_failed;
 		}
+		dev_msg("active_val[%d] sleep_val[%d] hw_mask[%d]\n", active_val, sleep_val, hw_mask);
 #endif /*OPLUS_FEATURE_TP_BASIC*/
 	} else {
 		dev_msg("normal gpio judgement\n");
@@ -675,6 +685,8 @@ seccess:
 	return ret;
 }
 
+#ifdef CONFIG_OPLUS_CHARGER_MTK6771
+/*Jianwei.Ye@BSP.CHG.Basic  add for Board mcu match*/
 int main_hwid5_val = -1;
 int main_hwid6_val = 0;
 int main_hwid7_val = -1;
@@ -686,7 +698,7 @@ static int main_hwid_init(struct device_info *const device_info)
 
 	np = device_info->dev->of_node;
 
-	device_info->main_hw_id5 = of_get_named_gpio(np, "Hw,main_hwid_5", 0);
+	device_info->main_hw_id5 = of_get_named_gpio(np, "aboard-gpio2", 0);
 	if(device_info->main_hw_id5 < 0) {
 		dev_msg("main_hwid_gpio5 not specified\n");
 		ret = -1;
@@ -698,7 +710,7 @@ static int main_hwid_init(struct device_info *const device_info)
 			goto err;
 		}
 	}
-	device_info->main_hw_id6 = of_get_named_gpio(np, "Hw,main_hwid_6", 0);
+	device_info->main_hw_id6 = of_get_named_gpio(np, "aboard-gpio3", 0);
 	if(device_info->main_hw_id6 < 0 ) {
 		dev_msg("main_hw_id6 not specified\n");
 		ret = -1;
@@ -711,7 +723,7 @@ static int main_hwid_init(struct device_info *const device_info)
 		}
 	}
 
-	device_info->main_hw_id7 = of_get_named_gpio(np, "Hw,main_hwid_7", 0);
+	device_info->main_hw_id7 = of_get_named_gpio(np, "aboard-gpio4", 0);
 	if (device_info->main_hw_id7 < 0 ) {
 		dev_msg("main_hw_id7 not specified\n");
 		//ret = -1;
@@ -734,7 +746,7 @@ static int main_hwid_init(struct device_info *const device_info)
 		}
 	}
 
-	device_info->hw_main_id5_active = pinctrl_lookup_state(device_info->p_ctrl, "hw_main_id5_active");
+	device_info->hw_main_id5_active = pinctrl_lookup_state(device_info->p_ctrl, "aboard_gpio2_active");
 	if (IS_ERR_OR_NULL(device_info->hw_main_id5_active)) {
 		 dev_msg("Failed to get hw_main_id5_active\n");
 		 ret = -1;
@@ -743,7 +755,7 @@ static int main_hwid_init(struct device_info *const device_info)
 		 pinctrl_select_state(device_info->p_ctrl,device_info->hw_main_id5_active);
 	}
 
-	device_info->hw_main_id6_active = pinctrl_lookup_state(device_info->p_ctrl, "hw_main_id6_active");
+	device_info->hw_main_id6_active = pinctrl_lookup_state(device_info->p_ctrl, "aboard_gpio3_active");
 	if (IS_ERR_OR_NULL(device_info->hw_main_id6_active)) {
 		dev_msg("Failed to get hw_main_id6_active\n");
 		ret = -1;
@@ -752,7 +764,7 @@ static int main_hwid_init(struct device_info *const device_info)
 		 pinctrl_select_state(device_info->p_ctrl,device_info->hw_main_id6_active);
 	}
 
-	device_info->hw_main_id7_active = pinctrl_lookup_state(device_info->p_ctrl, "hw_main_id7_active");
+	device_info->hw_main_id7_active = pinctrl_lookup_state(device_info->p_ctrl, "aboard_gpio4_active");
 	if (IS_ERR_OR_NULL(device_info->hw_main_id7_active)) {
 		dev_msg("Failed to get hw_main_id7_active\n");
 		//ret = -1;
@@ -791,6 +803,7 @@ err:
 
 	return ret;
 }
+#endif
 
 static int devinfo_probe(struct platform_device *pdev)
 {
@@ -819,8 +832,10 @@ static int devinfo_probe(struct platform_device *pdev)
 	init_other_hw_ids(pdev);
 	set_gpios_sleep(dev_info);
 	recursive_fork_para_monitor();
+#ifdef CONFIG_OPLUS_CHARGER_MTK6771
+/*Jianwei.Ye@BSP.CHG.Basic  add for Board mcu match*/
 	main_hwid_init(dev_info);
-
+#endif
 	/*register oppo special node*/
 
 	return 0;

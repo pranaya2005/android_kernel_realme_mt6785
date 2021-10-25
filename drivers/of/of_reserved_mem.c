@@ -47,6 +47,10 @@ struct reserved_mem *get_reserved_mem(int num)
 	return &reserved_mem[num];
 }
 
+#ifdef OPLUS_FEATURE_LOWMEM_DBG
+static unsigned long reserved_mem_size;
+#endif /* OPLUS_FEATURE_LOWMEM_DBG */
+
 #if defined(CONFIG_HAVE_MEMBLOCK)
 #include <linux/memblock.h>
 int __init __weak early_init_dt_alloc_reserved_memory_arch(phys_addr_t size,
@@ -383,6 +387,13 @@ int of_reserved_mem_device_init_by_idx(struct device *dev,
 }
 EXPORT_SYMBOL_GPL(of_reserved_mem_device_init_by_idx);
 
+#ifdef OPLUS_FEATURE_LOWMEM_DBG
+unsigned long dt_memory_reserved_pages(void)
+{
+	return reserved_mem_size >> PAGE_SHIFT;
+}
+#endif /* OPLUS_FEATURE_LOWMEM_DBG */
+
 /**
  * of_reserved_mem_device_release() - release reserved memory device structures
  * @dev:	Pointer to the device to deconfigure
@@ -413,10 +424,4 @@ void of_reserved_mem_device_release(struct device *dev)
 }
 EXPORT_SYMBOL_GPL(of_reserved_mem_device_release);
 
-#ifdef OPLUS_FEATURE_LOWMEM_DBG
-unsigned long dt_memory_reserved_pages(void)
-{
-	return reserved_mem_size >> PAGE_SHIFT;
-}
-#endif /* OPLUS_FEATURE_LOWMEM_DBG */
 

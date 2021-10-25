@@ -1,4 +1,4 @@
-TARGET_PRODUCT :=vnd_oppo6785
+TARGET_PRODUCT :=vnd_oppo6769
 ifeq ($(TARGET_PRODUCT),sdm845)
 DEFS_PLATFORM = -DCONFIG_OPPO_BSP_SECCOM_PLATFORM=845
 else ifeq ($(TARGET_PRODUCT),sdm670)
@@ -20,9 +20,17 @@ DEFS_PLATFORM = -DCONFIG_OPPO_BSP_SECCOM_PLATFORM=7125
 else ifeq ($(TARGET_PRODUCT),sm6150)
 DEFS_PLATFORM = -DCONFIG_OPPO_BSP_SECCOM_PLATFORM=7150
 else ifeq ($(TARGET_PRODUCT),lito)
+$(warning PLATFORM_SM72xx=$(PLATFORM_SM72xx).)
+ifeq ($(PLATFORM_SM72xx),lagoon)
+ccflags-y += -DCONFIG_OPLUS_SECURE_SECCOM_PLATFORM=7225
+else
+ccflags-y += -DCONFIG_OPLUS_SECURE_SECCOM_PLATFORM=0
+endif
 DEFS_PLATFORM = -DCONFIG_OPPO_BSP_SECCOM_PLATFORM=7250
 else ifeq ($(TARGET_PRODUCT),kona)
 DEFS_PLATFORM = -DCONFIG_OPPO_BSP_SECCOM_PLATFORM=8250
+else ifeq ($(TARGET_PRODUCT),bengal)
+DEFS_PLATFORM = -DCONFIG_OPPO_BSP_SECCOM_PLATFORM=4250
 else ifneq (,$(findstring oppo6771,$(TARGET_PRODUCT)))
 DEFS_PLATFORM = -DCONFIG_OPPO_BSP_SECCOM_PLATFORM=6771
 ccflags-y += -I$(srctree)/drivers/misc/mediatek/masp/asfv2/asf_inc
@@ -58,13 +66,38 @@ DEFS_PLATFORM = -DCONFIG_OPPO_BSP_SECCOM_PLATFORM=6885
 ccflags-y += -I$(srctree)/drivers/misc/mediatek/masp/asfv2/asf_inc
 ccflags-y += -I$(srctree)/drivers/misc/mediatek/masp/asfv2/asf_export_inc
 ccflags-y += -I$(srctree)/drivers/misc/mediatek/masp/asfv2/module
+else ifneq (,$(findstring oppo6833,$(TARGET_PRODUCT)))
+DEFS_PLATFORM = -DCONFIG_OPPO_BSP_SECCOM_PLATFORM=6885
+ccflags-y += -I$(srctree)/drivers/misc/mediatek/masp/asfv2/asf_inc
+ccflags-y += -I$(srctree)/drivers/misc/mediatek/masp/asfv2/asf_export_inc
+ccflags-y += -I$(srctree)/drivers/misc/mediatek/masp/asfv2/module
+else ifneq (,$(findstring oppo6893,$(TARGET_PRODUCT)))
+DEFS_PLATFORM = -DCONFIG_OPPO_BSP_SECCOM_PLATFORM=6893
+ccflags-y += -I$(srctree)/drivers/misc/mediatek/masp/asfv2/asf_inc
+ccflags-y += -I$(srctree)/drivers/misc/mediatek/masp/asfv2/asf_export_inc
+ccflags-y += -I$(srctree)/drivers/misc/mediatek/masp/asfv2/module
+else ifneq (,$(findstring oppo6891,$(TARGET_PRODUCT)))
+DEFS_PLATFORM = -DCONFIG_OPPO_BSP_SECCOM_PLATFORM=6891
+ccflags-y += -I$(srctree)/drivers/misc/mediatek/masp/asfv2/asf_inc
+ccflags-y += -I$(srctree)/drivers/misc/mediatek/masp/asfv2/asf_export_inc
+ccflags-y += -I$(srctree)/drivers/misc/mediatek/masp/asfv2/module
 else ifneq (,$(findstring oppo6769,$(TARGET_PRODUCT)))
+DEFS_PLATFORM = -DCONFIG_OPPO_BSP_SECCOM_PLATFORM=6768
+ccflags-y += -I$(srctree)/drivers/misc/mediatek/masp/asfv2/asf_inc
+ccflags-y += -I$(srctree)/drivers/misc/mediatek/masp/asfv2/asf_export_inc
+ccflags-y += -I$(srctree)/drivers/misc/mediatek/masp/asfv2/module
+else ifneq (,$(findstring oppo6768,$(TARGET_PRODUCT)))
 DEFS_PLATFORM = -DCONFIG_OPPO_BSP_SECCOM_PLATFORM=6768
 ccflags-y += -I$(srctree)/drivers/misc/mediatek/masp/asfv2/asf_inc
 ccflags-y += -I$(srctree)/drivers/misc/mediatek/masp/asfv2/asf_export_inc
 ccflags-y += -I$(srctree)/drivers/misc/mediatek/masp/asfv2/module
 else ifneq (,$(findstring oppo6785,$(TARGET_PRODUCT)))
 DEFS_PLATFORM = -DCONFIG_OPPO_BSP_SECCOM_PLATFORM=6785
+ccflags-y += -I$(srctree)/drivers/misc/mediatek/masp/asfv2/asf_inc
+ccflags-y += -I$(srctree)/drivers/misc/mediatek/masp/asfv2/asf_export_inc
+ccflags-y += -I$(srctree)/drivers/misc/mediatek/masp/asfv2/module
+else ifneq (,$(findstring oppo6765,$(TARGET_PRODUCT)))
+DEFS_PLATFORM = -DCONFIG_OPPO_BSP_SECCOM_PLATFORM=6765
 ccflags-y += -I$(srctree)/drivers/misc/mediatek/masp/asfv2/asf_inc
 ccflags-y += -I$(srctree)/drivers/misc/mediatek/masp/asfv2/asf_export_inc
 ccflags-y += -I$(srctree)/drivers/misc/mediatek/masp/asfv2/module

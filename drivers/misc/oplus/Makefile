@@ -2,7 +2,7 @@
 #JianBin.Zhang@PSW.MM.Display.LCD.Stability, 2020/05/16,modify for display decouping
 obj-y += oplus_display_private_api.o
 #obj-y += oplus_display_onscreenfingerprint.o
-#obj-y += oplus_display_alwaysondisplay.o
+obj-$(CONFIG_MACH_MT6785) += oplus_display_alwaysondisplay.o
 #obj-y += oplus_display_common.o
 #obj-y += oplus_display_dc.o
 #obj-y += oplus_display_panel.o

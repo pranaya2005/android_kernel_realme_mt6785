@@ -390,6 +390,19 @@ static int pidlist_array_load(struct cgroup *cgrp, enum cgroup_filetype type,
 		if (unlikely(n == length))
 			break;
 
+		/* mtk: don't get pid when proc/task killed */
+        #ifdef OPLUS_FEATURE_HANS_FREEZE
+		// Kun.Zhou@ANDROID.RESCONTROL, 2019/09/23, add for hans freeze manager
+		if (((SIGNAL_GROUP_EXIT & tsk->signal->flags) || (PF_EXITING & tsk->flags))
+		    && !(freezing(tsk) || frozen(tsk)))
+			continue;
+		#else
+		if ((SIGNAL_GROUP_EXIT & tsk->signal->flags) ||
+			(PF_EXITING & tsk->flags))
+			continue;
+        #endif /*OPLUS_FEATURE_HANS_FREEZE*/
+
+
 		/* get tgid or pid for procs or tasks file respectively */
 		if (type == CGROUP_FILE_PROCS)
 			pid = task_tgid_vnr(tsk);

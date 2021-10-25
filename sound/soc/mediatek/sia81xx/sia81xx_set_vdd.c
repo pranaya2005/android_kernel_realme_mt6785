@@ -13,7 +13,7 @@
 
 
 #define DEBUG
-#define LOG_FLAG	"sia81xx_set_vdd"
+#define LOG_FLAG	"sia8101_set_vdd"
 
 
 #include <linux/version.h>

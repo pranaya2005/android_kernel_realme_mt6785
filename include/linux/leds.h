@@ -38,6 +38,8 @@ enum led_brightness {
 enum led_brightness {
 	LED_OFF		= 0,
 	LED_ON		= 1,
+	LED_HALF	= 2047,
+	LED_FULL	= 4095,
 };
 extern int get_half_backlight_level(void);
 extern int get_full_backlight_level(void);

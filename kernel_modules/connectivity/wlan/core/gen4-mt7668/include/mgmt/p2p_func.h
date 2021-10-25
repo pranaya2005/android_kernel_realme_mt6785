@@ -309,4 +309,6 @@ UINT_32 p2pFuncCalculateP2P_IE_NoA(IN P_ADAPTER_T prAdapter, IN UINT_8 ucBssIdx,
 
 VOID p2pFuncGenerateP2P_IE_NoA(IN P_ADAPTER_T prAdapter, IN P_MSDU_INFO_T prMsduInfo);
 
+BOOLEAN p2pFuncIsBufferableMMPDU(IN P_MSDU_INFO_T prMgmtTxMsdu);
+
 #endif

@@ -50,6 +50,9 @@
 #include "kd_imgsensor_define.h"
 #include "kd_imgsensor_errcode.h"
 #include "imgsensor_common.h"
+#ifdef OPLUS_FEATURE_CAMERA_COMMON
+#include "imgsensor_eeprom.h"
+#endif
 
 #include "ov48bmipiraw_Sensor.h"
 #include "ov48b_Sensor_setting.h"
@@ -981,45 +984,58 @@ static kal_uint32 return_sensor_id(void)
 		(read_cmos_sensor(0x300b) << 8) | read_cmos_sensor(0x300c));
 }
 
+#ifdef OPLUS_FEATURE_CAMERA_COMMON
+static void read_EepromQSC(void)
+{
+    int i = 0;
+    for (i = 0; i < CALI_DATA_MASTER_LENGTH; i++) {
+        gImgEepromInfo.stereoMWdata[i] = Eeprom_1ByteDataRead(OV48B_STEREO_START_ADDR + i, 0xA0);
+    }
+    gImgEepromInfo.i4CurSensorIdx = 0;
+    gImgEepromInfo.i4CurSensorId = imgsensor_info.sensor_id;
+}
+#endif
+
 static kal_uint32 get_imgsensor_id(UINT32 *sensor_id)
 {
-	kal_uint8 i = 0;
-	kal_uint8 retry = 2;
+    kal_uint8 i = 0;
+    kal_uint8 retry = 2;
 
-	while (imgsensor_info.i2c_addr_table[i] != 0xff) {
-	spin_lock(&imgsensor_drv_lock);
-	imgsensor.i2c_write_id = imgsensor_info.i2c_addr_table[i];
-	spin_unlock(&imgsensor_drv_lock);
-	do {
-		*sensor_id = return_sensor_id();
-	if (*sensor_id == imgsensor_info.sensor_id) {
-		LOG_INF("i2c write id: 0x%x, sensor id: 0x%x\n",
-			imgsensor.i2c_write_id, *sensor_id);
-			#ifdef OPLUS_FEATURE_CAMERA_COMMON
-			imgsensor_info.module_id = read_module_id();
-			read_eeprom_SN();
-			read_eeprom_CamInfo();
-			read_sensor_Cali();
-			LOG_INF("RENM0_module_id=%d\n",imgsensor_info.module_id);
-			if(deviceInfo_register_value == 0x00){
-					//register_imgsensor_deviceinfo("Cam_r0", DEVICE_VERSION_OV48B, imgsensor_info.module_id);
-					deviceInfo_register_value = 0x01;
-			}
-			#endif
-		return ERROR_NONE;
-	}
-		retry--;
-	} while (retry > 0);
-	i++;
-	retry = 1;
-	}
-	if (*sensor_id != imgsensor_info.sensor_id) {
-		LOG_INF("get_imgsensor_id: 0x%x fail\n", *sensor_id);
-		*sensor_id = 0xFFFFFFFF;
-		return ERROR_SENSOR_CONNECT_FAIL;
-	}
+    while (imgsensor_info.i2c_addr_table[i] != 0xff) {
+    spin_lock(&imgsensor_drv_lock);
+    imgsensor.i2c_write_id = imgsensor_info.i2c_addr_table[i];
+    spin_unlock(&imgsensor_drv_lock);
+    do {
+        *sensor_id = return_sensor_id();
+        if (*sensor_id == imgsensor_info.sensor_id) {
+            LOG_INF("i2c write id: 0x%x, sensor id: 0x%x\n",
+                imgsensor.i2c_write_id, *sensor_id);
+            #ifdef OPLUS_FEATURE_CAMERA_COMMON
+            read_EepromQSC();
+            imgsensor_info.module_id = read_module_id();
+            read_eeprom_SN();
+            read_eeprom_CamInfo();
+            read_sensor_Cali();
+            LOG_INF("RENM0_module_id=%d\n",imgsensor_info.module_id);
+            if(deviceInfo_register_value == 0x00){
+                //register_imgsensor_deviceinfo("Cam_r0", DEVICE_VERSION_OV48B, imgsensor_info.module_id);
+                deviceInfo_register_value = 0x01;
+            }
+            #endif
+            return ERROR_NONE;
+        }
+        retry--;
+    } while (retry > 0);
+    i++;
+    retry = 1;
+    }
+    if (*sensor_id != imgsensor_info.sensor_id) {
+        LOG_INF("get_imgsensor_id: 0x%x fail\n", *sensor_id);
+        *sensor_id = 0xFFFFFFFF;
+        return ERROR_SENSOR_CONNECT_FAIL;
+    }
 
-	return ERROR_NONE;
+    return ERROR_NONE;
 }
 
 static kal_uint32 open(void)
@@ -1967,7 +1983,7 @@ static kal_uint32 feature_control(MSDK_SENSOR_FEATURE_ENUM feature_id,
 		}
 		/*Caohua.Lin@Camera.Driver , 20190318, add for ITS--sensor_fusion*/
 		case SENSOR_FEATURE_GET_OFFSET_TO_START_OF_EXPOSURE:
-			*(MUINT32 *)(uintptr_t)(*(feature_data + 1)) = 0;
+			*(MUINT32 *)(uintptr_t)(*(feature_data + 1)) = -17138000;
 			break;
 #endif	
 	case SENSOR_FEATURE_GET_PIXEL_CLOCK_FREQ_BY_SCENARIO:

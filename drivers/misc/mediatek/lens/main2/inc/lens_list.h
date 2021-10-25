@@ -161,6 +161,7 @@ extern long DW9718TAF_Ioctl(struct file *a_pstFile, unsigned int a_u4Command,
 			    unsigned long a_u4Param);
 extern int DW9718TAF_Release(struct inode *a_pstInode, struct file *a_pstFile);
 extern int DW9718TAF_GetFileName(unsigned char *pFileName);
-
+#ifndef OPLUS_FEATURE_CAMERA_COMMON
 extern void AFRegulatorCtrl(int Stage);
+#endif
 #endif

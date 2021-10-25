@@ -20,6 +20,22 @@
 #include <linux/sched.h>
 #include <linux/sched/signal.h>
 
+#ifdef OPLUS_FEATURE_CAMERA_COMMON
+/*Miao.Huang@camera.drv 2021/02/05,fix fail to regulator_set_voltage,MTK case:ALPS05564789 */
+static bool regulator_status[IMGSENSOR_SENSOR_IDX_MAX_NUM][REGULATOR_TYPE_MAX_NUM] = {
+	{"false"},
+};
+
+static void check_for_regulator_get(struct REGULATOR *preg,
+	struct device *pdevice, unsigned int sensor_index,
+	unsigned int regulator_index);
+static void check_for_regulator_put(struct REGULATOR *preg,
+	unsigned int sensor_index, unsigned int regulator_index);
+static struct device_node *of_node_record = NULL;
+
+static DEFINE_MUTEX(g_regulator_state_mutex);
+#endif /* OPLUS_FEATURE_CAMERA_COMMON */
+
 static const int regulator_voltage[] = {
 	REGULATOR_VOLTAGE_0,
 	REGULATOR_VOLTAGE_1000,
@@ -54,7 +70,6 @@ static const int int_oc_type[REGULATOR_TYPE_MAX_NUM] = {
 
 
 static struct REGULATOR reg_instance;
-
 
 static void imgsensor_oc_handler1(void)
 {
@@ -203,7 +218,10 @@ static enum IMGSENSOR_RETURN regulator_init(void *pinstance)
 		pdevice->of_node = pof_node;
 		return IMGSENSOR_RETURN_ERROR;
 	}
-
+	#ifdef OPLUS_FEATURE_CAMERA_COMMON
+	/*Miao.Huang@camera.drv 2021/02/05,fix fail to regulator_set_voltage,MTK case:ALPS05564789 */
+	of_node_record = pdevice->of_node;
+	#endif
 	for (j = IMGSENSOR_SENSOR_IDX_MIN_NUM;
 		j < IMGSENSOR_SENSOR_IDX_MAX_NUM;
 		j++) {
@@ -221,6 +239,10 @@ static enum IMGSENSOR_RETURN regulator_init(void *pinstance)
 					j, i, str_regulator_name);
 
 			atomic_set(&preg->enable_cnt[j][i], 0);
+			#ifdef OPLUS_FEATURE_CAMERA_COMMON
+			/*Miao.Huang@camera.drv 2021/02/05,fix fail to regulator_set_voltage,MTK case:ALPS05564789 */
+			regulator_status[j][i] = true;
+			#endif
 		}
 	}
 	pdevice->of_node = pof_node;
@@ -268,13 +290,17 @@ static enum IMGSENSOR_RETURN regulator_set(
 #else
 	if (pin > IMGSENSOR_HW_PIN_DOVDD   ||
 #endif
-	    pin < IMGSENSOR_HW_PIN_AVDD    ||
-	    pin_state < IMGSENSOR_HW_PIN_STATE_LEVEL_0 ||
-	    pin_state >= IMGSENSOR_HW_PIN_STATE_LEVEL_HIGH ||
-	    sensor_idx < 0)
+		pin < IMGSENSOR_HW_PIN_AVDD    ||
+		pin_state < IMGSENSOR_HW_PIN_STATE_LEVEL_0 ||
+		pin_state >= IMGSENSOR_HW_PIN_STATE_LEVEL_HIGH)
 		return IMGSENSOR_RETURN_ERROR;
 
 	reg_type_offset = REGULATOR_TYPE_VCAMA;
+	#ifdef OPLUS_FEATURE_CAMERA_COMMON
+	/*Miao.Huang@camera.drv 2021/02/05,fix fail to regulator_set_voltage,MTK case:ALPS05564789 */
+	check_for_regulator_get(preg, gimgsensor_device, sensor_idx,
+		(reg_type_offset + pin - IMGSENSOR_HW_PIN_AVDD));
+	#endif
 
 	pregulator = preg->pregulator[(unsigned int)sensor_idx][
 		reg_type_offset + pin - IMGSENSOR_HW_PIN_AVDD];
@@ -304,7 +330,11 @@ static enum IMGSENSOR_RETURN regulator_set(
 				    pin,
 				    regulator_voltage[
 				   pin_state - IMGSENSOR_HW_PIN_STATE_LEVEL_0]);
-
+				#ifdef OPLUS_FEATURE_CAMERA_COMMON
+				/*Miao.Huang@camera.drv 2021/02/05,fix fail to regulator_set_voltage,MTK case:ALPS05564789 */
+				check_for_regulator_put(preg, sensor_idx,
+				   (reg_type_offset + pin - IMGSENSOR_HW_PIN_AVDD));
+				#endif
 				return IMGSENSOR_RETURN_ERROR;
 			}
 			atomic_inc(enable_cnt);
@@ -316,9 +346,19 @@ static enum IMGSENSOR_RETURN regulator_set(
 					pr_err(
 					    "[regulator]fail to regulator_disable, powertype: %d\n",
 					    pin);
+					#ifdef OPLUS_FEATURE_CAMERA_COMMON
+					/*Miao.Huang@camera.drv 2021/02/05,fix fail to regulator_set_voltage,MTK case:ALPS05564789 */
+					check_for_regulator_put(preg, sensor_idx,
+					   (reg_type_offset + pin - IMGSENSOR_HW_PIN_AVDD));
+					#endif
 					return IMGSENSOR_RETURN_ERROR;
 				}
 			}
+			#ifdef OPLUS_FEATURE_CAMERA_COMMON
+			/*Miao.Huang@camera.drv 2021/02/05,fix fail to regulator_set_voltage,MTK case:ALPS05564789 */
+			check_for_regulator_put(preg, sensor_idx,
+			   (reg_type_offset + pin - IMGSENSOR_HW_PIN_AVDD));
+			#endif
 			atomic_dec(enable_cnt);
 		}
 	} else {
@@ -330,6 +370,82 @@ static enum IMGSENSOR_RETURN regulator_set(
 
 	return IMGSENSOR_RETURN_SUCCESS;
 }
+
+#ifdef OPLUS_FEATURE_CAMERA_COMMON
+/*Miao.Huang@camera.drv 2021/02/05,fix fail to regulator_set_voltage,MTK case:ALPS05564789 */
+static void check_for_regulator_get(struct REGULATOR *preg,
+	struct device *pdevice, unsigned int sensor_index,
+	unsigned int regulator_index)
+{
+	struct device_node *pof_node = NULL;
+	char str_regulator_name[LENGTH_FOR_SNPRINTF];
+
+	if (!preg || !pdevice) {
+		pr_err("Fatal: Null ptr.preg:%pK,pdevice:%pK\n", preg, pdevice);
+		return;
+	}
+
+	if (sensor_index >= IMGSENSOR_SENSOR_IDX_MAX_NUM ||
+		regulator_index >= REGULATOR_TYPE_MAX_NUM ) {
+		pr_err("[%s]Invalid sensor_idx:%d regulator_idx: %d\n",
+		__func__, sensor_index, regulator_index);
+		return;
+	}
+
+	mutex_lock(&g_regulator_state_mutex);
+
+	if (regulator_status[sensor_index][regulator_index] == false) {
+		pof_node = pdevice->of_node;
+		pdevice->of_node = of_node_record;
+
+		snprintf(str_regulator_name,
+		sizeof(str_regulator_name),
+		"cam%d_%s",
+		sensor_index,
+		regulator_control[regulator_index].pregulator_type);
+		preg->pregulator[sensor_index][regulator_index] =
+		regulator_get(pdevice, str_regulator_name);
+
+		if (preg != NULL) {
+			regulator_status[sensor_index][regulator_index] = true;
+		} else {
+			pr_err("get regulator failed.\n");
+		}
+		pdevice->of_node = pof_node;
+	}
+
+	mutex_unlock(&g_regulator_state_mutex);
+
+	return;
+}
+
+static void check_for_regulator_put(struct REGULATOR *preg,
+	unsigned int sensor_index, unsigned int regulator_index)
+{
+	if (!preg) {
+		pr_err("Fatal: Null ptr.\n");
+		return;
+	}
+
+	if (sensor_index >= IMGSENSOR_SENSOR_IDX_MAX_NUM ||
+		regulator_index >= REGULATOR_TYPE_MAX_NUM ) {
+		pr_err("[%s]Invalid sensor_idx:%d regulator_idx: %d\n",
+		__func__, sensor_index, regulator_index);
+		return;
+	}
+
+	mutex_lock(&g_regulator_state_mutex);
+
+	if (regulator_status[sensor_index][regulator_index] == true) {
+		regulator_put(preg->pregulator[sensor_index][regulator_index]);
+		regulator_status[sensor_index][regulator_index] = false;
+	}
+
+	mutex_unlock(&g_regulator_state_mutex);
+
+	return;
+}
+#endif
 
 static struct IMGSENSOR_HW_DEVICE device = {
 	.pinstance = (void *)&reg_instance,

@@ -29,6 +29,7 @@ subdir-ccflags-y += -I$(MTK_CUSTOM_PATH)/lens/main/common/dw9800af
 subdir-ccflags-y += -I$(MTK_CUSTOM_PATH)/lens/main/common/fp5516af
 subdir-ccflags-y += -I$(MTK_CUSTOM_PATH)/lens/main/common/bu64253af
 subdir-ccflags-y += -I$(MTK_CUSTOM_PATH)/lens/main/common/lc898212xdaf/inc
+subdir-ccflags-y += -I$(MTK_CUSTOM_PATH)/lens/main/common/bu64253gwzaf
 ifeq ($(CONFIG_MTK_LENS_BU63165AF_SUPPORT), y)
   subdir-ccflags-y += -I$(MTK_CUSTOM_PATH)/lens/main/common/bu63165af/inc
 else
@@ -53,7 +54,6 @@ MAIN_CFILES += common/dw9800waf/DW9800WAF.c
 MAIN_CFILES  += common/dw9814af/DW9814AF.c
 MAIN_CFILES  += common/dw9718af/DW9718AF.c
 MAIN_CFILES  += common/dw9718saf/DW9718SAF.c
-MAIN_CFILES  += common/dw9718taf/DW9718TAF.c
 MAIN_CFILES  += common/dw9719taf/DW9719TAF.c
 MAIN_CFILES  += common/dw9763af/DW9763AF.c
 MAIN_CFILES  += common/dw9839af/DW9839AF.c
@@ -76,6 +76,10 @@ MAIN_CFILES  += common/wv511aaf/WV511AAF.c
 MAIN_CFILES  += common/ak7371af/AK7371AF.c
 ifeq ($(CONFIG_MTK_LENS_FP5516AF_SUPPORT), y)
 MAIN_CFILES  += common/fp5516af/FP5516AF.c
+endif
+ifeq ($(CONFIG_MTK_LENS_DW9718TAF_SUPPORT), y)
+MAIN_CFILES  += common/dw9718taf/DW9718TAF.c
+MAIN_CFILES  += common/dw9718taf_evenc_s5kjn103/DW9718TAF_EVENC_S5KJN103.c
 endif
 MAIN_CFILES  += common/ak7374af/AK7374AF.c
 ifeq ($(CONFIG_MTK_LENS_BU63165AF_SUPPORT), y)
@@ -107,9 +111,11 @@ obj-y  += common/dw9714af/
 obj-y  += common/dw9800waf/
 obj-y  += common/dw9814af/
 obj-y  += common/dw9718af/
+ifeq ($(CONFIG_MTK_LENS_DW9718TAF_SUPPORT), y)
 obj-y += common/dw9718taf/
+obj-y += common/dw9718taf_evenc_s5kjn103/
+endif
 obj-y  += common/dw9718saf/
-obj-y  += common/dw9718taf/
 obj-y  += common/dw9719taf/
 obj-y  += common/dw9763af/
 obj-y  += common/dw9839af/

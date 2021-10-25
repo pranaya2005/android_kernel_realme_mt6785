@@ -1608,6 +1608,7 @@ void DSI_MIPI_clk_change(enum DISP_MODULE_ENUM module, void *cmdq, int clk)
 int mipi_clk_change(int msg, int en)
 {
 	struct cmdqRecStruct *handle = NULL;
+	struct LCM_DSI_PARAMS *dsi_params =&(_dsi_context[0].dsi_params);
 
 	DISPMSG("%s,msg=%d,en=%d\n", __func__, msg, en);
 
@@ -1620,8 +1621,8 @@ int mipi_clk_change(int msg, int en)
 		"ilt9881h_txd_hdp_dsi_vdo_lcm_drv") ||!strcmp(mtkfb_lcm_name,
 		"ilt9881h_truly_hdp_dsi_vdo_lcm_drv") ||!strcmp(mtkfb_lcm_name,
 		"nt36525b_hlt_psc_ac_boe_vdo") ||!strcmp(mtkfb_lcm_name,
-		"nt36525b_hlt_psc_ac_vdo") ||!strcmp(mtkfb_lcm_name,
-		"ilt9882n_txd_psc_ac_hdp_dsi_vdo_lcm")) {
+		"nt36525b_hlt_psc_ac_vdo") || !strcmp(mtkfb_lcm_name,
+		"nt36525b_hlt_hdp_dsi_vdo_lcm_drv")) {
 			struct LCM_DSI_PARAMS *dsi_params =&(_dsi_context[0].dsi_params);
 			unsigned int hbp_wc;
 			unsigned int dsiTmpBufBpp;
@@ -1650,11 +1651,11 @@ int mipi_clk_change(int msg, int en)
 			pr_err("%s,name=%s,def_dsi_hbp=%d,def_data_rate=%d\n", __func__, mtkfb_lcm_name, def_dsi_hbp,def_data_rate);
 		} else if (!strcmp(mtkfb_lcm_name,
 		"nt36525b_hlt_hdp_dsi_vdo_lcm_drv")) {
-			struct LCM_DSI_PARAMS *dsi_params =&(_dsi_context[0].dsi_params);
 			unsigned int hbp_wc;
 			unsigned int dsiTmpBufBpp;
 
 			def_data_rate = 720;
+
 			//def_dsi_hbp = 0xD2; /* adaptive HBP value */
 			if ((dsi_params->data_format).format == LCM_DSI_FORMAT_RGB565)
 				dsiTmpBufBpp = 2;
@@ -1675,8 +1676,38 @@ int mipi_clk_change(int msg, int en)
 			}
 			hbp_wc = ALIGN_TO((hbp_wc), 4);
 			def_dsi_hbp = hbp_wc;
-			pr_err("%s,name=%s,def_dsi_hbp=%d,def_data_rate=%d\n", __func__, mtkfb_lcm_name, def_dsi_hbp,def_data_rate);
-		} else {
+			def_data_rate = dsi_params->data_rate_dyn;
+
+			pr_err("%s, name=%s, def_dsi_hbp=%d, def_data_rate=%d\n", __func__, mtkfb_lcm_name, def_dsi_hbp,def_data_rate);
+		}else if (dsi_params->dynamic_switch_mipi == 1) {
+			unsigned int hbp_wc;
+			unsigned int dsiTmpBufBpp;
+
+			//def_dsi_hbp = 0xD2; /* adaptive HBP value */
+			if ((dsi_params->data_format).format == LCM_DSI_FORMAT_RGB565)
+				dsiTmpBufBpp = 2;
+			else
+				dsiTmpBufBpp = 3;
+
+			if (dsi_params->mode == SYNC_EVENT_VDO_MODE ||
+				dsi_params->mode == BURST_VDO_MODE ||
+				dsi_params->switch_mode == SYNC_EVENT_VDO_MODE ||
+				dsi_params->switch_mode == BURST_VDO_MODE) {
+
+				hbp_wc = ((dsi_params->horizontal_backporch_dyn+
+					dsi_params->horizontal_sync_active_dyn) *
+					dsiTmpBufBpp - 10);
+			} else {
+				hbp_wc =
+				(dsi_params->horizontal_backporch_dyn * dsiTmpBufBpp - 10);
+				}
+			hbp_wc = ALIGN_TO((hbp_wc), 4);
+			def_dsi_hbp = hbp_wc;
+			def_data_rate = dsi_params->data_rate_dyn;
+
+			pr_err("%s, name=%s, def_dsi_hbp=%d, def_data_rate=%d, dsi_params->horizontal_backporch_dyn=%d, dsi_params->horizontal_sync_active_dyn=%d\n",
+                        __func__, mtkfb_lcm_name, def_dsi_hbp,def_data_rate,dsi_params->horizontal_backporch_dyn,dsi_params->horizontal_sync_active_dyn);
+		}else {
 			DISPERR("%s,lcm(%s) not support change mipi clock\n",
 				__func__, mtkfb_lcm_name);
 
@@ -4076,6 +4107,35 @@ static void lcm_set_reset_pin(UINT32 value)
 			disp_dts_gpio_select_state(DTS_GPIO_STATE_LCM_RST_OUT0);
 	}
 }
+
+long lcm_bias_vsp(UINT32 value)
+{
+	pr_debug("[lcm]set vsp value is %d\n",value);
+	if (value)
+		disp_dts_gpio_select_state(DTS_GPIO_STATE_LCD_BIAS_ENP1);
+	else
+		disp_dts_gpio_select_state(DTS_GPIO_STATE_LCD_BIAS_ENP0);
+	return 0;
+}
+
+void lcm_bias_vsn(UINT32 value)
+{
+	 pr_debug("[lcm]set vsn value is %d\n",value);
+
+	if (value)
+		disp_dts_gpio_select_state(DTS_GPIO_STATE_LCD_BIAS_ENN1);
+	else
+		disp_dts_gpio_select_state(DTS_GPIO_STATE_LCD_BIAS_ENN0);
+}
+
+static void lcm_vddio18_enable(UINT32 value)
+{
+	if (value)
+		disp_dts_gpio_select_state(DTS_GPIO_STATE_LCD_VDDIO18_EN1);
+	else
+		disp_dts_gpio_select_state(DTS_GPIO_STATE_LCD_VDDIO18_EN0);
+}
+
 #endif
 
 static void lcm1_set_reset_pin(UINT32 value)
@@ -4289,7 +4349,12 @@ int ddp_dsi_set_lcm_utils(enum DISP_MODULE_ENUM module,
 	}
 
 	utils->set_reset_pin = lcm_set_reset_pin;
-#ifdef OPLUS_BUG_STABILITY
+#ifndef OPLUS_BUG_STABILITY
+//Hao.Liang@ODM_WT.MM.Display.Lcd, 2021/1/06, EVEN LCD voltage control
+	utils->set_gpio_lcd_enp_bias = lcm_bias_vsp;
+	utils->set_gpio_lcd_enn_bias = lcm_bias_vsn;
+	utils->set_gpio_lcm_vddio_ctl = lcm_vddio18_enable;
+#else
 //Hao.Liang@ODM_WT.MM.Display.Lcd, 2019/9/25, LCD voltage control
 	utils->set_gpio_lcd_enp_bias = lcm_bias_vsp;
 	utils->set_gpio_lcd_enn_bias = lcm_bias_vsn;

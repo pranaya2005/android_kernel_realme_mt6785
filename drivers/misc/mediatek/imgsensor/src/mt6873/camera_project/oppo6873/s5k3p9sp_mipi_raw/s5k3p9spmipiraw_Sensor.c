@@ -50,6 +50,7 @@
 
 
 #ifdef OPLUS_FEATURE_CAMERA_COMMON
+#include "imgsensor_eeprom.h"
 /*Caohua.Lin@Camera.Driver add for 18011/18311  board 20180723*/
 #define DEVICE_VERSION_S5k3P9SP     "s5k3p9sp"
 //extern void register_imgsensor_deviceinfo(char *name, char *version, u8 module_id);
@@ -4489,6 +4490,22 @@ static void slim_video_setting(void)
 		sizeof(addr_data_pair_normal_video) / sizeof(kal_uint16));
 }
 
+#ifdef OPLUS_FEATURE_CAMERA_COMMON
+static void read_EepromQSC(void)
+{
+    int i = 0, j = 0;
+    for (i = 0; i < S5K3P9S_DUALCAM_CALI_PART_LENGTH; i++) {
+        gImgEepromInfo.stereoFrontdata[i] = Eeprom_1ByteDataRead(S5K3P9SP_STEREO_START_ADDR + i, 0xA8);
+    }
+    for (j = 0; j < S5K3P9S_DUALCAM_CALI_PART2_LENGTH; j++) {
+        gImgEepromInfo.stereoFrontdata[S5K3P9S_DUALCAM_CALI_PART_LENGTH + j] =
+            Eeprom_1ByteDataRead(S5K3P9SP_STEREO_START_ADDR2 + j, 0xA8);
+    }
+    gImgEepromInfo.i4CurSensorIdx = 1;
+    gImgEepromInfo.i4CurSensorId = imgsensor_info.sensor_id;
+}
+#endif
+
 /*************************************************************************
 * FUNCTION
 *	get_imgsensor_id
@@ -4507,64 +4524,66 @@ static void slim_video_setting(void)
 *************************************************************************/
 static kal_uint32 get_imgsensor_id(UINT32 *sensor_id)
 {
-	kal_uint8 i = 0;
-	kal_uint8 retry = 2;
-	/*
-	int I2C_BUS = -1;
-	I2C_BUS = i2c_adapter_id(pgi2c_cfg_legacy->pinst->pi2c_client->adapter);
-	LOG_INF("S5K3P9SPmipiraw_Sensor I2C_BUS = %d\n", I2C_BUS);
-	if(I2C_BUS != 4){
-		*sensor_id = 0xFFFFFFFF;
-		return ERROR_SENSOR_CONNECT_FAIL;
-	}
-	*/
-	/*sensor have two i2c address 0x6c 0x6d & 0x21 0x20, we should detect the module used i2c address*/
-	while (imgsensor_info.i2c_addr_table[i] != 0xff) {
-		spin_lock(&imgsensor_drv_lock);
-		imgsensor.i2c_write_id = imgsensor_info.i2c_addr_table[i];
-		spin_unlock(&imgsensor_drv_lock);
-		do {
-			*sensor_id = ((read_cmos_sensor_16_8(0x0000) << 8) | read_cmos_sensor_16_8(0x0001));
-			LOG_INF("read out sensor id 0x%x \n", *sensor_id);
-			if (*sensor_id == imgsensor_info.sensor_id) {
-				LOG_INF("i2c write id: 0x%x, sensor id: 0x%x\n", imgsensor.i2c_write_id, *sensor_id);
-				*sensor_id = S5K3P9SP_SENSOR_ID;
-				#ifdef OPLUS_FEATURE_CAMERA_COMMON
-				/*Caohua.Lin@Camera.Driver add for 18011/18311  board 20180723*/
-				imgsensor_info.module_id = read_module_id();
-                                /*Henry.Chang@Camera.Driver add for ModuleSN  20181216*/
-				read_eeprom_SN();
-				read_eeprom_CamInfo();
-				LOG_INF("s5k3p9sp_module_id=%d\n",imgsensor_info.module_id);
-				if(deviceInfo_register_value == 0x00){
-					//register_imgsensor_deviceinfo("Cam_f", DEVICE_VERSION_S5k3P9SP, imgsensor_info.module_id);
-					deviceInfo_register_value = 0x01;
-				}
-				read_4cell_from_eeprom_s5k3p9sp();
-				#endif
-				/*vivo hope  add for CameraEM otp errorcode*/
-				/*
-				LOG_INF("cfx_add:start read eeprom ---vivo_otp_read_when_power_on = %d\n", vivo_otp_read_when_power_on);
-				vivo_otp_read_when_power_on = S5K3P9SP_otp_read();
-				LOG_INF("cfx_add:end read eeprom ---vivo_otp_read_when_power_on = %d,S5K3P9SP_OTP_ERROR_CODE =%d\n", vivo_otp_read_when_power_on, S5K3P9SP_OTP_ERROR_CODE);
-				*/
-				/*vivo hope  add end*/
-				return ERROR_NONE;
-			}
-			LOG_INF("Read sensor id fail, id: 0x%x\n", imgsensor.i2c_write_id);
-			retry--;
-		} while(retry > 0);
-		i++;
-		retry = 2;
-	}
-	if (*sensor_id !=  imgsensor_info.sensor_id) {
-		/* if Sensor ID is not correct, Must set *sensor_id to 0xFFFFFFFF*/
-		*sensor_id = 0xFFFFFFFF;
-		return ERROR_SENSOR_CONNECT_FAIL;
-	}
-	return ERROR_NONE;
-}
+    kal_uint8 i = 0;
+    kal_uint8 retry = 2;
+    /*
+    int I2C_BUS = -1;
+    I2C_BUS = i2c_adapter_id(pgi2c_cfg_legacy->pinst->pi2c_client->adapter);
+    LOG_INF("S5K3P9SPmipiraw_Sensor I2C_BUS = %d\n", I2C_BUS);
+    if(I2C_BUS != 4){
+        *sensor_id = 0xFFFFFFFF;
+        return ERROR_SENSOR_CONNECT_FAIL;
+    }
+    */
+    /*sensor have two i2c address 0x6c 0x6d & 0x21 0x20, we should detect the module used i2c address*/
+    while (imgsensor_info.i2c_addr_table[i] != 0xff) {
+        spin_lock(&imgsensor_drv_lock);
+        imgsensor.i2c_write_id = imgsensor_info.i2c_addr_table[i];
+        spin_unlock(&imgsensor_drv_lock);
+        do {
+            *sensor_id = ((read_cmos_sensor_16_8(0x0000) << 8) | read_cmos_sensor_16_8(0x0001));
+            LOG_INF("read out sensor id 0x%x \n", *sensor_id);
+            if (*sensor_id == imgsensor_info.sensor_id) {
+                LOG_INF("i2c write id: 0x%x, sensor id: 0x%x\n", imgsensor.i2c_write_id, *sensor_id);
+                *sensor_id = S5K3P9SP_SENSOR_ID;
 
+                #ifdef OPLUS_FEATURE_CAMERA_COMMON
+                read_EepromQSC();
+                /*Caohua.Lin@Camera.Driver add for 18011/18311  board 20180723*/
+                imgsensor_info.module_id = read_module_id();
+                /*Henry.Chang@Camera.Driver add for ModuleSN  20181216*/
+                read_eeprom_SN();
+                read_eeprom_CamInfo();
+                LOG_INF("s5k3p9sp_module_id=%d\n",imgsensor_info.module_id);
+                if(deviceInfo_register_value == 0x00){
+                    //register_imgsensor_deviceinfo("Cam_f", DEVICE_VERSION_S5k3P9SP, imgsensor_info.module_id);
+                    deviceInfo_register_value = 0x01;
+                }
+                read_4cell_from_eeprom_s5k3p9sp();
+                #endif
+
+                /*vivo hope  add for CameraEM otp errorcode*/
+                /*
+                LOG_INF("cfx_add:start read eeprom ---vivo_otp_read_when_power_on = %d\n", vivo_otp_read_when_power_on);
+                vivo_otp_read_when_power_on = S5K3P9SP_otp_read();
+                LOG_INF("cfx_add:end read eeprom ---vivo_otp_read_when_power_on = %d,S5K3P9SP_OTP_ERROR_CODE =%d\n", vivo_otp_read_when_power_on, S5K3P9SP_OTP_ERROR_CODE);
+                */
+                /*vivo hope  add end*/
+                return ERROR_NONE;
+            }
+            LOG_INF("Read sensor id fail, id: 0x%x\n", imgsensor.i2c_write_id);
+            retry--;
+        } while(retry > 0);
+        i++;
+        retry = 2;
+    }
+    if (*sensor_id !=  imgsensor_info.sensor_id) {
+        /* if Sensor ID is not correct, Must set *sensor_id to 0xFFFFFFFF*/
+        *sensor_id = 0xFFFFFFFF;
+        return ERROR_SENSOR_CONNECT_FAIL;
+    }
+    return ERROR_NONE;
+}
 
 /*************************************************************************
 * FUNCTION
@@ -5465,7 +5484,7 @@ static kal_uint32 feature_control(MSDK_SENSOR_FEATURE_ENUM feature_id,
 	}
 	/*victor.yan@Camera.Driver , 20200306, add for ITS--sensor_fusion*/
 	case SENSOR_FEATURE_GET_OFFSET_TO_START_OF_EXPOSURE:
-		*(MUINT32 *)(uintptr_t)(*(feature_data + 1)) = -4070000;
+		*(MUINT32 *)(uintptr_t)(*(feature_data + 1)) = -11077500;
 		break;
 	#endif
     case SENSOR_FEATURE_GET_PERIOD_BY_SCENARIO:

@@ -34,7 +34,7 @@
 #include "gc2385mipi_Sensor.h"
 #include <linux/hardware_info.h>
 #include "kd_imgsensor.h"
-#include "imgsensor_read_eeprom.h"
+//#include "imgsensor_read_eeprom.h"
 #define ENABLE_GC2385_OTP 1
 
 #define GC2385_DEFAULT_DUMMY_PIXEL_NUMS   0x256 /* HB */
@@ -551,11 +551,11 @@ static kal_uint32 get_imgsensor_id(UINT32 *sensor_id)
 			*sensor_id = return_sensor_id() & 0xffef;
 			if (*sensor_id == imgsensor_info.sensor_id) {
 				LOG_INF("i2c write id: 0x%x, sensor id: 0x%x\n", imgsensor.i2c_write_id, *sensor_id);
-#if 1
+#if 0
 				if(!check_otp_data(&monetx_hlt_macro_gc2385_eeprom_data, monetx_hlt_macro_gc2385_checksum, sensor_id)){
 					break;
 				} else {
-					//hardwareinfo_set_prop(HARDWARE_MONO_CAM_MOUDULE_ID, "hlt");
+					hardwareinfo_set_prop(HARDWARE_MONO_CAM_MOUDULE_ID, "hlt");
 				}
 #endif
 				return ERROR_NONE;

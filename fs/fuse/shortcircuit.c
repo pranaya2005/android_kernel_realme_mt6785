@@ -19,7 +19,7 @@
 #include <linux/fs_stack.h>
 #include <linux/moduleparam.h>
 
-int __read_mostly sct_mode = 1;
+int __read_mostly sct_mode = 2;
 module_param(sct_mode, int, 0644);
 
 static char *__dentry_name(struct dentry *dentry, char *name)

@@ -800,6 +800,10 @@ VOID nicProcessAbnormalInterrupt(IN P_ADAPTER_T prAdapter)
 	DBGLOG(REQ, WARN, "MCR_WASR: 0x%x\n", u4Value);
 #endif
 
+#if defined(MT6631)
+	HAL_DUMP_AHB_INFO(prAdapter, prAdapter->u2ChipID);
+#endif
+
 	GL_RESET_TRIGGER(prAdapter, RST_FLAG_DO_CORE_DUMP);
 }
 

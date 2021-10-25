@@ -1242,7 +1242,7 @@ VOID rsnGenerateWPAIE(IN P_ADAPTER_T prAdapter, IN P_MSDU_INFO_T prMsduInfo)
 			WLAN_SET_FIELD_32(&WPA_IE(pucBuffer)->u4GroupKeyCipherSuite,
 					  prAdapter->prAisBssInfo->u4RsnSelectedGroupCipher);
 
-		cp = pucBuffer + OFFSET_OF(RSN_INFO_ELEM_T, aucPairwiseKeyCipherSuite1[0]);
+		cp = pucBuffer + OFFSET_OF(WPA_INFO_ELEM_T, aucPairwiseKeyCipherSuite1[0]);
 
 		WLAN_SET_FIELD_16(&WPA_IE(pucBuffer)->u2PairwiseKeyCipherSuiteCount, 1);
 #if CFG_ENABLE_WIFI_DIRECT
@@ -1431,8 +1431,14 @@ VOID rsnGenerateRSNIE(IN P_ADAPTER_T prAdapter, IN P_MSDU_INFO_T prMsduInfo)
 		} else
 			u4Entry = 0;
 #if CFG_SUPPORT_802_11W
+		DBGLOG(RSN, TRACE, "networkType(%u) - mgmtProtection(%u)\n",
+			GET_BSS_INFO_BY_INDEX(prAdapter, ucBssIndex)->eNetworkType,
+			prAdapter->rWifiVar.rAisSpecificBssInfo.fgMgmtProtection);
+
 		/* PMF cipher suite field */
-		if (prAdapter->rWifiVar.rAisSpecificBssInfo.fgMgmtProtection) {
+		if (prAdapter->rWifiVar.rAisSpecificBssInfo.fgMgmtProtection
+			&& GET_BSS_INFO_BY_INDEX(prAdapter, ucBssIndex)->eNetworkType
+			== NETWORK_TYPE_AIS) {
 		    /* the case No Pmkid should add pmkid length */
 			if (!u4Entry) {
 				WLAN_SET_FIELD_16(cp, 0);
@@ -1591,6 +1597,18 @@ void rsnParserCheckForRSNCCMPPSK(P_ADAPTER_T prAdapter, P_RSN_INFO_ELEM_T prIe,
 		prBssInfo = GET_BSS_INFO_BY_INDEX(prAdapter,
 						  prStaRec->ucBssIndex);
 
+#if CFG_SUPPORT_SOFTAP_WPA3
+		if (prBssInfo->u4RsnSelectedAKMSuite == RSN_AKM_SUITE_SAE
+			&& prStaRec->ucAuthTranNum < AUTH_TRANSACTION_SEQ_2
+			&& prStaRec->ucAuthAlgNum
+				== AUTH_ALGORITHM_NUM_OPEN_SYSTEM) {
+			DBGLOG(RSN, WARN,
+				"RSN with invalid PMKID, ucAuthTranNum: %d\n",
+				prStaRec->ucAuthTranNum);
+			*pu2StatusCode = STATUS_INVALID_PMKID;
+			return;
+		}
+#endif
 		/* if PMF validation fail, return success as legacy association
 		 */
 		statusCode = rsnPmfCapableValidation(prAdapter, prBssInfo,

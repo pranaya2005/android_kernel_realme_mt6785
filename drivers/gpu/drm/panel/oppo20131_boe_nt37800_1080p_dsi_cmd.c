@@ -221,7 +221,7 @@ static struct LCM_setting_table lcm_setbrightness_normal[] = {
 static struct LCM_setting_table lcm_finger_HBM_on_setting[] = {
 	{REGFLAG_CMD,3, {0x51,0x0F,0xFF}},
 	{REGFLAG_CMD,6, {0xF0,0x55,0xAA,0x52,0x08,0x00}},
-	{REGFLAG_CMD,2, {0xB2,0x01}},
+	{REGFLAG_CMD,2, {0xB2,0x11}},
 };
 
 static struct LCM_setting_table lcm_finger_HBM_DC_ADD[] = {
@@ -1681,7 +1681,7 @@ static int lcm_probe(struct mipi_dsi_device *dsi)
                    }
 	}
 	if (remote_node != dev->of_node) {
-		pr_info("%s+ skip probe due to not current lcm. of_node is %s\n", __func__, dev->of_node);
+		pr_info("%s+ skip probe due to not current lcm. of_node is %s\n", __func__, dev->of_node->name);
 		return 0;
 	}
 	ctx = devm_kzalloc(dev, sizeof(struct lcm), GFP_KERNEL);

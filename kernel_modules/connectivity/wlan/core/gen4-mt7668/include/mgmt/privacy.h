@@ -240,6 +240,8 @@ BOOLEAN tkipMicDecapsulateInRxHdrTransMode(IN P_SW_RFB_T prSwRfb, IN PUINT_8 puc
 
 void secPostUpdateAddr(IN P_ADAPTER_T prAdapter, IN P_BSS_INFO_T prBssInfo);
 
+BOOLEAN secCheckSetKeyDone(IN P_STA_RECORD_T prStaRec);
+
 /*******************************************************************************
  *                              F U N C T I O N S
  ********************************************************************************

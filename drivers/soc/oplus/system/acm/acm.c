@@ -18,7 +18,7 @@
  ** ------------------------------------------------------------------------------
  ** Yuwei.Guan@BSP.Kernel.FS     2020-06-26   1.0         Create this file
  ********************************************************************************/
-
+#include <linux/version.h>
 #include "acm.h"
 
 #define ACM_PHOTO_TYPE 1
@@ -684,11 +684,17 @@ static long acm_ioctl(struct file *filp, unsigned int cmd, unsigned long args)
 		return -EINVAL;
 	}
 
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(5, 4, 0))
+	if ((_IOC_DIR(cmd) & _IOC_READ) || (_IOC_DIR(cmd) & _IOC_WRITE)) {
+		err = !access_ok((void *)args, _IOC_SIZE(cmd));
+	}
+#else
 	if (_IOC_DIR(cmd) & _IOC_READ) {
 		err = !access_ok(VERIFY_WRITE, (void *)args, _IOC_SIZE(cmd));
 	} else if (_IOC_DIR(cmd) & _IOC_WRITE) {
 		err = !access_ok(VERIFY_READ, (void *)args, _IOC_SIZE(cmd));
 	}
+#endif
 
 	if (err) {
 		pr_err("ACM: Failed to check access permission!\n");
@@ -848,23 +854,14 @@ static int delete_log_upload(const char *pkgname, uid_t uid,
 	return err;
 }
 
-static char *g_last_pkg_cache = NULL;
-static uid_t g_last_uid = -1;
-DEFINE_RWLOCK(acm_pkg_lock);
-
 inline void acm_fuse_init_cache(void)
 {
-	if (!g_last_pkg_cache) {
-		g_last_pkg_cache = kzalloc(ACM_PKGNAME_LEN_MAX, GFP_NOFS);
-	}
+	//do nothing
 }
 
 inline void acm_fuse_free_cache(void)
 {
-	if (g_last_pkg_cache) {
-		kfree(g_last_pkg_cache);
-	}
-	g_last_pkg_cache = NULL;
+	//do nothing
 }
 
 static void get_real_pkg_name(char *pkgname, struct task_struct *tsk,
@@ -873,15 +870,6 @@ static void get_real_pkg_name(char *pkgname, struct task_struct *tsk,
 	int i;
 	int res;
 	struct task_struct *p_tsk = NULL;
-
-	if (read_trylock(&acm_pkg_lock)) {
-		if (g_last_pkg_cache && g_last_uid == uid) {
-			memcpy(pkgname, g_last_pkg_cache, ACM_PKGNAME_LEN_MAX);
-			read_unlock(&acm_pkg_lock);
-			return;
-		}
-		read_unlock(&acm_pkg_lock);
-	}
 
 	if (uid >= UID_THRESHOLD) {
 		p_tsk = tsk;
@@ -894,6 +882,7 @@ static void get_real_pkg_name(char *pkgname, struct task_struct *tsk,
 			}
 		}
 	}
+
 	res = get_cmdline(tsk, pkgname, ACM_PKGNAME_LEN_MAX - 1);
 	pkgname[res] = '\0';
 
@@ -902,13 +891,6 @@ static void get_real_pkg_name(char *pkgname, struct task_struct *tsk,
 			pkgname[i] = '\0';
 			break;
 		}
-	}
-	if (write_trylock(&acm_pkg_lock)) {
-		if (g_last_pkg_cache) {
-			memcpy(g_last_pkg_cache, pkgname, ACM_PKGNAME_LEN_MAX);
-			g_last_uid = uid;
-		}
-		write_unlock(&acm_pkg_lock);
 	}
 }
 
@@ -949,6 +931,23 @@ static int delete_log_upload_fwk(const char *pkgname, uid_t taskuid,
 	return ACM_SUCCESS;
 }
 
+static char* dentry_without_usrrootentry(char *str)
+{
+	int i;
+	int num = 0;
+
+	for (i = 0; i < strlen(str); i++) {
+		if (num == 2) {
+			break;
+		}
+		if (*(str + i) == '/') {
+			num++;
+		}
+	}
+
+	return num == 2 ? (str + i) : str;
+}
+
 static int inquiry_delete_policy(char *pkgname, uid_t taskuid,
 	struct dentry *dentry, int file_type, int op)
 {
@@ -972,9 +971,12 @@ static int inquiry_delete_policy(char *pkgname, uid_t taskuid,
 	}
 
 	list_for_each_entry_safe(dir_node, n, &acm_dir_list.head, lnode) {
-		if (strstr(dentry_path, dir_node->afd.dir) != NULL) {
-			dir_flag = dir_node->afd.flag;
-			break;
+		if (strlen(dentry_path) >= strlen(dir_node->afd.dir)) {
+			if (strncasecmp(dentry_without_usrrootentry(dentry_path),
+				dir_node->afd.dir, strlen(dir_node->afd.dir)) == 0) {
+				dir_flag = dir_node->afd.flag;
+				break;
+			}
 		}
 	}
 
@@ -1040,8 +1042,15 @@ static int inquiry_create_nomedia_policy(struct dentry *dentry)
 		if (strlen(dentry_path) >= strlen(dir_node->afnd.dir)) {
 			if (strncasecmp(dentry_path + (strlen(dentry_path) - strlen(dir_node->afnd.dir)),
 				dir_node->afnd.dir, strlen(dir_node->afnd.dir)) == 0) {
-				ret = CRT_NOT_ALLOWED;
-				break;
+				if (strstr(dir_node->afnd.dir, "/") == NULL) {
+					if (IS_ROOT(dget_parent(dget_parent(parent)))) {
+						ret = CRT_NOT_ALLOWED;
+						break;
+					}
+				} else {
+					ret = CRT_NOT_ALLOWED;
+					break;
+				}
 			}
 		}
 	}

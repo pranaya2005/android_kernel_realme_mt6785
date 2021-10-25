@@ -5,6 +5,12 @@
 
 #include <linux/version.h>
 
+#ifdef CONFIG_OPLUS_SYSTEM_KERNEL_QCOM
+#define SHOW_MAP_LOW_VERSION KERNEL_VERSION(4,19,0)
+#else
+#define SHOW_MAP_LOW_VERSION KERNEL_VERSION(4,14,0)
+#endif
+
 int proc_pid_reserve_area(struct seq_file *m, struct pid_namespace *ns,
 			struct pid *pid, struct task_struct *task)
 {
@@ -76,7 +82,7 @@ static const struct seq_operations proc_pid_rmaps_op = {
 	.start	= reserve_vma_m_start,
 	.next	= reserve_vma_m_next,
 	.stop	= m_stop,
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(4,14,186)
+#if LINUX_VERSION_CODE >= SHOW_MAP_LOW_VERSION
 	.show	= show_map
 #else
 	.show	= show_pid_map

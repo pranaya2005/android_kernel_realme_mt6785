@@ -460,6 +460,17 @@ typedef struct _GL_BOW_INFO {
 } GL_BOW_INFO, *P_GL_BOW_INFO;
 #endif
 
+struct FT_IES {
+	uint16_t u2MDID;
+	struct IE_MOBILITY_DOMAIN *prMDIE;
+	struct IE_FAST_TRANSITION *prFTIE;
+	IE_TIMEOUT_INTERVAL_T  *prTIE;
+	RSN_INFO_ELEM_T *prRsnIE;
+	uint8_t *pucIEBuf;
+	uint32_t u4IeLength;
+
+};
+
 /*
 * type definition of pointer to p2p structure
 */
@@ -703,7 +714,7 @@ struct _GLUE_INFO_T {
 	/* store the FW roaming enable state which FWK determines */
 	/* if it's = 0, ignore the black/whitelists settings from FWK */
 	UINT_32 u4FWRoamingEnable;
-
+	struct FT_IES rFtIeForTx;
 };
 
 typedef irqreturn_t(*PFN_WLANISR) (int irq, void *dev_id, struct pt_regs *regs);
@@ -1045,7 +1056,11 @@ P_GLUE_INFO_T wlanGetGlueInfo(VOID);
 
 BOOLEAN wlanGetHifState(P_GLUE_INFO_T prGlueInfo);
 
-#if KERNEL_VERSION(4, 19, 0) <= LINUX_VERSION_CODE
+#if KERNEL_VERSION(5, 2, 0) <= LINUX_VERSION_CODE
+u16 wlanSelectQueue(struct net_device *dev,
+		    struct sk_buff *skb,
+		    struct net_device *sb_dev);
+#elif KERNEL_VERSION(4, 19, 0) <= LINUX_VERSION_CODE
 u16 wlanSelectQueue(struct net_device *dev,
 		    struct sk_buff *skb, struct net_device *sb_dev,
 		    select_queue_fallback_t fallback);
@@ -1086,6 +1101,11 @@ extern char *gprifnamesta;
 
 extern void wlanRegisterNotifier(void);
 extern void wlanUnregisterNotifier(void);
+#if CFG_POWER_OFF_CTRL_SUPPORT
+extern void wlanRegisterRebootNotifier(void);
+extern void wlanUnregisterRebootNotifier(void);
+#endif
+
 
 #if (MTK_WCN_HIF_SDIO && CFG_SUPPORT_MTK_ANDROID_KK)
 typedef int (*set_p2p_mode) (struct net_device *netdev, PARAM_CUSTOM_P2P_SET_STRUCT_T p2pmode);

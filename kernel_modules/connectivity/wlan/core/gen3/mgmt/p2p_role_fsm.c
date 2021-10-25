@@ -188,8 +188,14 @@ VOID p2pRoleFsmUninit(IN P_ADAPTER_T prAdapter, IN UINT_8 ucRoleIdx)
 
 		cnmFreeBssInfo(prAdapter, prP2pBssInfo);
 
-		if (prP2pRoleFsmInfo)
+		if (prP2pRoleFsmInfo) {
 			kalMemFree(prP2pRoleFsmInfo, VIR_MEM_TYPE, sizeof(P2P_ROLE_FSM_INFO_T));
+                        #ifdef OPLUS_BUG_STABILITY
+                        //kongxianghui@CONNECTIVITY.WIFI.BASE.CRASH.773336, 2020/12/9
+                        //add for: set pointer is NULL
+                        prP2pRoleFsmInfo = NULL;
+                        #endif /* OPLUS_BUG_STABILITY */
+                }
 
 	} while (FALSE);
 
@@ -1662,8 +1668,13 @@ VOID p2pFsmRunEventBeaconUpdate(IN P_ADAPTER_T prAdapter, IN P_MSG_HDR_T prMsgHd
 		DBGLOG(P2P, TRACE, "p2pFsmRunEventBeaconUpdate\n");
 
 		prBcnUpdateMsg = (P_MSG_P2P_BEACON_UPDATE_T) prMsgHdr;
+		if (prBcnUpdateMsg->ucRoleIndex >= BSS_P2P_NUM)
+			cnmMemFree(prAdapter, prMsgHdr);
 
 		prRoleP2pFsmInfo = P2P_ROLE_INDEX_2_ROLE_FSM_INFO(prAdapter, prBcnUpdateMsg->ucRoleIndex);
+
+		if (prRoleP2pFsmInfo == NULL)
+			break;
 
 		prP2pBssInfo = GET_BSS_INFO_BY_INDEX(prAdapter, prRoleP2pFsmInfo->ucBssIndex);
 

@@ -51,6 +51,9 @@
 #ifdef OPLUS_BUG_STABILITY
 /*Guoqiang.jiang@PSW.MM.Display.LCD.Stability, 2018/05/11, add for mipi clk change*/
 #include <soc/oppo/oppo_project.h>
+/*Jian.Zhou.MM.Display.LCD.Stability,2020/04/18,checklist pick,Incorporate ramless screen frequency hopping modification*/
+extern int primary_display_set_safe_mode(unsigned int level);
+extern bool oplus_display_aod_ramless_support;
 #endif /* OPLUS_BUG_STABILITY */
 /*****************************************************************************/
 enum {
@@ -182,10 +185,19 @@ unsigned long DSI_PHY_REG[DSI_INTERFACE_NUM];
 struct DSI_CMDQ_REGS *DSI_CMDQ_REG[DSI_INTERFACE_NUM];
 struct DSI_VM_CMDQ_REGS *DSI_VM_CMD_REG[DSI_INTERFACE_NUM];
 
+#ifdef OPLUS_BUG_STABILITY
+/* Zhijun.Ye@MM.Display.LCD.Stability, 2020/11/13, add for dc */
+struct DSI_VM_CMDQ_REGS *DSI_VM_CMD_REG_10_1C[DSI_INTERFACE_NUM];
+struct DSI_VM_CMDQ_REGS *DSI_VM_CMD_REG_20_2C[DSI_INTERFACE_NUM];
+struct DSI_VM_CMDQ_REGS *DSI_VM_CMD_REG_30_3C[DSI_INTERFACE_NUM];
+#endif /* OPLUS_BUG_STABILITY */
+
 static int def_data_rate;
 #ifdef OPLUS_BUG_STABILITY
 /*Guoqiang.jiang@PSW.MM.Display.LCD.Stability, 2018/05/11, add for mipi clk change*/
 static int def_dsi_hbp = 0;
+extern bool oplus_display_panelnum_continue_support;
+extern bool oplus_display_aod_ramless_support;
 #endif /* OPLUS_BUG_STABILITY */
 static int dsi_currect_mode;
 static int dsi_force_config;
@@ -1953,7 +1965,7 @@ int mipi_clk_change(int msg, int en)
 	#ifdef OPLUS_BUG_STABILITY
 	/*Guoqiang.jiang@PSW.MM.Display.LCD.Stability, 2018/05/11, modify for mipi clk change*/
 	struct cmdqRecStruct *handle = NULL;
-	DISPMSG("%s,msg=%d,en=%d,get_Operator_Version=%d\n", __func__, msg, en, get_Operator_Version());
+	printk("%s,msg=%d,en=%d,get_Operator_Version=%d\n", __func__, msg, en, get_Operator_Version());
 	/*
 	* LiPing-M@PSW.MM.Display.LCD.Stability, 2018/02/2,
 	* add for bug 1263311 cmdq error when clk change
@@ -1977,8 +1989,8 @@ int mipi_clk_change(int msg, int en)
 			def_data_rate = 1058;
 			def_dsi_hbp = 0xC0;
 		} else {
-			def_data_rate = 1025;
-			def_dsi_hbp = 0x58;
+			def_data_rate = data_rate;
+			/* def_dsi_hbp = 0x58; */
 		}
 		#else /* OPLUS_BUG_STABILITY */
 		def_data_rate = data_rate;//1030;
@@ -2014,6 +2026,11 @@ int mipi_clk_change(int msg, int en)
 	}
 
 	#ifdef OPLUS_BUG_STABILITY
+	/*Jian.Zhou.MM.Display.LCD.Stability,2020/04/18,checklist pick,Incorporate ramless screen frequency hopping modification*/
+	if (oplus_display_aod_ramless_support) {
+		primary_display_set_safe_mode(0);
+	}
+
 	/*Guoqiang.jiang@PSW.MM.Display.LCD.Stability, 2018/05/11, add for mipi clk change*/
 	if (_is_power_on_status(DISP_MODULE_DSI0)) {
 		cmdqRecCreate(CMDQ_SCENARIO_PRIMARY_DISP, &handle);
@@ -2025,7 +2042,7 @@ int mipi_clk_change(int msg, int en)
 		}
 
 		DSI_MIPI_clk_change(DISP_MODULE_DSI0, handle, def_data_rate);
-		if (get_Operator_Version() == 25 || def_dsi_hbp != 0) {
+		if (get_Operator_Version() == 25 || dsi_params->dsi_hbp_dyn != 0) {
 			if ((DSI_REG[0]->DSI_MODE_CTRL.MODE) != 0) {
 				ddp_dsi_porch_setting(DISP_MODULE_DSI0, handle, DSI_HBP, def_dsi_hbp); /* adaptive HBP value */
 			}
@@ -2035,6 +2052,9 @@ int mipi_clk_change(int msg, int en)
 		cmdqRecDestroy(handle);
 	}
 
+	if (oplus_display_aod_ramless_support) {
+		primary_display_set_safe_mode(1);
+	}
 	/*
 	* LiPing-M@PSW.MM.Display.LCD.Stability, 2018/02/2,
 	* add for bug 1263311 cmdq error when clk change
@@ -2912,7 +2932,16 @@ UINT32 DSI_dcs_read_lcm_reg_v3(enum DISP_MODULE_ENUM module,
 		/* 0x1c: dcs long read response */
 		/* 0x21: dcs short read response(1 byte return) */
 		/* 0x22: dcs short read response(2 byte return) */
+		#ifndef OPLUS_BUG_STABILITY
+		/*
+		 * Ling.Guo@PSW.MM.Display.LCD.Stability, 2019/06/24,
+		 * modify for read continue reg lcd serial num
+		*/
 		if (packet_type == 0x1A || packet_type == 0x1C) {
+		#else /* OPLUS_BUG_STABILITY */
+		if (packet_type == 0x1A || packet_type == 0x1C
+			|| oplus_display_panelnum_continue_support) {
+		#endif /* OPLUS_BUG_STABILITY */
 			recv_data_cnt = read_data0.byte1 +
 					read_data0.byte2 * 16;
 			if (recv_data_cnt > 10) {
@@ -2983,6 +3012,315 @@ UINT32 DSI_dcs_read_lcm_reg_v3(enum DISP_MODULE_ENUM module,
 	return recv_data_cnt;
 }
 
+#ifdef OPLUS_BUG_STABILITY
+/* YongPeng.Yi@PSW.MM.Display.LCD.Stability, 2019/10/01, add for reaed ramless video lcd */
+static int check_rdrdy_cmddone_irq(struct cmdqRecStruct *cmdq,
+			enum DISP_MODULE_ENUM module)
+{
+	int dsi_i, i = 0;
+
+	if (module == DISP_MODULE_DSI0 || module == DISP_MODULE_DSIDUAL)
+		dsi_i = 0;
+	else if (module == DISP_MODULE_DSI1)
+		dsi_i = 1;
+	else
+		return 0;
+
+	if (DSI_REG[dsi_i]->DSI_INTEN.RD_RDY == 0) {
+		DSI_OUTREGBIT(cmdq, struct DSI_INT_ENABLE_REG,
+				  DSI_REG[dsi_i]->DSI_INTEN, RD_RDY, 1);
+	}
+
+	if (DSI_REG[dsi_i]->DSI_INTEN.CMD_DONE == 0) {
+		DSI_OUTREGBIT(cmdq, struct DSI_INT_ENABLE_REG,
+				  DSI_REG[dsi_i]->DSI_INTEN, CMD_DONE, 1);
+	}
+
+	//ASSERT(DSI_REG[dsi_i]->DSI_INTEN.RD_RDY == 1);
+	//ASSERT(DSI_REG[dsi_i]->DSI_INTEN.CMD_DONE == 1);
+	DISPCHECK("DSI_REG[dsi_i]->DSI_INTEN.RD_RDY:%d\n",
+			DSI_REG[dsi_i]->DSI_INTEN.RD_RDY);
+	DISPCHECK("DSI_REG[dsi_i]->DSI_INTEN.CMD_DONE:%d\n",
+			DSI_REG[dsi_i]->DSI_INTEN.CMD_DONE);
+
+	/* dump cmdq & rxdata */
+	if (DSI_REG[dsi_i]->DSI_INTSTA.RD_RDY != 0 ||
+		DSI_REG[dsi_i]->DSI_INTSTA.CMD_DONE != 0) {
+		DISPERR("Last DSI Read Why not clear irq???\n");
+		DISPERR("DSI_CMDQ_SIZE	: %d\n",
+				 AS_UINT32(&DSI_REG[dsi_i]->DSI_CMDQ_SIZE));
+		for (i = 0; i < DSI_REG[dsi_i]->DSI_CMDQ_SIZE.CMDQ_SIZE;
+			 i++) {
+			DISPERR("DSI_CMDQ_DATA%d : 0x%08x\n", i,
+				AS_UINT32(&DSI_CMDQ_REG[dsi_i]->data[i]));
+		}
+		DISPERR("DSI_RX_DATA0: 0x%08x\n",
+				 AS_UINT32(&DSI_REG[dsi_i]->DSI_RX_DATA0));
+		DISPERR("DSI_RX_DATA1: 0x%08x\n",
+				 AS_UINT32(&DSI_REG[dsi_i]->DSI_RX_DATA1));
+		DISPERR("DSI_RX_DATA2: 0x%08x\n",
+				 AS_UINT32(&DSI_REG[dsi_i]->DSI_RX_DATA2));
+		DISPERR("DSI_RX_DATA3: 0x%08x\n",
+				 AS_UINT32(&DSI_REG[dsi_i]->DSI_RX_DATA3));
+
+		/* clear irq */
+		DSI_OUTREGBIT(cmdq, struct DSI_INT_STATUS_REG,
+				  DSI_REG[dsi_i]->DSI_INTSTA, RD_RDY, 0);
+		DSI_OUTREGBIT(cmdq, struct DSI_INT_STATUS_REG,
+				  DSI_REG[dsi_i]->DSI_INTSTA, CMD_DONE, 0);
+	}
+
+	return 1;
+}
+
+static int process_packet(int recv_data_offset,
+		struct DSI_RX_DATA_REG *read_data, UINT32 *recv_data_cnt,
+		UINT8 *buffer, UINT8 buffer_size)
+{
+	unsigned char packet_type = read_data[0].byte0;
+	/* 0x02: acknowledge & error report */
+	/* 0x11: generic short read response(1 byte return) */
+	/* 0x12: generic short read response(2 byte return) */
+	/* 0x1a: generic long read response */
+	/* 0x1c: dcs long read response */
+	/* 0x21: dcs short read response(1 byte return) */
+	/* 0x22: dcs short read response(2 byte return) */
+	if ((packet_type == 0x1A || packet_type == 0x1C) \
+		|| oplus_display_aod_ramless_support) {
+		*recv_data_cnt = read_data[0].byte1 + read_data[0].byte2 * 16;
+		if (*recv_data_cnt > 10) {
+			DISPCHECK("read long pkt data > 4 bytes:%d\n",
+					*recv_data_cnt);
+			*recv_data_cnt = 10;
+		}
+		if (*recv_data_cnt > buffer_size) {
+			DISPCHECK("read long pkt data > size:%d\n",
+					*recv_data_cnt);
+			*recv_data_cnt = buffer_size;
+		}
+		DISPCHECK("read long pkt size: %d\n", *recv_data_cnt);
+		if (*recv_data_cnt <= 4) {
+			memcpy((void *)(buffer + recv_data_offset),
+				(void *)&read_data[1], *recv_data_cnt);
+		} else if (*recv_data_cnt <= 8) {
+			memcpy((void *)(buffer + recv_data_offset),
+				(void *)&read_data[1], 4);
+			memcpy((void *)(buffer + recv_data_offset) + 4,
+				(void *)&read_data[2], *recv_data_cnt - 4);
+		} else {
+			memcpy((void *)(buffer + recv_data_offset),
+				(void *)&read_data[1], 4);
+			memcpy((void *)(buffer + recv_data_offset) + 4,
+				(void *)&read_data[2], 4);
+			memcpy((void *)(buffer + recv_data_offset) + 8,
+				(void *)&read_data[3], *recv_data_cnt - 8);
+		}
+	} else if (packet_type == 0x11 || packet_type == 0x12 ||
+			packet_type == 0x21 || packet_type == 0x22) {
+		if (packet_type == 0x11 || packet_type == 0x21)
+			*recv_data_cnt = 1;
+		else
+			*recv_data_cnt = 2;
+		if (*recv_data_cnt > buffer_size) {
+			DISPCHECK("read short pkt data > size:%d\n",
+				buffer_size);
+			*recv_data_cnt = buffer_size;
+			memcpy((void *)(buffer + recv_data_offset),
+				(void *)&read_data[0].byte1, *recv_data_cnt);
+		} else {
+			memcpy((void *)(buffer + recv_data_offset),
+				(void *)&read_data[0].byte1, *recv_data_cnt);
+		}
+	} else if (packet_type == 0x02) {
+		DISPCHECK("read return type is 0x02, re-read\n");
+	} else {
+		DISPCHECK("read return type is non-recognite:0x%x\n",
+				packet_type);
+		return 0;
+	}
+
+	return 1;
+}
+
+int ddp_dsi_build_cmdq(enum DISP_MODULE_ENUM module, void *cmdq_trigger_handle,
+		       enum CMDQ_STATE state);
+
+static void DSI_send_read_cmd(struct cmdqRecStruct *cmdq,
+			enum DISP_MODULE_ENUM module, bool hs,
+			UINT8 cmd, UINT8 buffer_size, int read_data_offset)
+{
+	int dsi_i = 0;
+	struct DSI_T0_INS t0;
+	struct DSI_T0_INS t1;
+	struct DSI_T0_INS t2;
+
+	if (module == DISP_MODULE_DSI0 || module == DISP_MODULE_DSIDUAL)
+		dsi_i = 0;
+	else if (module == DISP_MODULE_DSI1)
+		dsi_i = 1;
+	else
+		return;
+
+	t0.CONFG = 0x04;	/* BTA */
+	if (hs)
+		t0.CONFG |= 8;
+	t0.Data_ID = (cmd < 0xB0) ? DSI_DCS_READ_PACKET_ID
+				: DSI_GERNERIC_READ_LONG_PACKET_ID;
+	t0.Data0 = cmd;
+	t0.Data1 = 0;
+
+	t1.CONFG = 0x00;
+	if (hs)
+		t1.CONFG |= 8;
+	t1.Data_ID = 0x37; /* set max return size */
+	t1.Data0 = buffer_size <= 10 ? buffer_size : 10;
+	t1.Data1 = 0;
+
+	t2.CONFG = 0x00;
+	if (hs)
+		t2.CONFG |= 8;
+	t2.Data_ID = 0x15;
+	t2.Data0 = 0xB0; /* set offset value for some panel */
+	t2.Data1 = read_data_offset;
+
+	/* write DSI CMDQ */
+	DSI_OUTREG32(cmdq, &DSI_CMDQ_REG[dsi_i]->data[0],
+			AS_UINT32(&t2));
+	DSI_OUTREG32(cmdq, &DSI_CMDQ_REG[dsi_i]->data[1],
+			AS_UINT32(&t1));
+	DSI_OUTREG32(cmdq, &DSI_CMDQ_REG[dsi_i]->data[2],
+			AS_UINT32(&t0));
+	DSI_OUTREG32(cmdq, &DSI_REG[dsi_i]->DSI_CMDQ_SIZE,
+			3);
+
+	/* start DSI */
+	DSI_Start(module, cmdq);
+}
+
+UINT32 DSI_dcs_read_lcm_reg_v4(enum DISP_MODULE_ENUM module,
+                        UINT8 cmd, UINT8 *usr_buffer, UINT8 buffer_size,
+                        bool sendhs)
+{
+    /* Just read 10 bytes valid each time */
+    UINT32 VALID_DATA_SIZE = 10;
+    int dsi_i, i, ret = 0;
+    UINT8 buffer[30];
+    struct DSI_RX_DATA_REG read_data[4];
+    UINT32 recv_data_cnt = 0;
+    UINT32 read_data_cnt = 0;
+    UINT32 recv_data_offset = 0;
+    UINT8  read_data_offset = 0;
+    struct cmdqRecStruct *cmdq;
+    cmdqBackupSlotHandle hSlot;
+
+    /* illegal parameters */
+    if (usr_buffer == NULL || buffer_size == 0) {
+                DISPERR("DSI Read Fail: usr_buffer=%p and buffer_size=%d\n",
+                             usr_buffer, (unsigned int)buffer_size);
+                return 0;
+    }
+
+    if (module == DISP_MODULE_DSI0 || module == DISP_MODULE_DSIDUAL)
+                dsi_i = 0;
+    else if (module == DISP_MODULE_DSI1)
+                dsi_i = 1;
+    else
+                return 0;
+
+    /* 0.create esd check cmdq */
+    cmdqRecCreate(CMDQ_SCENARIO_DISP_ESD_CHECK, &cmdq);
+    cmdqBackupAllocateSlot(&hSlot, 4);
+
+    /* how many times we should read to get all data */
+    read_data_cnt = (buffer_size + (VALID_DATA_SIZE - 1)) / VALID_DATA_SIZE;
+    while (read_data_cnt > 0) {
+                read_data_cnt--;
+                cmdqRecReset(cmdq);
+
+                /* 1. wait dsi not busy => can't read if dsi busy */
+                if (DSI_REG[dsi_i]->DSI_MODE_CTRL.MODE)
+                             ddp_dsi_build_cmdq(module, cmdq, CMDQ_STOP_VDO_MODE);
+                else
+                             dsi_wait_not_busy(module, cmdq);
+
+                /* 2. check rd_rdy & cmd_done irq */
+                check_rdrdy_cmddone_irq(cmdq, module);
+                /* 3. Send cmd */
+                DSI_send_read_cmd(cmdq, module, sendhs, cmd, buffer_size,
+                                         read_data_offset);
+
+                /* 4. wait DSI RD_RDY(must clear, in case of cpu
+                * RD_RDY interrupt handler)
+                */
+                if (dsi_i == 0) {
+                             DSI_POLLREG32(cmdq, &DSI_REG[dsi_i]->DSI_INTSTA,
+                                         0x00000001, 0x1);
+                             DSI_OUTREGBIT(cmdq, struct DSI_INT_STATUS_REG,
+                                        DSI_REG[dsi_i]->DSI_INTSTA, RD_RDY, 0x00000000);
+                }
+
+                /* 5. save RX data */
+                if (hSlot) {
+                             DSI_BACKUPREG32(cmdq, hSlot, 0,
+                                                     &DSI_REG[dsi_i]->DSI_RX_DATA0);
+                             DSI_BACKUPREG32(cmdq, hSlot, 1,
+                                                     &DSI_REG[dsi_i]->DSI_RX_DATA1);
+                             DSI_BACKUPREG32(cmdq, hSlot, 2,
+                                                     &DSI_REG[dsi_i]->DSI_RX_DATA2);
+                             DSI_BACKUPREG32(cmdq, hSlot, 3,
+                                                     &DSI_REG[dsi_i]->DSI_RX_DATA3);
+                } else {
+                             DISPERR("DSI read save RX data fail\n");
+                }
+
+                /* 6. write RX_RACK */
+                DSI_OUTREGBIT(cmdq, struct DSI_RACK_REG,
+                             DSI_REG[dsi_i]->DSI_RACK, DSI_RACK, 1);
+
+                /* 7. polling not busy(no need CLEAR) */
+                if (dsi_i == 0)
+                             DSI_POLLREG32(cmdq, &DSI_REG[dsi_i]->DSI_INTSTA,
+                                                     0x80000000, 0);
+
+                /* 8. set vdo mode back(if original is vdo mode) */
+                if (DSI_REG[dsi_i]->DSI_MODE_CTRL.MODE) {
+                             ddp_dsi_build_cmdq(module, cmdq, CMDQ_START_VDO_MODE);
+                             ddp_dsi_trigger(DISP_MODULE_DSI0, cmdq);
+                }
+
+                cmdqRecFlush(cmdq);
+
+                /* 9. read from slot */
+                if (hSlot) {
+                             cmdqBackupReadSlot(hSlot, 0, (uint32_t *)&read_data[0]);
+                             cmdqBackupReadSlot(hSlot, 1, (uint32_t *)&read_data[1]);
+                             cmdqBackupReadSlot(hSlot, 2, (uint32_t *)&read_data[2]);
+                             cmdqBackupReadSlot(hSlot, 3, (uint32_t *)&read_data[3]);
+                } else {
+                             DISPERR("DSI read hSlot is empty\n");
+                }
+
+                /* 10. process data*/
+                ret = process_packet(recv_data_offset, read_data,
+                                         &recv_data_cnt, buffer, buffer_size);
+                if (!ret)
+                             return ret;
+
+                /* 11. update buffer offset for next time reading */
+                recv_data_offset += recv_data_cnt;
+                read_data_offset += VALID_DATA_SIZE;
+    }
+
+    /* 12.destroy cmdq resources */
+    cmdqBackupFreeSlot(hSlot);
+    cmdqRecDestroy(cmdq);
+    for (i = 0; i < buffer_size; i++)
+                usr_buffer[i] = buffer[i];
+
+    return recv_data_cnt;
+}
+#endif /* OPLUS_BUG_STABILITY */
+
 void DSI_set_cmdq_V2(enum DISP_MODULE_ENUM module, struct cmdqRecStruct *cmdq,
 			unsigned int cmd, unsigned char count,
 		    unsigned char *para_list, unsigned char force_update)
@@ -3027,8 +3365,20 @@ void DSI_set_cmdq_V2(enum DISP_MODULE_ENUM module, struct cmdqRecStruct *cmdq,
 					      mask_para, set_para);
 
 				for (i = 0; i < count; i++) {
+					#ifndef OPLUS_BUG_STABILITY
+					/* Zhijun.Ye@MM.Display.LCD.Stability, 2020/11/13, modify for dc */
 					goto_addr = (unsigned long)
 							(&vm_data[0].byte1) + i;
+					#else /* OPLUS_BUG_STABILITY */
+					if(i<15)
+						goto_addr = (unsigned long)(&DSI_VM_CMD_REG[d]->data[0].byte1) + i;
+					else if((i>=15) && (i<31))
+						goto_addr = (unsigned long)(&DSI_VM_CMD_REG_10_1C[d]->data[0].byte0)+(i+1-16);
+					else if((i>=31) && (i<47))
+						goto_addr = (unsigned long)(&DSI_VM_CMD_REG_20_2C[d]->data[0].byte0)+(i+1-32);
+					else if((i>=47) && (i<63))
+						goto_addr = (unsigned long)(&DSI_VM_CMD_REG_30_3C[d]->data[0].byte0)+(i+1-48);
+					#endif /* OPLUS_BUG_STABILITY */
 					mask_para = (0xFF <<
 						     ((goto_addr & 0x3) * 8));
 					set_para = (para_list[i] <<
@@ -3070,8 +3420,20 @@ void DSI_set_cmdq_V2(enum DISP_MODULE_ENUM module, struct cmdqRecStruct *cmdq,
 					      mask_para, set_para);
 
 				for (i = 0; i < count; i++) {
+					#ifndef OPLUS_BUG_STABILITY
+					/* Zhijun.Ye@MM.Display.LCD.Stability, 2020/11/13, modify for dc */
 					goto_addr = (unsigned long)
 							(&vm_data[0].byte1) + i;
+					#else /* OPLUS_BUG_STABILITY */
+					if(i<15)
+						goto_addr = (unsigned long)(&DSI_VM_CMD_REG[d]->data[0].byte1) + i;
+					else if((i>=15) && (i<31))
+						goto_addr = (unsigned long)(&DSI_VM_CMD_REG_10_1C[d]->data[0].byte0)+(i+1-16);
+					else if((i>=31) && (i<47))
+						goto_addr = (unsigned long)(&DSI_VM_CMD_REG_20_2C[d]->data[0].byte0)+(i+1-32);
+					else if((i>=47) && (i<63))
+						goto_addr = (unsigned long)(&DSI_VM_CMD_REG_30_3C[d]->data[0].byte0)+(i+1-48);
+					#endif /* OPLUS_BUG_STABILITY */
 					mask_para = (0xFF <<
 						     ((goto_addr & 0x3) * 8));
 					set_para = (para_list[i] <<
@@ -3454,6 +3816,11 @@ static void lcm_mdelay(UINT32 ms)
 {
 	if (ms < 10)
 		udelay(ms * 1000);
+	#ifdef OPLUS_BUG_STABILITY
+	/* LiPing-m@PSW.MM.Display.LCD.Machine, 2018/01/01, Add for reduce display on time */
+	else if (ms >= 10 && ms < 13)
+		mdelay(ms);
+	#endif /* OPLUS_BUG_STABILITY */
 	else
 		msleep(ms);
 }
@@ -3563,6 +3930,15 @@ unsigned int DSI_dcs_read_lcm_reg_v3_wrapper_DSI0(UINT8 cmd, UINT8 *buffer,
 	return DSI_dcs_read_lcm_reg_v3(DISP_MODULE_DSI0, cmd, buffer,
 						buffer_size);
 }
+
+#ifdef OPLUS_BUG_STABILITY
+/* Zhijun.Ye@MM.Display.LCD.Stability, 2020/11/19, add for panel serial read */
+unsigned int DSI_dcs_read_lcm_reg_v4_wrapper_DSI0(UINT8 cmd, UINT8 *buffer, UINT8 buffer_size)
+{
+	return DSI_dcs_read_lcm_reg_v4(DISP_MODULE_DSI0, cmd, buffer, buffer_size, 0);
+}
+
+#endif /* OPLUS_BUG_STABILITY */
 
 unsigned int DSI_dcs_read_lcm_reg_v2_wrapper_DSI1(UINT8 cmd, UINT8 *buffer,
 						UINT8 buffer_size)
@@ -3864,6 +4240,17 @@ int ddp_dsi_init(enum DISP_MODULE_ENUM module, void *cmdq)
 							0x134);
 	DSI_VM_CMD_REG[1] = (struct DSI_VM_CMDQ_REGS *)(DISPSYS_DSI1_BASE +
 							0x134);
+	#ifdef OPLUS_BUG_STABILITY
+	/* Zhijun.Ye@MM.Display.LCD.Stability, 2020/11/13, modify for dc */
+	DSI_VM_CMD_REG_10_1C[0] = (struct DSI_VM_CMDQ_REGS *)(DISPSYS_DSI0_BASE + 0x180);
+	DSI_VM_CMD_REG_10_1C[1] = (struct DSI_VM_CMDQ_REGS *)(DISPSYS_DSI1_BASE + 0x180);
+
+	DSI_VM_CMD_REG_20_2C[0] = (struct DSI_VM_CMDQ_REGS *)(DISPSYS_DSI0_BASE + 0x1A0);
+	DSI_VM_CMD_REG_20_2C[1] = (struct DSI_VM_CMDQ_REGS *)(DISPSYS_DSI1_BASE + 0x1A0);
+
+	DSI_VM_CMD_REG_30_3C[0] = (struct DSI_VM_CMDQ_REGS *)(DISPSYS_DSI0_BASE + 0x1B0);
+	DSI_VM_CMD_REG_30_3C[1] = (struct DSI_VM_CMDQ_REGS *)(DISPSYS_DSI1_BASE + 0x1B0);
+	#endif /* OPLUS_BUG_STABILITY */
 	memset(&_dsi_context, 0, sizeof(_dsi_context));
 
 	for (i = DSI_MODULE_BEGIN(module); i <= DSI_MODULE_END(module); i++) {
@@ -5260,6 +5647,10 @@ int ddp_dsi_build_cmdq(enum DISP_MODULE_ENUM module, void *cmdq_trigger_handle,
 	struct LCM_DSI_PARAMS *dsi_params = NULL;
 	struct DSI_T0_INS t0;
 	struct DSI_RX_DATA_REG read_data0;
+	#ifdef OPLUS_BUG_STABILITY
+	/*liping-m@PSW.MM.Display.LCD.Stability, 2018/06/26, add for hx83112a lcd esd read reg*/
+	struct DSI_RX_DATA_REG read_data1;
+	#endif /* OPLUS_BUG_STABILITY */
 	static cmdqBackupSlotHandle hSlot;
 
 	if (module == DISP_MODULE_DSIDUAL)
@@ -5356,6 +5747,11 @@ int ddp_dsi_build_cmdq(enum DISP_MODULE_ENUM module, void *cmdq_trigger_handle,
 			if (hSlot) {
 				DSI_BACKUPREG32(cmdq_trigger_handle, hSlot, i,
 						&DSI_REG[0]->DSI_RX_DATA0);
+				#ifdef OPLUS_BUG_STABILTY
+				/*liping-m@PSW.MM.Display.LCD.Stability, 2018/06/26, add for hx83112a lcd esd read reg*/
+				DSI_BACKUPREG32(cmdq_trigger_handle, hSlot, i+1,
+						&DSI_REG[0]->DSI_RX_DATA1);
+				#endif /* OPLUS_BUG_STABILTY */
 			}
 			/* 3.write RX_RACK */
 			DSI_OUTREGBIT(cmdq_trigger_handle, struct DSI_RACK_REG,
@@ -5382,6 +5778,10 @@ int ddp_dsi_build_cmdq(enum DISP_MODULE_ENUM module, void *cmdq_trigger_handle,
 				/* read from slot */
 				cmdqBackupReadSlot(hSlot, i,
 						   (uint32_t *)&read_data0);
+				#ifdef OPLUS_BUG_STABILITY
+				/*liping-m@PSW.MM.Display.LCD.Stability, 2018/06/26, add for hx83112a lcd esd read reg*/
+				cmdqBackupReadSlot(hSlot, i+1, (uint32_t *)&read_data1);
+				#endif /* OPLUS_BUG_STABILITY */
 			} else if (i == 0) {
 				/* read from dsi, support only one cmd read */
 				DSI_OUTREG32(NULL, &read_data0, AS_UINT32(
@@ -5409,6 +5809,21 @@ int ddp_dsi_build_cmdq(enum DISP_MODULE_ENUM module, void *cmdq_trigger_handle,
 				AS_UINT32(DISPSYS_DSI0_BASE + 0x88));
 			DISPDBG("[DSI]enter cmp DSI+0x0c=0x%x\n",
 				AS_UINT32(DISPSYS_DSI0_BASE + 0x0c));
+
+			#ifdef OPLUS_BUG_STABILITY
+			/*liping-m@PSW.MM.Display.LCD.Stability, 2018/06/26, add for hx83112a lcd esd read reg*/
+			if (read_data0.byte1 ==	lcm_esd_tb->para_list[0]) {
+				/* clear rx data */
+				ret = 0; /* esd pass */
+			} else {
+				/* esd fail */
+				DDPPR_ERR("[DSI]cmp fail:read(0x%x)!=expect(0x%x)\n",
+					read_data0.byte1,
+					lcm_esd_tb->para_list[0]);
+				ret = 1;
+				break;
+			}
+			#endif /* OPLUS_BUG_STABILITY */
 
 			if (read_data0.byte1 ==	lcm_esd_tb->para_list[0]) {
 				/* clear rx data */

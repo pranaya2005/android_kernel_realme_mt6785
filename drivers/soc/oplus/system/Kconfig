@@ -20,12 +20,15 @@ config OPPO_COMMON_SOFT
 	id.
 
 config OPPO_DEVICE_IFNO
-  bool "config oppo devinfo"
+  tristate "config oppo devinfo"
   select OPPO_ARCH_FILE
   help
 	define this config to compile devinfo.c for device register
-		.
 
+config OPLUS_FEATURE_DETAILHEAD
+  tristate "config detail kmsg"
+    help
+        define this config to add cpu number and current id and current comm to kmsg
 
 source "drivers/soc/oplus/system/feedback/Kconfig"
 source "drivers/soc/oplus/system/uboot_log/Kconfig"
@@ -41,6 +44,7 @@ source "drivers/soc/oplus/system/project_info/Kconfig"
 source "drivers/soc/oplus/system/cmdline_parser/Kconfig"
 source "drivers/soc/oplus/system/dump_device_info/Kconfig"
 source "drivers/soc/oplus/system/mdmrst/Kconfig"
+source "drivers/soc/oplus/system/full_aging/Kconfig"
 #ifdef OPLUS_FEATURE_ESIM
 #ChenGuoyao@NETWORK.SIM,2020/06/10, Add for eSIM
 source "drivers/soc/oplus/system/oppo_gpio/Kconfig"

@@ -1875,7 +1875,7 @@ VOID ibssInitForAdHoc(IN P_ADAPTER_T prAdapter, IN P_BSS_INFO_T prBssInfo)
 /*----------------------------------------------------------------------------*/
 VOID bssInitForAP(IN P_ADAPTER_T prAdapter, IN P_BSS_INFO_T prBssInfo, IN BOOLEAN fgIsRateUpdate)
 {
-	UINT_8 ucLowestBasicRateIndex;
+	UINT_8 ucLowestBasicRateIndex = RATE_2M_INDEX;
 
 	P_AC_QUE_PARMS_T prACQueParms;
 

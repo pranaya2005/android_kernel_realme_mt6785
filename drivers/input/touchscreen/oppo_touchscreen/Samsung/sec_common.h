@@ -64,9 +64,7 @@ struct sec_test_item_header {
 /*********PART3:Struct Area**********************/
 struct sec_proc_operations {
     void    (*auto_test)    (struct seq_file *s, void *chip_data, struct sec_testdata *sec_testdata);
-    void    (*calibrate)    (struct seq_file *s, void *chip_data);
     void    (*verify_calibration)    (struct seq_file *s, void *chip_data);
-    bool    (*get_cal_status)  (struct seq_file *s, void *chip_data);
     void    (*set_curved_rejsize)  (void *chip_data, uint8_t range_size);
     uint8_t (*get_curved_rejsize)  (void *chip_data);
     void    (*set_grip_handle)  (void *chip_data, int para_num, char *buf);

@@ -261,6 +261,8 @@ struct mtk_panel_params {
 	unsigned int oplus_hbm_off_sync_with_flush;
 	unsigned int oplus_need_hbm_wait;
 	unsigned int oplus_samsung_panel;
+	/* Yaqiang.Shi@RM.MM.Display.LCD.Machine 2020/11/25, add for athens-b aod issue */
+	unsigned int oplus_no_reset_before_aod_enable;
 	/* #endif */ /* OPLUS_BUG_STABILITY */
 };
 
@@ -391,14 +393,12 @@ struct mtk_panel_funcs {
 	/* Zhijun.Ye@PSW.MM.Display.LCD.Machine 2020/10/23, add for dc cmd timing */
 	int (*set_dc_backlight)(void *dsi_drv, dcs_write_gce cb,
 		void *handle, unsigned int level);
-	#endif /* OPLUS_BUG_STABILITY */
-	//#ifdef OPLUS_BUG_STABILITY
-	/*Jinzhu.Han@RM.MM.LCD.Display.Stability, 2020/08/06, add for flicker when close DC */
-	int (*lcm_dc_post_exitd)(void *dsi_drv, dcs_write_gce cb,
-		void *handle);
-	//#endif
+	/*liwei.a@PSW.MM.Display.LCD.Stability, add for novatek IC, 2020/06/01*/
+	int (*nt_reset)(struct drm_panel *panel, int on);
+	/*shangruofan@PSW.MM.LCD.Display.Stability, 2020/2/8, add for cabc*/
 	void (*cabc_switch)(void *dsi_drv, dcs_write_gce cb,
-		void *handle, unsigned int cabc_mode);
+			void *handle, unsigned int cabc_mode);
+	#endif /* OPLUS_BUG_STABILITY */
 };
 
 void mtk_panel_init(struct mtk_panel_ctx *ctx);

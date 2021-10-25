@@ -678,11 +678,13 @@ scanSearchExistingBssDescWithSsid(IN P_ADAPTER_T prAdapter,
 	case BSS_TYPE_P2P_DEVICE:
 		fgCheckSsid = FALSE;
 		/* fall through */
+		/* FALLTHRU */
 	case BSS_TYPE_INFRASTRUCTURE:
 #if CFG_SUPPORT_ROAMING_SKIP_ONE_AP
 		scanSearchBssDescOfRoamSsid(prAdapter);
 		/* fall through */
 #endif
+		/* FALLTHRU */
 	case BSS_TYPE_BOW_DEVICE:
 		prBssDesc = scanSearchBssDescByBssidAndSsid(prAdapter, aucBSSID, fgCheckSsid, prSsid);
 
@@ -1201,8 +1203,20 @@ P_BSS_DESC_T scanAddToBssDesc(IN P_ADAPTER_T prAdapter, IN P_SW_RFB_T prSwRfb)
 	UINT_8 ucSSIDChar;
 	/* PUINT_8 pucDumpIE; */
 
+	P_HW_MAC_RX_DESC_T prRxStatus;
+
 	ASSERT(prAdapter);
 	ASSERT(prSwRfb);
+
+	prRxStatus = prSwRfb->prRxStatus;
+	ASSERT(prRxStatus);
+
+	if (prAdapter->fg5gDisable == TRUE
+			&& HAL_RX_STATUS_GET_RF_BAND(prRxStatus) == BAND_5G) {
+		DBGLOG(SCN, INFO,
+			"disable 5g so do not add 5g in scan list\n");
+		return NULL;
+	}
 
 	prWlanBeaconFrame = (P_WLAN_BEACON_FRAME_T) prSwRfb->pvHeader;
 
@@ -1293,6 +1307,21 @@ P_BSS_DESC_T scanAddToBssDesc(IN P_ADAPTER_T prAdapter, IN P_SW_RFB_T prSwRfb)
 		fgIsNewBssDesc = TRUE;
 
 		do {
+			if (!fgIsValidSsid) {
+				prBssDesc = scanSearchBssDescByBssid(prAdapter,
+					(PUINT_8)prWlanBeaconFrame->aucBSSID);
+				if (prBssDesc == (P_BSS_DESC_T) NULL) {
+					DBGLOG(SCN, INFO,
+						"ignore hidden BSS(%pM) now\n",
+					(PUINT_8)prWlanBeaconFrame->aucBSSID);
+					return NULL;
+				}
+				DBGLOG(SCN, INFO,
+					"ssid is empty, don't update hidden BSS(%pM) now\n",
+					(PUINT_8)prWlanBeaconFrame->aucBSSID);
+				return prBssDesc;
+			}
+
 			/* 4 <1.2.1> First trial of allocation */
 			prBssDesc = scanAllocateBssDesc(prAdapter);
 			if (prBssDesc)
@@ -1738,8 +1767,9 @@ P_BSS_DESC_T scanAddToBssDesc(IN P_ADAPTER_T prAdapter, IN P_SW_RFB_T prSwRfb)
 		if (prBssDesc->fgIsHTPresent)
 			prBssDesc->ucPhyTypeSet |= PHY_TYPE_BIT_HT;
 
-		/* if not 11n only */
-		if (!(prBssDesc->u2BSSBasicRateSet & RATE_SET_BIT_HT_PHY)) {
+		/* if not 11n only or support OFDM*/
+		if (!(prBssDesc->u2BSSBasicRateSet & RATE_SET_BIT_HT_PHY)
+			|| (prBssDesc->u2BSSBasicRateSet & RATE_SET_OFDM)) {
 			/* Support 11a definitely */
 			prBssDesc->ucPhyTypeSet |= PHY_TYPE_BIT_OFDM;
 

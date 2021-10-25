@@ -589,7 +589,15 @@ p2pFuncTxMgmtFrame(IN P_ADAPTER_T prAdapter,
 
 		nicTxSetPktRetryLimit(prMgmtTxMsdu, ucRetryLimit);
 
-		nicTxConfigPktControlFlag(prMgmtTxMsdu, MSDU_CONTROL_FLAG_FORCE_TX, TRUE);
+		/* Bufferable MMPDUs are suggested to be queued */
+		/* when GC is sleeping according to SPEC, */
+		/* instead of being sent to ALTX Q. */
+
+		/* GO discoverability REQ needs to be sent to GC */
+		/* when GC is awake due to P2P-6.1.10 cert fail */
+		if (!p2pFuncIsBufferableMMPDU(prMgmtTxMsdu))
+			nicTxConfigPktControlFlag(prMgmtTxMsdu,
+				MSDU_CONTROL_FLAG_FORCE_TX, TRUE);
 
 		nicTxEnqueueMsdu(prAdapter, prMgmtTxMsdu);
 
@@ -2222,6 +2230,9 @@ p2pFuncValidateAuth(IN P_ADAPTER_T prAdapter,
 
 	*pu2StatusCode = STATUS_CODE_SUCCESSFUL;
 
+#if CFG_SUPPORT_SOFTAP_WPA3
+	prStaRec->ucAuthAlgNum = prAuthFrame->u2AuthAlgNum;
+#endif
 
 	return TRUE;
 
@@ -2686,11 +2697,34 @@ p2pFuncParseBeaconContent(IN P_ADAPTER_T prAdapter,
 					(UINT_8) prP2pBssInfo->u4PrivateData);
 
 				if (rsnParseRsnIE(prAdapter, RSN_IE(pucIE), &rRsnIe)) {
+#if CFG_SUPPORT_SOFTAP_WPA3
+					prP2pBssInfo->u4RsnSelectedGroupCipher = rRsnIe.u4GroupKeyCipherSuite;
+					prP2pBssInfo->u4RsnSelectedPairwiseCipher = rRsnIe.au4PairwiseKeyCipherSuite[0];
+					if(rRsnIe.u4AuthKeyMgtSuiteCount == 1)
+						prP2pBssInfo->u4RsnSelectedAKMSuite = rRsnIe.au4AuthKeyMgtSuite[0];
+					else if (rRsnIe.u4AuthKeyMgtSuiteCount == 2) {
+						prP2pBssInfo->u4RsnSelectedAKMSuite = rRsnIe.au4AuthKeyMgtSuite[0];
+						prP2pBssInfo->u4RsnSelectedAKMSuite2 = rRsnIe.au4AuthKeyMgtSuite[1];
+					}
+					prP2pBssInfo->u4RsnSelectedAKMSuiteCnt = rRsnIe.u4AuthKeyMgtSuiteCount;
+					prP2pBssInfo->u2RsnSelectedCapInfo = rRsnIe.u2RsnCap;
+					DBGLOG(P2P, INFO, "RSN AKM: %02x  %02x\n",
+						rRsnIe.au4AuthKeyMgtSuite[0], rRsnIe.au4AuthKeyMgtSuite[1]);
+					if (prP2pBssInfo->u4RsnSelectedAKMSuiteCnt == 1 &&
+							prP2pBssInfo->u4RsnSelectedAKMSuite == RSN_AKM_SUITE_SAE) {
+						prP2pBssInfo->authAlgNum = AUTH_ALGORITHM_NUM_SAE;
+					} else if (prP2pBssInfo->u4RsnSelectedAKMSuiteCnt == 1 &&
+							prP2pBssInfo->u4RsnSelectedAKMSuite == RSN_AKM_SUITE_PSK) {
+						prP2pBssInfo->authAlgNum = AUTH_ALGORITHM_NUM_OPEN_SYSTEM;
+					} else if (prP2pBssInfo->u4RsnSelectedAKMSuiteCnt == 2)
+						prP2pBssInfo->authAlgNum = AUTH_ALGORITHM_NUM_WPA2PSK_SAE;
+#else
 					prP2pBssInfo->u4RsnSelectedGroupCipher = RSN_CIPHER_SUITE_CCMP;
 					prP2pBssInfo->u4RsnSelectedPairwiseCipher = RSN_CIPHER_SUITE_CCMP;
 					prP2pBssInfo->u4RsnSelectedAKMSuite = RSN_AKM_SUITE_PSK;
 					prP2pBssInfo->u2RsnSelectedCapInfo = rRsnIe.u2RsnCap;
 					DBGLOG(RSN, TRACE, "RsnIe CAP:0x%x\n", rRsnIe.u2RsnCap);
+#endif
 				}
 
 #if CFG_SUPPORT_802_11W
@@ -4361,4 +4395,35 @@ VOID p2pFuncGenerateP2P_IE_NoA(IN P_ADAPTER_T prAdapter, IN P_MSDU_INFO_T prMsdu
 
 	prMsduInfo->u2FrameLength += (ELEM_HDR_LEN + prIeP2P->ucLength);
 
+}
+
+BOOLEAN p2pFuncIsBufferableMMPDU(IN P_MSDU_INFO_T prMgmtTxMsdu)
+{
+	P_WLAN_MAC_HEADER_T prWlanHdr = (P_WLAN_MAC_HEADER_T) NULL;
+	UINT_16 u2TxFrameCtrl;
+	BOOLEAN fgIsBufferableMMPDU;
+
+	prWlanHdr = (P_WLAN_MAC_HEADER_T)
+		((unsigned long) prMgmtTxMsdu->prPacket +
+		MAC_TX_RESERVED_FIELD);
+
+	if (!prWlanHdr) {
+		DBGLOG(P2P, ERROR, "prWlanHdr is NULL\n");
+		return FALSE;
+	}
+	u2TxFrameCtrl = prWlanHdr->u2FrameCtrl & MASK_FRAME_TYPE;
+
+	switch (u2TxFrameCtrl) {
+	case MAC_FRAME_ACTION:
+	case MAC_FRAME_DISASSOC:
+	case MAC_FRAME_DEAUTH:
+		DBGLOG(P2P, TRACE, "u2TxFrameCtrl = %u\n", u2TxFrameCtrl);
+		fgIsBufferableMMPDU = TRUE;
+		break;
+	default:
+		fgIsBufferableMMPDU = FALSE;
+		break;
+	}
+	DBGLOG(P2P, TRACE, "fgIsBufferableMMPDU = %u\n", fgIsBufferableMMPDU);
+	return fgIsBufferableMMPDU;
 }

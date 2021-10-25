@@ -34,6 +34,7 @@
 #include "debug_load.h"
 
 #define POWER_TUNER_TAG "[POWER_DEBUG]"
+#define POWER_TUNER_DEBUG(fmt, args...) pr_debug(POWER_TUNER_TAG fmt, ##args)
 #define POWER_TUNER_INFO(fmt, args...) pr_info(POWER_TUNER_TAG fmt, ##args)
 #define POWER_TUNER_ERR(fmt, args...) pr_info(POWER_TUNER_TAG fmt, ##args)
 #define MAX_PID (32768)
@@ -45,7 +46,7 @@
 
 struct power_debug power_debug_info;
 static bool is_enter_suspend = false;
-unsigned int debug_power_timer_interval_s = 5;
+unsigned int debug_power_timer_interval_s = 30;
 static unsigned int pm_qos_debug_flag = 0;
 struct task_stat cpustats_saved[MAX_PID];
 
@@ -201,7 +202,7 @@ static void print_heavy_loads_tasks()
 	for (; i < NUM_PRINT_HEAVY_LOAD_TASK; i++) {
 		if (!cpustats_saved[i].pwr)
 			break;
-		POWER_TUNER_INFO("%s\t%u\t%u\t%u\n", cpustats_saved[i].comm, cpustats_saved[i].tgid, cpustats_saved[i].pwr, cpustats_saved[i].lcore_pwr);
+		POWER_TUNER_INFO("%s\t%u\t%u\t%u\t%u\t%u\n", cpustats_saved[i].comm, cpustats_saved[i].pid, cpustats_saved[i].tgid, cpustats_saved[i].pwr, cpustats_saved[i].lcore_pwr, cpustats_saved[i].r_time);
 	}
 }
 
@@ -265,7 +266,9 @@ static void task_power_stats()
 					as->lcore_pwr += tmp_pwr;
 #endif
 				as->pwr += tmp_pwr;
+				as->pid = ts->pid;
 				as->tgid = ts->tgid;
+				as->r_time += jiffies_to_msecs(r_time);
 			}
 		}
 	}

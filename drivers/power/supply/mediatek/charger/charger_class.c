@@ -780,7 +780,7 @@ int charger_dev_enable_bleed_discharge(struct charger_device *charger_dev,
 }
 EXPORT_SYMBOL(charger_dev_enable_bleed_discharge);
 
-#ifdef CONFIG_OPLUS_CHARGER_MTK6769
+#if defined (CONFIG_OPLUS_CHARGER_MTK6769) || defined (CONFIG_OPLUS_CHARGER_MTK6768) || defined (CONFIG_OPLUS_CHARGER_MTK6769R)
 /*Liu.Yong@RM.CM.BSP.CHG 2020/08/22, Add charger code*/
 int charger_dev_send_hvdcp_pattern_ex(struct charger_device *charger_dev, bool en)
 {

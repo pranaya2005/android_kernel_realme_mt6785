@@ -258,9 +258,16 @@ static struct usb_interface_descriptor mtp_interface_desc = {
 	.bDescriptorType        = USB_DT_INTERFACE,
 	.bInterfaceNumber       = 0,
 	.bNumEndpoints          = 3,
+//Haiqing.Liu@BSP.Storage,2021/08/03,modify for mtp
+#ifndef OPLUS_FEATURE_CHG_BASIC
 	.bInterfaceClass        = USB_CLASS_STILL_IMAGE,
 	.bInterfaceSubClass     = 1,
 	.bInterfaceProtocol     = 1,
+#else
+	.bInterfaceClass        = USB_CLASS_VENDOR_SPEC,
+	.bInterfaceSubClass     = USB_CLASS_VENDOR_SPEC,
+	.bInterfaceProtocol     = 0,
+#endif
 };
 
 static struct usb_interface_descriptor ptp_interface_desc = {

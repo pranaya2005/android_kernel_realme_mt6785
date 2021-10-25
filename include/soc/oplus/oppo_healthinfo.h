@@ -95,7 +95,6 @@ struct ion_wait_para {
 	struct sched_stat_common fg_ion_wait;
 	struct sched_stat_common total_ion_wait;
 };
-
 extern void ohm_schedstats_record(int sched_type, struct task_struct *task, u64 delta_ms);
 extern int ohm_get_cur_cpuload(bool ctrl);
 extern void ohm_action_trig_with_msg(int type, char *msg);

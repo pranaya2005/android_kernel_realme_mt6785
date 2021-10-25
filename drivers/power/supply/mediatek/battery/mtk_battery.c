@@ -85,11 +85,31 @@ extern int IMM_IsAdcInitReady(void);
 #endif
 int fuelgauge_apply = 0;
 int fgauge_is_start = 0;
+int enable_is_force_full = 0;
+#ifdef CONFIG_OPLUS_CHARGER_MTK6853
+/*Baoquan.Lai@BSP.CHG.Basic, 2020/11/06, add for 0.1 precision battery temp*/
+int bat_temperature_high_precision_val = 0;
+#endif
+/*Baoquan.Lai@BSP.CHG.Basic, 2020/11/25, add for 4450mv battery support*/
+int is_4450mv_battery_support = 0;
+/*Baoquan.Lai@BSP.CHG.Basic, 2020/12/25, add for suboard temp support*/
+int is_subboard_temp_support = 0;
+
 struct iio_channel	*batt_id = NULL;
 struct iio_channel	*flash_ntc_id = NULL;
 #define Get_FakeOff_Param _IOW('k', 7, int)
 #define Turn_Off_Charging _IOW('k', 9, int)
 
+/*global variable*/
+extern struct mtk_battery gm;
+
+#ifdef CONFIG_OPLUS_CHARGER_MTK6853
+extern int is_vooc_support_single_batt_svooc(void);
+#endif
+int __attribute__((weak)) oplus_force_get_subboard_temp(void)
+{
+	return 250;
+}
 extern int oplus_chg_get_ui_soc(void);
 extern int oplus_chg_get_notify_flag(void);
 extern int oplus_chg_show_vooc_logo_ornot(void);
@@ -108,6 +128,17 @@ bool is_fuelgauge_apply(void)
 }//PengNan@BSP.CHG.basic,2017/07/27, customizing the battery NTC,modify the resistor.
 #define RBAT_PULL_DOWN_R 24000
 EXPORT_SYMBOL(is_fuelgauge_apply);
+
+bool prj_is_4450mv_battery_support(void)
+{
+	return is_4450mv_battery_support;
+}
+
+bool prj_is_subboard_temp_support(void)
+{
+	return is_subboard_temp_support;
+}
+
 #endif /*OPLUS_FEATURE_CHG_BASIC*/
 
 
@@ -428,8 +459,7 @@ int check_cap_level(int uisoc)
 void battery_update_psd(struct battery_data *bat_data)
 {
 	bat_data->BAT_batt_vol = battery_get_bat_voltage();
-	//bat_data->BAT_batt_temp = battery_get_bat_temperature();
-	bat_data->BAT_batt_temp = 25;
+	bat_data->BAT_batt_temp = battery_get_bat_temperature();
 }
 
 #ifndef OPLUS_FEATURE_CHG_BASIC
@@ -1437,13 +1467,15 @@ int BattThermistorConverTemp(int Res)
 
 	if (Res >= Fg_Temperature_Table[0].TemperatureR) {
 		TBatt_Value = -400;
-	} else if (Res <= Fg_Temperature_Table[20].TemperatureR) {
-		TBatt_Value = 600;
+
+	} else if (Res <= Fg_Temperature_Table[26].TemperatureR) {
+		TBatt_Value = 900;
+
 	} else {
 		RES1 = Fg_Temperature_Table[0].TemperatureR;
 		TMP1 = Fg_Temperature_Table[0].BatteryTemp;
 
-		for (i = 0; i <= 20; i++) {
+		for (i = 0; i <= 26; i++) {
 			if (Res >= Fg_Temperature_Table[i].TemperatureR) {
 				RES2 = Fg_Temperature_Table[i].TemperatureR;
 				TMP2 = Fg_Temperature_Table[i].BatteryTemp;
@@ -1466,6 +1498,47 @@ int BattThermistorConverTemp(int Res)
 
 	return TBatt_Value;
 }
+
+#ifdef CONFIG_OPLUS_CHARGER_MTK6853
+/*Baoquan.Lai@BSP.CHG.Basic 2020/11/06 add for 0.1 precision battery temp*/
+int BattThermistorConverTempHighPrecision(int Res)
+{
+	int i = 0;
+	int RES1 = 0, RES2 = 0;
+	int TBatt_Value = -2000, TMP1 = 0, TMP2 = 0;
+
+	if (Res >= Fg_Temperature_01_Precision_Table[0].TemperatureR) {
+		TBatt_Value = -400;
+	} else if (Res <= Fg_Temperature_01_Precision_Table[165].TemperatureR) {
+		TBatt_Value = 900;
+	} else {
+		RES1 = Fg_Temperature_01_Precision_Table[0].TemperatureR;
+		TMP1 = Fg_Temperature_01_Precision_Table[0].BatteryTemp;
+
+		for (i = 0; i <= 165; i++) {
+			if (Res >= Fg_Temperature_01_Precision_Table[i].TemperatureR) {
+				RES2 = Fg_Temperature_01_Precision_Table[i].TemperatureR;
+				TMP2 = Fg_Temperature_01_Precision_Table[i].BatteryTemp;
+				break;
+			}
+			{	/* hidden else */
+				RES1 = Fg_Temperature_01_Precision_Table[i].TemperatureR;
+				TMP1 = Fg_Temperature_01_Precision_Table[i].BatteryTemp;
+			}
+		}
+
+		TBatt_Value = (((Res - RES2) * TMP1) +
+			((RES1 - Res) * TMP2)) / (RES1 - RES2);
+	}
+	bm_trace(
+		"[%s] %d %d %d %d %d %d\n",
+		__func__,
+		RES1, RES2, Res, TMP1,
+		TMP2, TBatt_Value);
+
+	return TBatt_Value;
+}
+#endif
 
 unsigned int TempToBattVolt(int temp, int update)
 {
@@ -1589,6 +1662,81 @@ int BattVoltToTemp(int dwVolt, int volt_cali)
 	return sBaTTMP;
 }
 
+#ifdef CONFIG_OPLUS_CHARGER_MTK6853
+/*Baoquan.Lai@BSP.CHG.Basic,2020/11/06,add for 0.1 precision battery temp*/
+int BattVoltToTempHighPrecision(int dwVolt, int volt_cali)
+{
+	long long TRes_temp;
+	long long TRes;
+	int sBaTTMP = -100;
+	int vbif28 = gm.rbat.rbat_pull_up_volt;
+	int delta_v;
+
+#ifdef OPLUS_FEATURE_CHG_BASIC
+/* Yichun.Chen  PSW.BSP.CHG  2019-03-15  for produce */
+	if (dwVolt >= 2000)
+		return -80;
+#endif
+
+	TRes_temp = (gm.rbat.rbat_pull_up_r * (long long) dwVolt);
+#ifdef RBAT_PULL_UP_VOLT_BY_BIF
+	vbif28 = pmic_get_vbif28_volt() + volt_cali;
+	delta_v = abs(vbif28 - dwVolt);
+	if (delta_v == 0)
+		delta_v = 1;
+
+#if defined(__LP64__) || defined(_LP64)
+		do_div(TRes_temp, delta_v);
+#else
+		TRes_temp = div_s64(TRes_temp, delta_v);
+#endif
+
+	if (vbif28 > 3000 || vbif28 < 2500)
+		bm_err(
+			"[RBAT_PULL_UP_VOLT_BY_BIF] vbif28:%d\n",
+			pmic_get_vbif28_volt());
+#else
+	delta_v = abs(gm.rbat.rbat_pull_up_volt - dwVolt);
+	if (delta_v == 0)
+		delta_v = 1;
+#if defined(__LP64__) || defined(_LP64)
+	do_div(TRes_temp, delta_v);
+#else
+	TRes_temp = div_s64(TRes_temp, delta_v);
+#endif
+
+
+#endif
+
+#ifdef RBAT_PULL_DOWN_R
+	TRes = (TRes_temp * RBAT_PULL_DOWN_R);
+
+#if defined(__LP64__) || defined(_LP64)
+		do_div(TRes, abs(RBAT_PULL_DOWN_R - TRes_temp));
+#else
+		TRes_temp = div_s64(TRes, abs(RBAT_PULL_DOWN_R - TRes_temp));
+#endif
+
+#else
+	TRes = TRes_temp;
+#endif
+
+	/* convert register to temperature */
+	if (!pmic_is_bif_exist())
+		sBaTTMP = BattThermistorConverTempHighPrecision((int)TRes);
+	else
+		sBaTTMP = BattThermistorConverTempHighPrecision((int)TRes -
+		gm.rbat.bif_ntc_r);
+
+	bm_notice(
+		"[%s] %d %d %d %d\n",
+		__func__,
+		dwVolt, gm.rbat.rbat_pull_up_r,
+		vbif28, volt_cali);
+	return sBaTTMP;
+}
+#endif
+
 int force_get_tbat_internal(bool update)
 {
 	int bat_temperature_volt = 0;
@@ -1674,27 +1822,23 @@ int force_get_tbat_internal(bool update)
 
 			bat_temperature_val =
 				BattVoltToTemp(bat_temperature_volt, vol_cali);
-//#ifdef OPLUS_FEATURE_CHG_BASIC
-/*#Dongru.Zhao@BSP.CHG.Basic, 2020/07/27, zdr Add for bring up .*/
-			bat_temperature_val = 250;
-//#endif /*OPLUS_FEATURE_CHG_BASIC*/
-			bm_err("[force_get_tbat_internal] tbat_precise bat_temperature_val:%d\n",
-				bat_temperature_val);
+
+#ifdef CONFIG_OPLUS_CHARGER_MTK6853
+/*Baoquan.Lai@BSP.CHG.Basic, 2020/11/06, add for 0.1 precision battery temp*/
+			bat_temperature_high_precision_val =
+				BattVoltToTempHighPrecision(bat_temperature_volt,vol_cali);
+#endif
 		}
 
 #ifdef CONFIG_MTK_BIF_SUPPORT
 		/*	CHARGING_CMD_GET_BIF_TBAT need fix */
 #endif
-//#ifdef OPLUS_FEATURE_CHG_BASIC
-/*Dongru.Zhao@BSP.CHG.Basic, 2020/07/27, zdr Add for kernel log .*/
-/*
 		bm_notice("[force_get_tbat] %d,%d,%d,%d,%d,%d r:%d %d %d\n",
 		bat_temperature_volt_temp, bat_temperature_volt,
 		fg_current_state, fg_current_temp,
 		fg_r_value, bat_temperature_val,
 		fg_meter_res_value, fg_r_value, gm.no_bat_temp_compensate);
-*/
-//#endif
+
 		if (pre_bat_temperature_val2 == 0) {
 			pre_bat_temperature_volt_temp =
 				bat_temperature_volt_temp;
@@ -1712,9 +1856,6 @@ int force_get_tbat_internal(bool update)
 				(abs(pre_bat_temperature_val2 -
 				bat_temperature_val) >= 50)) ||
 				bat_temperature_val >= 580) {
-//#ifdef OPLUS_FEATURE_CHG_BASIC
-/*Dongru.Zhao@BSP.CHG.Basic, 2020/07/27, zdr Add for kernel log .*/
-/*
 				bm_err(
 				"[force_get_tbat][err] current:%d,%d,%d,%d,%d,%d pre:%d,%d,%d,%d,%d,%d\n",
 					bat_temperature_volt_temp,
@@ -1729,8 +1870,6 @@ int force_get_tbat_internal(bool update)
 					pre_fg_current_temp,
 					pre_fg_r_value,
 					pre_bat_temperature_val2);
-*/
-//#endif
 				/*pmic_auxadc_debug(1);*/
 #ifndef OPLUS_FEATURE_CHG_BASIC
 /* Fuchun.Liao@BSP.CHG.Basic 2018/01/20 modify to reduce log */
@@ -1769,6 +1908,16 @@ int force_get_tbat(bool update)
 {
 	int bat_temperature_val = 0;
 	int counts = 0;
+	int borad_temp = 0;
+
+	if (prj_is_subboard_temp_support() == true){
+
+		borad_temp = oplus_force_get_subboard_temp()/10;
+		bm_debug("[%s] borad_temp:%d precise:%d\n", __func__,
+			borad_temp, gm.tbat_precise);
+
+		return borad_temp;
+	}
 
 	if (is_fg_disabled()) {
 		bm_debug("[%s] fixed TBAT=25 t\n",
@@ -1782,23 +1931,17 @@ int force_get_tbat(bool update)
 	gm.tbat_precise = 250;
 	return 25;
 #else
-
-	bat_temperature_val = force_get_tbat_internal(update);
-	bm_err("[force_get_tbat] tbat_precise bat_temperature_val:%d\n",
-		bat_temperature_val);
-
-	while (counts < 5 && bat_temperature_val >= 60) {
-//#ifdef OPLUS_FEATURE_CHG_BASIC
-/*Dongru.Zhao@BSP.CHG.Basic, 2020/07/27, zdr Add for kernel log .*/
-/*
-		bm_err("[%s]over60 count=%d, bat_temp=%d\n",
-			__func__,
-			counts, bat_temperature_val);
-*/
-//#endif
-		bat_temperature_val = force_get_tbat_internal(true);
-		counts++;
-	}
+	if (is_fuelgauge_apply() == false) {
+		return oplus_gauge_get_batt_temperature()/10;
+	} else {
+		bat_temperature_val = force_get_tbat_internal(update);
+		while (counts < 5 && bat_temperature_val >= 60) {
+			bm_err("[%s]over60 count=%d, bat_temp=%d\n",
+					__func__,
+					counts, bat_temperature_val);
+			bat_temperature_val = force_get_tbat_internal(true);
+			counts++;
+		}
 
 	if (bat_temperature_val <=
 		BATTERY_TMP_TO_DISABLE_GM30 && gm.disableGM30 == false) {
@@ -1840,7 +1983,9 @@ int force_get_tbat(bool update)
 	bm_debug("[%s] t:%d precise:%d\n", __func__,
 		bat_temperature_val, gm.tbat_precise);
 
-	return bat_temperature_val;
+		return bat_temperature_val;
+
+	}
 #endif
 }
 
@@ -4268,10 +4413,20 @@ int oplus_battery_get_bat_temperature(void)
 #endif /*OPLUS_FEATURE_CHG_BASIC*/
    /* TODO */
    if (is_battery_init_done()) {
-       return force_get_tbat(true);
+#ifdef CONFIG_OPLUS_CHARGER_MTK6853
+/*Baoquan.Lai@BSP.CHG.Basic 2020/11/06 add for 0.1 precision battery temp*/
+		return bat_temperature_high_precision_val;
+#else
+		return force_get_tbat(true);
+#endif
    }
    else {
-       return -127;
+#ifdef CONFIG_OPLUS_CHARGER_MTK6853
+/*Baoquan.Lai@BSP.CHG.Basic 2020/11/06 add for 0.1 precision battery temp*/
+		return -1270;
+#else
+		return -127;
+#endif
    }
 
 }
@@ -4309,8 +4464,22 @@ static int meter_fg_30_get_battery_temperature(void)
 {
 	int ret = 0;
 
+#ifdef CONFIG_OPLUS_CHARGER_MTK6853
+	if (is_vooc_support_single_batt_svooc() == true){
+		ret = oplus_force_get_subboard_temp();
+	} else {
+		ret = oplus_battery_get_bat_temperature();
+	}
+#else
 	ret = oplus_battery_get_bat_temperature();
-	return ret * 10;
+#endif
+
+#ifdef CONFIG_OPLUS_CHARGER_MTK6853
+/*Baoquan.Lai@BSP.CHG.Basic 2020/11/06 add for 0.1 precision battery temp*/
+	return ret;
+#else
+	return ret *10;
+#endif
 }
 
 static int meter_fg_30_get_battery_soc(void)
@@ -4348,10 +4517,16 @@ int meter_fg_30_get_bat_charging_current(void)
 	return meter_fg_30_get_average_current();
 }
 
+static int meter_fg_30_get_prev_battery_fcc(void)
+{
+        return gm.prev_batt_fcc/10;
+}
+
 #define BATT_CAPACITY	4000
 static int meter_fg_30_get_battery_fcc(void)
 {
 	return BATT_CAPACITY;
+	//return gm.prev_batt_fcc/10;
 }
 
 static int meter_fg_30_get_battery_cc(void)
@@ -4376,12 +4551,7 @@ static int meter_fg_30_get_batt_remaining_capacity(void)
 
 static int meter_fg_30_get_prev_batt_remaining_capacity(void)
 {
-	int soc = meter_fg_30_get_battery_soc();
-
-	if (soc != -1)
-		return BATT_CAPACITY * soc / 100;
-	else
-		return -1;
+	return gm.prev_batt_remaining_capacity;
 }
 
 static int meter_fg_30_modify_dod0(void)
@@ -4406,9 +4576,13 @@ static void meter_fg_30_set_battery_full(bool full)
 {
 	printk("last full = %d, full = %d\n", last_full, full);
 	if(last_full != full) {
-		if (full)
+		if (full){
+			if (enable_is_force_full == 1){
+				gm.is_force_full = 1;
+			}
 			notify_fg_chr_full();
 		last_full = full;
+		}
 	}
 }
 #else
@@ -4465,6 +4639,11 @@ enum {
 	BAT_TYPE__ATL_4350mV, //1110mV~1450mV
 	BAT_TYPE__ATL_4400mV, //790mV~1100mV
 	BAT_TYPE__TWS_4400mV,
+#ifdef OPLUS_FEATURE_CHG_BASIC
+/*Baoquan.Lai@BSP.CHG.Basic, 2020/09/30,add for 4.45V battery*/
+	BAT_TYPE__ATL_4450mV,	//550mV~790mV
+	BAT_TYPE__SDI_4450mV,   //1040mV~1325mV
+#endif
 };
 #define BAT_ID (3) //AUXIN3
 int battery_type_check(void)
@@ -4513,28 +4692,22 @@ int battery_type_check(void)
 	#endif
 	bm_debug("[battery_value= %d\n", value);
 	if(is_fuelgauge_apply() == true){
-	#ifdef CONFIG_OPLUS_CHARGER_MTK6853
-		if (get_PCB_Version() <= 4){
-			if (value >= 550 && value <= 1040) {
-				battery_type = BAT_TYPE__ATL_4400mV;
-				gm.battery_id = 0;
-			}
-		}else if (get_PCB_Version() > 4){
-			if (value >= 790 && value <= 1040) {
-				battery_type = BAT_TYPE__ATL_4400mV;
-				gm.battery_id = 0;
-			}
-		}
-	#else
-		if (value >= 790 && value <= 1100) {
+		if (value >= 790 && value <= 1040) {
 			battery_type = BAT_TYPE__ATL_4400mV;
 			gm.battery_id = 0;
-		} else if (value >= 300 && value <= 520) {
+		} else if (value >= 350 && value <= 520) {
 			battery_type = BAT_TYPE__SDI_4400mV;
 			gm.battery_id = 1;
-		}
-	#endif
-		else {
+#ifdef OPLUS_FEATURE_CHG_BASIC
+/*Baoquan.Lai@BSP.CHG.Basic, 2020/09/30,add for 4.45V battery*/
+		} else if (value >= 550 && value < 790) {
+			battery_type = BAT_TYPE__ATL_4450mV;
+			gm.battery_id = 2;
+		} else if (value >= 1040 && value < 1325) {
+			battery_type = BAT_TYPE__SDI_4450mV;
+			gm.battery_id = 3;
+#endif
+		} else {
 			battery_type = BAT_TYPE__UNKNOWN;
 		}
 	}
@@ -4570,6 +4743,29 @@ EXPORT_SYMBOL(battery_get_flashlight_temperature);
 #endif
 
 #ifdef CONFIG_OPLUS_4400MV_BATTERY_SUPPORT
+#ifdef OPLUS_FEATURE_CHG_BASIC
+/*Baoquan.Lai@BSP.CHG.Basic, 2020/09/30,add for 4.45V battery*/
+static bool battery_type_is_4450mv(void)
+{
+	int battery_type = BAT_TYPE__UNKNOWN;
+	int retry_flag = 0;
+try_again:
+	battery_type = battery_type_check();
+	if (battery_type == BAT_TYPE__ATL_4450mV) {
+		return true;
+	} else {
+		if (retry_flag == 0) {
+			retry_flag = 1;
+			goto try_again;
+		}
+		if (is_meta_mode() == true) {
+			return false;
+		} else {
+			return false;
+		}
+	}
+}
+#endif
 static bool battery_type_is_4400mv(void)
 {
 	int battery_type = BAT_TYPE__UNKNOWN;
@@ -4613,7 +4809,13 @@ try_again:
 bool meter_fg_30_get_battery_authenticate(void)
 {
     #ifdef CONFIG_OPLUS_4400MV_BATTERY_SUPPORT
-	return battery_type_is_4400mv();
+#ifdef OPLUS_FEATURE_CHG_BASIC
+/*Baoquan.Lai@BSP.CHG.Basic, 2020/09/30,add for 4.45V battery*/
+	if(prj_is_4450mv_battery_support() == true)
+		return battery_type_is_4450mv();
+	else
+#endif
+		return battery_type_is_4400mv();
     #else
 	return battery_type_is_4350mv();
     #endif
@@ -4649,6 +4851,17 @@ static void register_battery_devinfo(void)
 			version = "4.40v";
 			manufacture = "ATL";
 			break;
+#ifdef OPLUS_FEATURE_CHG_BASIC
+/*Baoquan.Lai@BSP.CHG.Basic, 2020/09/30,add for 4.45V battery*/
+		case BAT_TYPE__ATL_4450mV:
+			version = "4.45v";
+			manufacture = "ATL";
+			break;
+		case BAT_TYPE__SDI_4450mV:
+			version = "4.45v";
+			manufacture = "SDI";
+			break;
+#endif
 		default:
 			version = "unknown";
 			manufacture = "UNKNOWN";
@@ -4748,6 +4961,7 @@ static struct oplus_gauge_operations battery_meter_fg_30_gauge = {
 	.get_batt_remaining_capacity	= meter_fg_30_get_batt_remaining_capacity,
 	.get_battery_soc				= meter_fg_30_get_battery_soc,
 	.get_average_current			= meter_fg_30_get_average_current,
+	.get_prev_batt_fcc                   = meter_fg_30_get_prev_battery_fcc,
 	.get_battery_fcc				= meter_fg_30_get_battery_fcc,
 	.get_battery_cc				= meter_fg_30_get_battery_cc,
 	.get_battery_soh				= meter_fg_30_get_battery_soh,
@@ -4794,6 +5008,17 @@ static int __init battery_probe(struct platform_device *dev)
 /*lizhijie@BSP.CHG.Basic 2020/04/02 lizhijie add for distinguish fuelgague and outlay-gague*/
 	fg_read_dts_val(dev->dev.of_node, "FUELGAGUE_APPLY", &(fuelgauge_apply), 1);
 	bm_err("%s, fuelgauge_apply:%d\n", __func__, fuelgauge_apply);
+#endif
+#ifdef OPLUS_FEATURE_CHG_BASIC
+/*Baoquan.Lai@BSP.CHG.Basic 2020/11/23 add for distinguish battery*/
+	fg_read_dts_val(dev->dev.of_node, "IS_4450MV_BATTERY_SUPPORT", &(is_4450mv_battery_support), 1);
+	bm_err("%s, is_4450mv_battery_support:%d\n", __func__, is_4450mv_battery_support);
+/*Baoquan.Lai@BSP.CHG.Basic 2020/11/25 add for force full*/
+	fg_read_dts_val(dev->dev.of_node, "ENABLE_IS_FORCE_FULL", &(enable_is_force_full), 1);
+	bm_err("%s, enable_is_force_full:%d\n", __func__, enable_is_force_full);
+/*Baoquan.Lai@BSP.CHG.Basic 2020/12/25 add for force full*/
+	fg_read_dts_val(dev->dev.of_node, "IS_SUBBOARD_TEMP_SUPPORT", &(is_subboard_temp_support), 1);
+	bm_err("%s, is_subboard_temp_support:%d\n", __func__, is_subboard_temp_support);
 #endif
 #ifdef OPLUS_FEATURE_CHG_BASIC
 /* lizhijie@BSP.CHG.basic, 2020/04/04, lzj Add for charge driver */

@@ -167,8 +167,6 @@ do {												\
  * stpbt device node
  */
 #define BUFFER_SIZE	(1024 * 4)	/* Size of RX Queue */
-#define IOC_MAGIC	0xb0
-#define IOCTL_FW_ASSERT _IOWR(IOC_MAGIC, 0, void *)
 
 /**
  * fw log queue count

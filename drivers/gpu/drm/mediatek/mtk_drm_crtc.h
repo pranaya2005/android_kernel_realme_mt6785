@@ -82,8 +82,12 @@ enum DISP_PMQOS_SLOT {
 	(DISP_SLOT_CUR_CONFIG_FENCE_BASE + (0x4 * (n)))
 #define DISP_SLOT_PRESENT_FENCE(n)                                          \
 	(DISP_SLOT_CUR_CONFIG_FENCE(OVL_LAYER_NR) + (0x4 * (n)))
+#define DISP_SLOT_SF_PRESENT_FENCE_CONF(n)                                     \
+	(DISP_SLOT_PRESENT_FENCE(MAX_CRTC) + (0x4 * (n)))
+#define DISP_SLOT_SF_PRESENT_FENCE(n)                                          \
+	(DISP_SLOT_SF_PRESENT_FENCE_CONF(MAX_CRTC) + (0x4 * (n)))
 #define DISP_SLOT_SUBTRACTOR_WHEN_FREE_BASE                                    \
-	(DISP_SLOT_PRESENT_FENCE(MAX_CRTC) + 0x4)
+	(DISP_SLOT_SF_PRESENT_FENCE(MAX_CRTC) + 0x4)
 #define DISP_SLOT_SUBTRACTOR_WHEN_FREE(n)                                      \
 	(DISP_SLOT_SUBTRACTOR_WHEN_FREE_BASE + (0x4 * (n)))
 #define DISP_SLOT_ESD_READ_BASE DISP_SLOT_SUBTRACTOR_WHEN_FREE(OVL_LAYER_NR)
@@ -357,6 +361,7 @@ enum MTK_CRTC_PROP {
 	CRTC_PROP_OVERLAP_LAYER_NUM,
 	CRTC_PROP_LYE_IDX,
 	CRTC_PROP_PRES_FENCE_IDX,
+	CRTC_PROP_SF_PRES_FENCE_IDX,
 	CRTC_PROP_DOZE_ACTIVE,
 	CRTC_PROP_OUTPUT_ENABLE,
 	CRTC_PROP_OUTPUT_FENCE_IDX,
@@ -686,6 +691,10 @@ struct mtk_drm_crtc {
 	wait_queue_head_t present_fence_wq;
 	struct task_struct *pf_release_thread;
 	atomic_t pf_event;
+
+	wait_queue_head_t sf_present_fence_wq;
+	struct task_struct *sf_pf_release_thread;
+	atomic_t sf_pf_event;
 };
 
 struct mtk_crtc_state {
@@ -705,6 +714,12 @@ struct mtk_crtc_state {
 	/* property */
 	unsigned int prop_val[CRTC_PROP_MAX];
 	bool doze_changed;
+
+/* #ifdef OPLUS_BUG_STABILITY */
+/* Zepu.Zhang@MM.LCD.Display.Stability, 2020/11/23, add for bug569933 from mtk case ALPS05430722 */
+	/* for ccorr handle */
+	bool ccorr_ident_mode;
+/* #endif */
 };
 
 struct mtk_cmdq_cb_data {
@@ -741,6 +756,8 @@ struct mtk_ddp_comp *mtk_ddp_comp_request_output(struct mtk_drm_crtc *mtk_crtc);
 /* get fence */
 int mtk_drm_crtc_getfence_ioctl(struct drm_device *dev, void *data,
 				struct drm_file *file_priv);
+int mtk_drm_crtc_get_sf_fence_ioctl(struct drm_device *dev, void *data,
+				    struct drm_file *file_priv);
 
 long mtk_crtc_wait_status(struct drm_crtc *crtc, bool status, long timeout);
 int mtk_crtc_path_switch(struct drm_crtc *crtc, unsigned int path_sel,

@@ -290,7 +290,7 @@ static int mt_charger_set_property(struct power_supply *psy,
 
 	dump_charger_name(mtk_chg->chg_type);
 
-	/*Liu.Yong@BSP.CHG.Basic, 2021/07/22, Add for error detection */
+//gudi, 2021/07/21, Add for error detection
 	if (!mtk_chg->cti) {
 		pr_info("%s,mtk_chg->cti in NULL\n", __func__);
 		return -EINVAL;
@@ -492,7 +492,7 @@ static int chgdet_task_threadfn(void *data)
 	return 0;
 }
 
-#if defined(CONFIG_OPLUS_CHARGER_MTK6769)
+#if defined (CONFIG_OPLUS_CHARGER_MTK6769) || defined (CONFIG_OPLUS_CHARGER_MTK6768) || defined (CONFIG_OPLUS_CHARGER_MTK6769R)
 /*Sidong.Zhao@ODM_WT.BSP.CHG 2019/11/4,for charger type detection*/
 static int mt_charger_probe(struct platform_device *pdev)
 {
@@ -500,10 +500,8 @@ static int mt_charger_probe(struct platform_device *pdev)
 	struct chg_type_info *cti = NULL;
 	struct mt_charger *mt_chg = NULL;
 #ifdef OPLUS_FEATURE_CHG_BASIC
-#ifdef CONFIG_TCPC_CLASS
 /*Liu.Yong@BSP.CHG.Basic, 2020/12/25, Add for micro-usb issue.*/
 	int usb_type = 0;
-#endif /*CONFIG_TCPC_CLASS*/
 #endif /*OPLUS_FEATURE_CHG_BASIC*/
 
 	mt_chg = devm_kzalloc(&pdev->dev, sizeof(struct mt_charger), GFP_KERNEL);
@@ -987,7 +985,7 @@ static void __exit mt_charger_det_exit(void)
 subsys_initcall(mt_charger_det_init);
 module_exit(mt_charger_det_exit);
 
-#ifdef CONFIG_TCPC_CLASS
+#if 0
 static int __init mt_charger_det_notifier_call_init(void)
 {
 	int ret = 0;

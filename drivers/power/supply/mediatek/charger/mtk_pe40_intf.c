@@ -29,7 +29,8 @@
 #define PE40_VBUS_IR_DROP_THRESHOLD 1200
 
 #if ((defined CONFIG_OPLUS_CHARGER_MTK6853) || (defined CONFIG_OPLUS_CHARGER_MTK6769) || (defined CONFIG_OPLUS_CHARGER_MTK6785) \
-		|| (defined CONFIG_OPLUS_CHARGER_MTK6873) || (defined CONFIG_OPLUS_CHARGER_MTK6885) || (defined CONFIG_OPLUS_CHARGER_MTK6771))
+		|| (defined CONFIG_OPLUS_CHARGER_MTK6873) || (defined CONFIG_OPLUS_CHARGER_MTK6885) || (defined CONFIG_OPLUS_CHARGER_MTK6771) \
+		|| (defined CONFIG_OPLUS_CHARGER_MTK6768)) || defined (CONFIG_OPLUS_CHARGER_MTK6769R)
 /*resolve compile error */
 bool mtk_is_TA_support_pd_pps(struct charger_manager *pinfo)
 {

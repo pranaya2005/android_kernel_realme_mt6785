@@ -31,11 +31,6 @@
 #include "flashlight-dt.h"
 #include <mt-plat/mtk_pwm.h>
 
-#ifdef OPLUS_FEATURE_CAMERA_COMMON
-#include <soc/oplus/system/oplus_project.h>
-#include <soc/oplus/system/oplus_project_oldcdt.h>
-#endif
-
 /* define device tree */
 #ifndef PASCAL_DTNAME
 #define PASCAL_DTNAME "mediatek,flashlights_pascal"
@@ -574,12 +569,7 @@ static int pascal_probe(struct platform_device *pdev)
 	struct pascal_platform_data *pdata = dev_get_platdata(&pdev->dev);
 	int err;
 	int i;
-#ifdef OPLUS_FEATURE_CAMERA_COMMON
-	if ((!is_project(0x206AC)) && (!is_project(0x206AF)) && (!is_project(0x206A0))) {
-		err = -EFAULT;
-		goto err;
-	}
-#endif
+
 	printk("Probe start.\n");
 
 	/* init pinctrl */

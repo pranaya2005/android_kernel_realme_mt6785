@@ -285,7 +285,7 @@
             <gpio17>
                 <eint_mode>false</eint_mode>
                 <def_mode>0</def_mode>
-                <inpull_en>true</inpull_en>
+                <inpull_en>false</inpull_en>
                 <inpull_selhigh>false</inpull_selhigh>
                 <def_dir>IN</def_dir>
                 <out_high>false</out_high>
@@ -338,7 +338,7 @@
             <gpio22>
                 <eint_mode>false</eint_mode>
                 <def_mode>0</def_mode>
-                <inpull_en>true</inpull_en>
+                <inpull_en>false</inpull_en>
                 <inpull_selhigh>false</inpull_selhigh>
                 <def_dir>IN</def_dir>
                 <out_high>false</out_high>
@@ -479,10 +479,10 @@
             </gpio35>
             <gpio36>
                 <eint_mode>false</eint_mode>
-                <def_mode>0</def_mode>
+                <def_mode>2</def_mode>
                 <inpull_en>false</inpull_en>
                 <inpull_selhigh>false</inpull_selhigh>
-                <def_dir>IN</def_dir>
+                <def_dir>OUT</def_dir>
                 <out_high>false</out_high>
                 <varName0>GPIO_SMARTPA_I2S_BCK_PIN</varName0>
                 <smt>false</smt>
@@ -524,7 +524,7 @@
             <gpio40>
                 <eint_mode>false</eint_mode>
                 <def_mode>0</def_mode>
-                <inpull_en>true</inpull_en>
+                <inpull_en>false</inpull_en>
                 <inpull_selhigh>false</inpull_selhigh>
                 <def_dir>IN</def_dir>
                 <out_high>false</out_high>
@@ -1035,7 +1035,7 @@
             <gpio91>
                 <eint_mode>false</eint_mode>
                 <def_mode>0</def_mode>
-                <inpull_en>true</inpull_en>
+                <inpull_en>false</inpull_en>
                 <inpull_selhigh>false</inpull_selhigh>
                 <def_dir>IN</def_dir>
                 <out_high>false</out_high>
@@ -1046,7 +1046,7 @@
             <gpio92>
                 <eint_mode>false</eint_mode>
                 <def_mode>0</def_mode>
-                <inpull_en>true</inpull_en>
+                <inpull_en>false</inpull_en>
                 <inpull_selhigh>false</inpull_selhigh>
                 <def_dir>IN</def_dir>
                 <out_high>false</out_high>

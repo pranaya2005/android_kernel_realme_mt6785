@@ -152,10 +152,8 @@ struct egistec_data {
 	struct pinctrl *pinctrl_gpios;
 	struct pinctrl_state *pins_irq;
 	struct pinctrl_state *pins_miso_spi, *pins_miso_pullhigh, *pins_miso_pulllow;
-	struct pinctrl_state *pins_reset_high, *pins_reset_low,*pins_power_high,*pins_power_low;
-#endif	
-	
-	
+        struct pinctrl_state *pins_reset_high, *pins_reset_low, *pins_power_high, *pins_power_low, *pins_spi_cs_mode;
+#endif
 };
 
 

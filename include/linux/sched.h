@@ -219,6 +219,9 @@ struct task_group;
 // XieLiujie@BSP.KERNEL.PERFORMANCE, 2020/05/25, Add for UIFirst
 extern int sysctl_uifirst_enabled;
 extern int sysctl_launcher_boost_enabled;
+extern int sysctl_animation_type;
+#define LAUNCHER_SI_START (4)
+#define LAUNCHER_SI_EXIT (5)
 #endif /* OPLUS_FEATURE_UIFIRST */
 
 #if defined (CONFIG_SCHED_WALT) && defined (OPLUS_FEATURE_UIFIRST)
@@ -1888,20 +1891,18 @@ static inline void kick_process(struct task_struct *tsk) { }
 #endif
 
 extern void __set_task_comm(struct task_struct *tsk, const char *from, bool exec);
+#ifdef OPLUS_FEATURE_UIFIRST
+extern void sched_assist_target_comm(struct task_struct *task);
+#endif /* OPLUS_FEATURE_UIFIRST */
 
 #ifdef CONFIG_OPLUS_ION_BOOSTPOOL
 extern pid_t alloc_svc_tgid;
 #endif /* CONFIG_OPLUS_ION_BOOSTPOOL */
 
-/* add for setting critical thread with light load to rt */
-#define MALI_THREAD_NAME "mali-cmar-backe"
-#define LAUNCHER_THREAD_NAME "m.oppo.launcher"
-
 #ifdef CONFIG_OPLUS_ION_BOOSTPOOL
 extern pid_t alloc_svc_tgid;
 #endif /* CONFIG_OPLUS_ION_BOOSTPOOL */
 
-extern int oplus_sched_set_rt_nocheck(struct task_struct *p);
 static inline void set_task_comm(struct task_struct *tsk, const char *from)
 {
 	__set_task_comm(tsk, from, false);
@@ -1912,9 +1913,9 @@ static inline void set_task_comm(struct task_struct *tsk, const char *from)
 		alloc_svc_tgid = tsk->tgid;
 #endif /* CONFIG_OPLUS_ION_BOOSTPOOL */
 
-	/* add for setting critical thread with light load to rt */
-	if (tsk && tsk->group_leader && strstr(tsk->group_leader->comm, LAUNCHER_THREAD_NAME) && strstr(tsk->comm, MALI_THREAD_NAME))
-		oplus_sched_set_rt_nocheck(tsk);
+#ifdef OPLUS_FEATURE_UIFIRST
+	sched_assist_target_comm(tsk);
+#endif /* OPLUS_FEATURE_UIFIRST */
 }
 
 extern char *__get_task_comm(char *to, size_t len, struct task_struct *tsk);

@@ -75,9 +75,6 @@
 //Add for: wifi sar feature, mtk vendor
 #include <soc/oplus/system/oppo_project.h>
 #endif /* OPLUS_BUG_COMPATIBILITY */
-static uint16_t g_country_cfg[40];
-static uint32_t  g_countrycount;
-
 
 /*******************************************************************************
  *                              C O N S T A N T S
@@ -277,7 +274,7 @@ static const uint16_t g_u2CountryGroup1[] = {
 	COUNTRY_CODE_AS, COUNTRY_CODE_AI, COUNTRY_CODE_BM, COUNTRY_CODE_KY,
 	COUNTRY_CODE_GU, COUNTRY_CODE_FM, COUNTRY_CODE_PR, COUNTRY_CODE_VI,
 	COUNTRY_CODE_AZ, COUNTRY_CODE_BW, COUNTRY_CODE_CX,
-	COUNTRY_CODE_CO, COUNTRY_CODE_CR, COUNTRY_CODE_GD, COUNTRY_CODE_GT,
+	COUNTRY_CODE_CR, COUNTRY_CODE_GD, COUNTRY_CODE_GT,
 	COUNTRY_CODE_KI, COUNTRY_CODE_LB, COUNTRY_CODE_LR, COUNTRY_CODE_MN,
 	COUNTRY_CODE_AN, COUNTRY_CODE_NI, COUNTRY_CODE_PW, COUNTRY_CODE_WS,
 	COUNTRY_CODE_TT
@@ -288,14 +285,14 @@ static const uint16_t g_u2CountryGroup2[] = {
 };
 
 static const uint16_t g_u2CountryGroup3[] = {
-	COUNTRY_CODE_AR, COUNTRY_CODE_BR, COUNTRY_CODE_HK, COUNTRY_CODE_OM,
+	COUNTRY_CODE_AR, COUNTRY_CODE_HK, COUNTRY_CODE_OM,
 	COUNTRY_CODE_PH, COUNTRY_CODE_SA, COUNTRY_CODE_SG, COUNTRY_CODE_ZA,
 	COUNTRY_CODE_VN, COUNTRY_CODE_DO, COUNTRY_CODE_FK, COUNTRY_CODE_LK,
 	COUNTRY_CODE_KZ, COUNTRY_CODE_MZ, COUNTRY_CODE_NA, COUNTRY_CODE_LC,
 	COUNTRY_CODE_VC, COUNTRY_CODE_UA, COUNTRY_CODE_UZ, COUNTRY_CODE_ZW,
 	COUNTRY_CODE_MP, COUNTRY_CODE_KR, COUNTRY_CODE_AE, COUNTRY_CODE_NZ,
-	COUNTRY_CODE_KE, COUNTRY_CODE_TH, COUNTRY_CODE_IN,
-	COUNTRY_CODE_BD, COUNTRY_CODE_IR, COUNTRY_CODE_KH,
+	COUNTRY_CODE_KE, COUNTRY_CODE_TH, COUNTRY_CODE_IN, COUNTRY_CODE_MO,
+	COUNTRY_CODE_BD, COUNTRY_CODE_IR, COUNTRY_CODE_KH, COUNTRY_CODE_PT,
 	COUNTRY_CODE_ES, COUNTRY_CODE_IT, COUNTRY_CODE_FR, COUNTRY_CODE_NL,
 	COUNTRY_CODE_PL, COUNTRY_CODE_BE, COUNTRY_CODE_GB, COUNTRY_CODE_TR,
 	COUNTRY_CODE_IE, COUNTRY_CODE_EE, COUNTRY_CODE_BG, COUNTRY_CODE_RO,
@@ -307,13 +304,13 @@ static const uint16_t g_u2CountryGroup4[] = {
 	COUNTRY_CODE_CZ, COUNTRY_CODE_DK, COUNTRY_CODE_FI,
 	COUNTRY_CODE_GR, COUNTRY_CODE_HU, COUNTRY_CODE_IS,
 	COUNTRY_CODE_LU, COUNTRY_CODE_NO,
-	COUNTRY_CODE_PT, COUNTRY_CODE_SK,
+	COUNTRY_CODE_SK,
 	COUNTRY_CODE_SI, COUNTRY_CODE_SE,
 	COUNTRY_CODE_AL, COUNTRY_CODE_AD, COUNTRY_CODE_BY,
 	COUNTRY_CODE_BA, COUNTRY_CODE_VG, COUNTRY_CODE_CV, COUNTRY_CODE_CY,
 	COUNTRY_CODE_ET, COUNTRY_CODE_GF, COUNTRY_CODE_PF,
 	COUNTRY_CODE_TF, COUNTRY_CODE_GE, COUNTRY_CODE_GH,
-	COUNTRY_CODE_GP, COUNTRY_CODE_IQ, COUNTRY_CODE_LV, COUNTRY_CODE_MM,
+	COUNTRY_CODE_GP, COUNTRY_CODE_IQ, COUNTRY_CODE_LV,
 	COUNTRY_CODE_LS, COUNTRY_CODE_LI, COUNTRY_CODE_LT, COUNTRY_CODE_MK,
 	COUNTRY_CODE_MT, COUNTRY_CODE_MQ, COUNTRY_CODE_MR, COUNTRY_CODE_MU,
 	COUNTRY_CODE_YT, COUNTRY_CODE_MD, COUNTRY_CODE_MC, COUNTRY_CODE_ME,
@@ -324,15 +321,15 @@ static const uint16_t g_u2CountryGroup4[] = {
 
 static const uint16_t g_u2CountryGroup5[] = {
 	COUNTRY_CODE_AU, COUNTRY_CODE_EC, COUNTRY_CODE_PY,
-	COUNTRY_CODE_PE, COUNTRY_CODE_UY
+	COUNTRY_CODE_UY
 };
 
 static const uint16_t g_u2CountryGroup6[] = { COUNTRY_CODE_RU };
 
 static const uint16_t g_u2CountryGroup7[] = {
-	COUNTRY_CODE_CL, COUNTRY_CODE_AG,
+	COUNTRY_CODE_AG,
 	COUNTRY_CODE_BS, COUNTRY_CODE_BH, COUNTRY_CODE_BB, COUNTRY_CODE_BN,
-	COUNTRY_CODE_MV, COUNTRY_CODE_PA, COUNTRY_CODE_ZM, COUNTRY_CODE_CN,
+	COUNTRY_CODE_MV, COUNTRY_CODE_ZM, COUNTRY_CODE_CN,
 	COUNTRY_CODE_NP
 };
 
@@ -376,7 +373,9 @@ static const uint16_t g_u2CountryGroup16[] = {
 };
 
 static const uint16_t g_u2CountryGroup17[] = {
-	COUNTRY_CODE_CA, COUNTRY_CODE_US
+
+	COUNTRY_CODE_CA, COUNTRY_CODE_US, COUNTRY_CODE_CO, COUNTRY_CODE_PA, COUNTRY_CODE_BR, COUNTRY_CODE_CL, COUNTRY_CODE_PE
+
 };
 
 static const uint16_t g_u2CountryGroup18[] = {
@@ -400,13 +399,20 @@ static const uint16_t g_u2CountryGroup21[] = {
 };
 
 static const uint16_t g_u2CountryGroup22[] = {
-	COUNTRY_CODE_TW
+	COUNTRY_CODE_TW, COUNTRY_CODE_CL
 };
 
 //Lei.Zhang@CONNECTIVITY.WIFI.BASIC.HARDWARE.110126, 2020/07/17,
 //Modify for disable channel 12/13 in Mexico
 static const uint16_t g_u2CountryGroup23[] = {
     COUNTRY_CODE_MX
+};
+//#endif /* OPLUS_BUG_COMPATIBILITY */
+
+//wei.Zhang@CONNECTIVITY.WIFI.BASIC.HARDWARE, 2021/01/28,
+//Modify for disable channel 149-165
+static const uint16_t g_u2CountryGroup24[] = {
+    COUNTRY_CODE_MM
 };
 //#endif /* OPLUS_BUG_COMPATIBILITY */
 
@@ -582,8 +588,8 @@ struct DOMAIN_INFO_ENTRY arSupportedRegDomains[] = {
 			,			/* CH_SET_UNII_MID_52_64 */
 			{121, BAND_5G, CHNL_SPAN_20, 100, 11, TRUE}
 			,			/* CH_SET_UNII_WW_100_140 */
-			{125, BAND_NULL, 0, 0, 0, FALSE}
-			,			/* CH_SET_UNII_UPPER_NA */
+			{125, BAND_5G, CHNL_SPAN_20, 149, 5, FALSE}
+			,			/* CH_SET_UNII_UPPER_149_165 */
 			{0, BAND_NULL, 0, 0, 0, FALSE}
 		}
 	}
@@ -846,8 +852,8 @@ struct DOMAIN_INFO_ENTRY arSupportedRegDomains[] = {
 			,			/* CH_SET_UNII_LOW_36_48 */
 			{118, BAND_5G, CHNL_SPAN_20, 52, 4, TRUE}
 			,			/* CH_SET_UNII_MID_52_64 */
-			{121, BAND_NULL, 0, 0, 0, FALSE}
-			,			/* CH_SET_UNII_WW_NA */
+			{121, BAND_5G, CHNL_SPAN_20, 100, 11, TRUE}
+			,			/* CH_SET_UNII_WW_100_140 */
 			{125, BAND_5G, CHNL_SPAN_20, 149, 5, FALSE}
 			,			/* CH_SET_UNII_UPPER_149_165 */
 			{0, BAND_NULL, 0, 0, 0, FALSE}
@@ -933,6 +939,26 @@ struct DOMAIN_INFO_ENTRY arSupportedRegDomains[] = {
 	}
 	,
 	//#endif /* OPLUS_BUG_COMPATIBILITY */
+	//wei.Zhang@CONNECTIVITY.WIFI.BASIC.HARDWARE, 2021/01/28,
+    //Modify for disable channel 149-165
+    {
+		(uint16_t *) g_u2CountryGroup24, sizeof(g_u2CountryGroup4) / 2,
+		{
+			{81, BAND_2G4, CHNL_SPAN_5, 1, 13, FALSE}
+			,			/* CH_SET_2G4_1_13 */
+
+			{115, BAND_5G, CHNL_SPAN_20, 36, 4, FALSE}
+			,			/* CH_SET_UNII_LOW_36_48 */
+			{118, BAND_5G, CHNL_SPAN_20, 52, 4, TRUE}
+			,			/* CH_SET_UNII_MID_52_64 */
+			{121, BAND_5G, CHNL_SPAN_20, 100, 11, TRUE}
+			,			/* CH_SET_UNII_WW_100_140 */
+			{125, BAND_NULL, 0, 0, 0, FALSE}
+			,			/* CH_SET_UNII_UPPER_NA */
+			{0, BAND_NULL, 0, 0, 0, FALSE}
+		}
+	},
+	//#endif /* OPLUS_BUG_COMPATIBILITY */
 	{
 		/* Note: Default group if no matched country code */
 		NULL, 0,
@@ -1013,32 +1039,33 @@ struct SUBBAND_CHANNEL g_rRlmSubBand[] = {
 	{UNII3_LOWER_BOUND, UNII3_UPPER_BOUND, 2, 0}
 				/* ch149,151,153,....,165 */
 };
+#endif
 
 #ifdef VENDOR_EDIT
 //Lei.Zhang@PSW.CN.WiFi.Basic.Hardware.1065227, 2020/07/17,
 //Add for distinguish country power limit at runtime.
-//Wu gaowei add for 2073 2021/06/08
 struct oplus_country_pwr_limit g_oplusCountryPwrLimit[] = {
-    {20255, sizeof(g_rRlmPowerLimitConfiguration_20255)/sizeof(g_rRlmPowerLimitConfiguration_20255[0]), g_rRlmPowerLimitConfiguration_20255},
-    {20257, sizeof(g_rRlmPowerLimitConfiguration_20255)/sizeof(g_rRlmPowerLimitConfiguration_20255[0]), g_rRlmPowerLimitConfiguration_20255},
-    {20680, sizeof(g_rRlmPowerLimitConfiguration_20680)/sizeof(g_rRlmPowerLimitConfiguration_20680[0]), g_rRlmPowerLimitConfiguration_20680},
-    {20660, sizeof(g_rRlmPowerLimitConfiguration_20660)/sizeof(g_rRlmPowerLimitConfiguration_20660[0]), g_rRlmPowerLimitConfiguration_20660},
-    {20602, sizeof(g_rRlmPowerLimitConfiguration_20660)/sizeof(g_rRlmPowerLimitConfiguration_20660[0]), g_rRlmPowerLimitConfiguration_20660},
-    {132780, sizeof(g_rRlmPowerLimitConfiguration_2073B)/sizeof(g_rRlmPowerLimitConfiguration_2073B[0]), g_rRlmPowerLimitConfiguration_2073B},
+    {20200, sizeof(g_rRlmPowerLimitConfiguration_20200)/sizeof(g_rRlmPowerLimitConfiguration_20200[0]), g_rRlmPowerLimitConfiguration_20200},
+    {20301, sizeof(g_rRlmPowerLimitConfiguration_20200)/sizeof(g_rRlmPowerLimitConfiguration_20200[0]), g_rRlmPowerLimitConfiguration_20200},
+    {20302, sizeof(g_rRlmPowerLimitConfiguration_20200)/sizeof(g_rRlmPowerLimitConfiguration_20200[0]), g_rRlmPowerLimitConfiguration_20200},
+    {20291, sizeof(g_rRlmPowerLimitConfiguration_20295)/sizeof(g_rRlmPowerLimitConfiguration_20295[0]), g_rRlmPowerLimitConfiguration_20295},
+    {20292, sizeof(g_rRlmPowerLimitConfiguration_20295)/sizeof(g_rRlmPowerLimitConfiguration_20295[0]), g_rRlmPowerLimitConfiguration_20295},
+    {20293, sizeof(g_rRlmPowerLimitConfiguration_20295)/sizeof(g_rRlmPowerLimitConfiguration_20295[0]), g_rRlmPowerLimitConfiguration_20295},
+    {20294, sizeof(g_rRlmPowerLimitConfiguration_20295)/sizeof(g_rRlmPowerLimitConfiguration_20295[0]), g_rRlmPowerLimitConfiguration_20295},
+    {20295, sizeof(g_rRlmPowerLimitConfiguration_20295)/sizeof(g_rRlmPowerLimitConfiguration_20295[0]), g_rRlmPowerLimitConfiguration_20295},
+    {20761, sizeof(g_rRlmPowerLimitConfiguration_20761)/sizeof(g_rRlmPowerLimitConfiguration_20761[0]), g_rRlmPowerLimitConfiguration_20761},
+    {20762, sizeof(g_rRlmPowerLimitConfiguration_20761)/sizeof(g_rRlmPowerLimitConfiguration_20761[0]), g_rRlmPowerLimitConfiguration_20761},
+    {20764, sizeof(g_rRlmPowerLimitConfiguration_20764)/sizeof(g_rRlmPowerLimitConfiguration_20764[0]), g_rRlmPowerLimitConfiguration_20764},
+    {20766, sizeof(g_rRlmPowerLimitConfiguration_20761)/sizeof(g_rRlmPowerLimitConfiguration_20761[0]), g_rRlmPowerLimitConfiguration_20761},
+    {20767, sizeof(g_rRlmPowerLimitConfiguration_20761)/sizeof(g_rRlmPowerLimitConfiguration_20761[0]), g_rRlmPowerLimitConfiguration_20761},
+    {136826, sizeof(g_rRlmPowerLimitConfiguration_20761)/sizeof(g_rRlmPowerLimitConfiguration_20761[0]), g_rRlmPowerLimitConfiguration_20761},
+    {136827, sizeof(g_rRlmPowerLimitConfiguration_20761)/sizeof(g_rRlmPowerLimitConfiguration_20761[0]), g_rRlmPowerLimitConfiguration_20761},
+    {136828, sizeof(g_rRlmPowerLimitConfiguration_20761)/sizeof(g_rRlmPowerLimitConfiguration_20761[0]), g_rRlmPowerLimitConfiguration_20761},
+    {136829, sizeof(g_rRlmPowerLimitConfiguration_20761)/sizeof(g_rRlmPowerLimitConfiguration_20761[0]), g_rRlmPowerLimitConfiguration_20761},
+    {136879, sizeof(g_rRlmPowerLimitConfiguration_216AF)/sizeof(g_rRlmPowerLimitConfiguration_216AF[0]), g_rRlmPowerLimitConfiguration_216AF},
+    {136880, sizeof(g_rRlmPowerLimitConfiguration_216AF)/sizeof(g_rRlmPowerLimitConfiguration_216AF[0]), g_rRlmPowerLimitConfiguration_216AF},
+    {136881, sizeof(g_rRlmPowerLimitConfiguration_216AF)/sizeof(g_rRlmPowerLimitConfiguration_216AF[0]), g_rRlmPowerLimitConfiguration_216AF},
 };
-
-struct oplus_country_pwr_limit_he g_oplusCountryPwrLimitHe[] = {
-    {20255, sizeof(g_rRlmPowerLimitConfigurationHE_20255)/sizeof(g_rRlmPowerLimitConfigurationHE_20255[0]), g_rRlmPowerLimitConfigurationHE_20255},
-    {20257, sizeof(g_rRlmPowerLimitConfigurationHE_20255)/sizeof(g_rRlmPowerLimitConfigurationHE_20255[0]), g_rRlmPowerLimitConfigurationHE_20255},
-};
-
-struct COUNTRY_POWER_LIMIT_TABLE_DEFAULT *g_prOplusCountryPwrLimitDefault = g_rRlmPowerLimitDefault;
-uint16_t g_ucOplusCountryPwrLimitDefaultSize = sizeof(g_rRlmPowerLimitDefault)/sizeof(g_rRlmPowerLimitDefault[0]);
-
-struct oplus_country_pwr_limit_default g_oplusCountryPwrLimitDefault[] = {
-    {20682, sizeof(g_rRlmPowerLimitDefault_20682)/sizeof(g_rRlmPowerLimitDefault_20682[0]), g_rRlmPowerLimitDefault_20682},
-};
-#endif
 #endif
 /*******************************************************************************
  *                           P R I V A T E   D A T A
@@ -2802,7 +2829,7 @@ void rlmDomainCheckCountryPowerLimitTable(struct ADAPTER *prAdapter)
 	u_int8_t fgEntryRepetetion = FALSE;
 	u_int8_t fgTableValid = TRUE;
     struct COUNTRY_POWER_LIMIT_TABLE_CONFIGURATION *PwrLmtConf = g_rRlmPowerLimitConfiguration;
-    uint16_t ucPwrLmitConfSize = (uint16_t)(sizeof(g_rRlmPowerLimitConfiguration) /
+    uint16_t ucPwrLmitConfSize = (uint8_t)(sizeof(g_rRlmPowerLimitConfiguration) /
             sizeof(struct COUNTRY_POWER_LIMIT_TABLE_CONFIGURATION));
 
     #ifdef VENDOR_EDIT
@@ -2827,7 +2854,7 @@ void rlmDomainCheckCountryPowerLimitTable(struct ADAPTER *prAdapter)
 				    &u2CountryCodeTable);
 
 		/*<1>Repetition Entry Check */
-		for (j = i + 1; j < ucPwrLmitConfSize; j++) {
+		for (j = i + 1; j < ucPwrLmitConfSize;j++) {
 
 			WLAN_GET_FIELD_BE16(&PwrLmtConf[j].aucCountryCode[0],
 					    &u2CountryCodeCheck);
@@ -2893,23 +2920,25 @@ void rlmDomainCheckCountryPowerLimitTable(struct ADAPTER *prAdapter)
 
 	/*2.Default Table Repetition Entry Check */
 	fgEntryRepetetion = FALSE;
-	for (i = 0; i < g_ucOplusCountryPwrLimitDefaultSize; i++) {
+	for (i = 0; i < sizeof(g_rRlmPowerLimitDefault) /
+	     sizeof(struct COUNTRY_POWER_LIMIT_TABLE_DEFAULT); i++) {
 
-		WLAN_GET_FIELD_BE16(&g_prOplusCountryPwrLimitDefault[i].
+		WLAN_GET_FIELD_BE16(&g_rRlmPowerLimitDefault[i].
 							aucCountryCode[0],
 				    &u2CountryCodeTable);
 
-		for (j = i + 1; j < g_ucOplusCountryPwrLimitDefaultSize; j++) {
-			WLAN_GET_FIELD_BE16(&g_prOplusCountryPwrLimitDefault[j].
+		for (j = i + 1; j < sizeof(g_rRlmPowerLimitDefault) /
+		     sizeof(struct COUNTRY_POWER_LIMIT_TABLE_DEFAULT); j++) {
+			WLAN_GET_FIELD_BE16(&g_rRlmPowerLimitDefault[j].
 							aucCountryCode[0],
 					    &u2CountryCodeCheck);
 			if (u2CountryCodeTable == u2CountryCodeCheck) {
 				fgEntryRepetetion = TRUE;
 				DBGLOG(RLM, LOUD,
 				       "Domain: Default Repetition CC=%c%c\n",
-				       g_prOplusCountryPwrLimitDefault[j].
+				       g_rRlmPowerLimitDefault[j].
 							aucCountryCode[0],
-				       g_prOplusCountryPwrLimitDefault[j].
+				       g_rRlmPowerLimitDefault[j].
 							aucCountryCode[1]);
 			}
 		}
@@ -2936,9 +2965,10 @@ uint16_t rlmDomainPwrLimitDefaultTableDecision(struct ADAPTER *prAdapter,
 	uint16_t u2TableIndex = POWER_LIMIT_TABLE_NULL;	/* No Table Match */
 
 	/*Default Table Index */
-	for (i = 0; i < g_ucOplusCountryPwrLimitDefaultSize; i++) {
+	for (i = 0; i < sizeof(g_rRlmPowerLimitDefault) /
+	     sizeof(struct COUNTRY_POWER_LIMIT_TABLE_DEFAULT); i++) {
 
-		WLAN_GET_FIELD_BE16(&g_prOplusCountryPwrLimitDefault[i].
+		WLAN_GET_FIELD_BE16(&g_rRlmPowerLimitDefault[i].
 						aucCountryCode[0],
 				    &u2CountryCodeTable);
 
@@ -2978,7 +3008,7 @@ rlmDomainBuildCmdByDefaultTable(struct CMD_SET_COUNTRY_CHANNEL_POWER_LIMIT
 
 	ASSERT(prCmd);
 
-	prPwrLimitSubBand = &g_prOplusCountryPwrLimitDefault[u2DefaultTableIndex];
+	prPwrLimitSubBand = &g_rRlmPowerLimitDefault[u2DefaultTableIndex];
 	eType = prCmd->ucLimitType;
 
 	if (eType == PWR_LIMIT_TYPE_COMP_11AX)
@@ -3161,6 +3191,7 @@ void rlmDomainCopyFromConfigTable(struct CMD_CHANNEL_POWER_LIMIT *prCmdPwrLimit,
 void rlmDomainBuildCmdByConfigTable(struct ADAPTER *prAdapter,
 			struct CMD_SET_COUNTRY_CHANNEL_POWER_LIMIT *prCmd)
 {
+#define PwrLmtConfHE g_rRlmPowerLimitConfigurationHE
 	uint16_t i, k;
 	uint16_t u2CountryCodeTable = COUNTRY_CODE_NULL;
 	enum ENUM_PWR_LIMIT_TYPE eType;
@@ -3168,12 +3199,11 @@ void rlmDomainBuildCmdByConfigTable(struct ADAPTER *prAdapter,
 	struct CMD_CHANNEL_POWER_LIMIT_HE *prCmdPwrLimtHE;
 	u_int8_t fgChannelValid;
 	uint8_t ucCentCh;
-	uint16_t ucPwrLmitConfSize = sizeof(g_rRlmPowerLimitConfiguration) /
-		sizeof(struct COUNTRY_POWER_LIMIT_TABLE_CONFIGURATION);
-	uint16_t ucPwrLmitConfSizeHE = sizeof(g_rRlmPowerLimitConfigurationHE) /
-		sizeof(struct COUNTRY_POWER_LIMIT_TABLE_CONFIGURATION_HE);
+	uint16_t ucPwrLmitConfSize = (uint8_t)(sizeof(g_rRlmPowerLimitConfiguration) /
+		sizeof(struct COUNTRY_POWER_LIMIT_TABLE_CONFIGURATION));
+	uint16_t ucPwrLmitConfSizeHE = (uint8_t)(sizeof(g_rRlmPowerLimitConfigurationHE) /
+		sizeof(struct COUNTRY_POWER_LIMIT_TABLE_CONFIGURATION_HE));
     struct COUNTRY_POWER_LIMIT_TABLE_CONFIGURATION *PwrLmtConf = g_rRlmPowerLimitConfiguration;
-    struct COUNTRY_POWER_LIMIT_TABLE_CONFIGURATION_HE *PwrLmtConfHE = g_rRlmPowerLimitConfigurationHE;
 
     #ifdef VENDOR_EDIT
     //Lei.Zhang@PSW.CN.WiFi.Basic.Hardware.1065227, 2020/07/17,
@@ -3188,16 +3218,6 @@ void rlmDomainBuildCmdByConfigTable(struct ADAPTER *prAdapter,
             break;
         }
     }
-
-    for (i = 0; i < sizeof(g_oplusCountryPwrLimitHe)/sizeof(g_oplusCountryPwrLimitHe[0]); i++) {
-        if (u4PrjName == g_oplusCountryPwrLimitHe[i].project) {
-            PwrLmtConfHE = g_oplusCountryPwrLimitHe[i].pwrLimitTableHE;
-            ucPwrLmitConfSizeHE = g_oplusCountryPwrLimitHe[i].tableSize;
-
-            break;
-        }
-    }
-
     #endif
 
 	eType = prCmd->ucLimitType;
@@ -3295,6 +3315,8 @@ void rlmDomainBuildCmdByConfigTable(struct ADAPTER *prAdapter,
 			}
 		}
 	}
+#undef PwrLmtConfHE
+
 }
 
 struct TX_PWR_LIMIT_DATA *
@@ -4014,7 +4036,6 @@ uint32_t txPwrApplyOneSetting(struct CMD_SET_COUNTRY_CHANNEL_POWER_LIMIT *prCmd,
 	struct TX_PWR_CTRL_CHANNEL_SETTING *prChlSetting = NULL;
 	uint8_t i, j, channel, channel2, channel3;
 	u_int8_t fgDoArbitrator;
-	uint32_t country_index = 0;
 	enum ENUM_PWR_LIMIT_TYPE eType;
 
 	ASSERT(prCmd);
@@ -4098,19 +4119,6 @@ uint32_t txPwrApplyOneSetting(struct CMD_SET_COUNTRY_CHANNEL_POWER_LIMIT *prCmd,
 					break;
 				}
 			}
-			for (country_index = 0;
-				country_index <= g_countrycount;
-				country_index++) {
-				if (g_country_cfg[country_index] ==
-					prCmd->u2CountryCode)
-					prCurElement->u2CountryCode =
-					g_country_cfg[country_index];
-				}
-			if (prCurElement->u2CountryCode != 0 &&
-				prCurElement->u2CountryCode !=
-				prCmd->u2CountryCode) {
-				fgDoArbitrator = FALSE;
-				}
 
 			if (fgDoArbitrator) {
 				if (eType == PWR_LIMIT_TYPE_COMP_11AX)
@@ -4184,13 +4192,10 @@ struct TX_PWR_CTRL_ELEMENT *txPwrCtrlStringToStruct(char *pcContent,
 	char *pcContTmp = NULL, *pcContNext = NULL, *pcContOld = NULL;
 	uint32_t u4MemSize = sizeof(struct TX_PWR_CTRL_ELEMENT);
 	uint32_t copySize = 0;
-	uint32_t copySize2 = 0;
-	uint16_t u2countryCode = 0;
 	uint8_t i, j, op, ucSettingCount = 0;
 	uint8_t value, value2, count = 0;
 	uint8_t ucAppliedWay, ucOperation = 0;
 	char carySeperator[2] = { 0, 0 };
-	uint32_t copysize_index = 0, country_index = 0;
 
 	char *pacParsePwrAC[PWR_CFG_PRAM_NUM_AC] = {
 		"CCK",
@@ -4291,47 +4296,6 @@ struct TX_PWR_CTRL_ELEMENT *txPwrCtrlStringToStruct(char *pcContent,
 		       pcContOld);
 		return NULL;
 	}
-	/* parse country code */
-	pcContOld = pcContCur;
-	pcContTmp = txPwrGetString(&pcContCur, ";");
-	if (pcContTmp) {
-		copySize2 = kalStrLen(pcContTmp);
-		if (copySize2 == 2) {
-			DBGLOG(RLM, TRACE, "%s\n", pcContTmp);
-			u2countryCode =
-				(((uint16_t) pcContTmp[0]) << 8) |
-				 (((uint16_t) pcContTmp[1]));
-			if (u2countryCode == 13104) {
-				pcContOld = pcContCur;
-				pcContTmp = txPwrGetString(&pcContCur, ";");
-				DBGLOG(RLM, TRACE,
-					"parse pcContTmp error: %s\n",
-						pcContTmp);
-				copySize2 = kalStrLen(pcContTmp);
-				DBGLOG(RLM, TRACE,
-					"parse copySize2 error: %d\n",
-						copySize2);
-				for (country_index = 0;
-					country_index < copySize2;
-					country_index++) {
-					g_country_cfg[country_index] =
-					(((uint16_t) pcContTmp[copysize_index])
-					<< 8) |
-					(((uint16_t) pcContTmp[copysize_index
-								+1]));
-					copysize_index = copysize_index+3;
-					g_countrycount = country_index;
-					if (copysize_index > (copySize2 + 2))
-						break;
-					}
-				}
-		} else
-			DBGLOG(RLM, WARN, "parse country code error: %s",
-					pcContTmp);
-	}
-	if (pcContCur == NULL)
-		pcContCur = pcContOld;
-
 	if ((ucOperation < PWR_CTRL_TYPE_OPERATION_POWER_LEVEL) ||
 	    (ucOperation > PWR_CTRL_TYPE_OPERATION_POWER_OFFSET)) {
 		DBGLOG(RLM, ERROR,
@@ -4392,11 +4356,8 @@ skipLabel:
 			prCurElement->fgApplied = TRUE;
 	}
 	prCurElement->settingCount = ucSettingCount;
-	prCurElement->u2CountryCode = u2countryCode;
 
 	/* parse channel setting list */
-	if (!pcContOld || *(pcContOld) != '[')
-		goto clearLabel;
 	pcContCur = pcContOld + 1; /* skip '[' */
 
 	for (i = 0; i < ucSettingCount; i++) {
@@ -5004,7 +4965,7 @@ void txPwrCtrlCfgFileToList(struct ADAPTER *prAdapter)
 		} else if (kalReadToFile("/odm/etc/wifi/txpowerctrl.cfg",
 			pucConfigBuf, WLAN_CFG_FILE_BUF_SIZE,
 			&u4ConfigReadLen) == 0) {
-			DBGLOG(RLM, INFO,"path: %s\n",u2TxPowerPath);
+			DBGLOG(RLM, INFO,"path: /odm/etc/wifi/txpowerctrl.cfg\n");
 #endif /* OPLUS_BUG_COMPATIBILITY */
 			/* ToDo:: Nothing */
 		} else if (kalReadToFile("/data/misc/wifi/txpowerctrl.cfg",
@@ -5028,22 +4989,6 @@ void txPwrCtrlCfgFileToList(struct ADAPTER *prAdapter)
 	}
 }
 
-void txPwrCtrlCfgCountryDefaultTableInit(struct ADAPTER *prAdapter)
-{
-    uint16_t i;
-
-    int u4PrjName = get_project();
-
-    for (i = 0; i < sizeof(g_oplusCountryPwrLimitDefault)/sizeof(g_oplusCountryPwrLimitDefault[0]); i++) {
-        if (u4PrjName == g_oplusCountryPwrLimitDefault[i].project) {
-            g_prOplusCountryPwrLimitDefault = g_oplusCountryPwrLimitDefault[i].pwrLimitTableDefault;
-            g_ucOplusCountryPwrLimitDefaultSize = g_oplusCountryPwrLimitDefault[i].tableSize;
-
-            break;
-        }
-    }
-}
-
 void txPwrCtrlLoadConfig(struct ADAPTER *prAdapter)
 {
 	/* 1. add records from global tx power ctrl setting into cfg list */
@@ -5053,8 +4998,6 @@ void txPwrCtrlLoadConfig(struct ADAPTER *prAdapter)
 	txPwrCtrlCfgFileToList(prAdapter);
 
 #if CFG_SUPPORT_PWR_LIMIT_COUNTRY
-    txPwrCtrlCfgCountryDefaultTableInit(prAdapter);
-
 	/* 3. send setting to firmware */
 	rlmDomainSendPwrLimitCmd(prAdapter);
 #endif
@@ -5237,11 +5180,11 @@ void rlmDomainSendPwrLimitCmd(struct ADAPTER *prAdapter)
 		goto err;
 	}
 
-	WLAN_GET_FIELD_BE16(&g_prOplusCountryPwrLimitDefault
+	WLAN_GET_FIELD_BE16(&g_rRlmPowerLimitDefault
 			    [u2DefaultTableIndex]
 			    .aucCountryCode[0],
 			    &prCmd->u2CountryCode);
-	WLAN_GET_FIELD_BE16(&g_prOplusCountryPwrLimitDefault
+	WLAN_GET_FIELD_BE16(&g_rRlmPowerLimitDefault
 			    [u2DefaultTableIndex]
 			    .aucCountryCode[0],
 			    &prCmdHE->u2CountryCode);

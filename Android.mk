@@ -35,6 +35,7 @@ $(TARGET_KERNEL_CONFIG): $(KERNEL_MAKE_DEPENDENCIES)
 	#ifdef OPLUS_FEATURE_FORCE_SELINUX
 	#Haoran.Zhang@ANDROID.BUILD, 2020/01/10, add for unset SECURITY_SELINUX_DEVELOP, set it only for debug
 	OBSOLETE_KEEP_ADB_SECURE=$(OBSOLETE_KEEP_ADB_SECURE) \
+	OPPO_AGING_TYPE=$(OPPO_AGING_TYPE) \
 	$(KERNEL_DIR)/tools/changeConfig.sh $(KERNEL_CONFIG_FILE)
 	#endif OPLUS_FEATURE_FORCE_SELINUX
 	$(hide) mkdir -p $(dir $@)
@@ -97,14 +98,6 @@ menuconfig-kernel savedefconfig-kernel:
 	$(MAKE) -C $(KERNEL_DIR) $(KERNEL_MAKE_OPTION) $(patsubst %config-kernel,%config,$@)
 #endif /* OPLUS_ARCH_INJECT */
 
-#ifdef OPLUS_FEATURE_CHG_BASIC
-ifneq ($(filter oppo6769_19741, $(OPPO_TARGET_DEVICE)),)
-$(shell sed -i 's/CONFIG_USB_POWER_DELIVERY=y/# CONFIG_USB_POWER_DELIVERY is not set/g' $(KERNEL_CONFIG_FILE))
-$(shell sed -i 's/CONFIG_TCPC_CLASS=y/# CONFIG_TCPC_CLASS is not set/g' $(KERNEL_CONFIG_FILE))
-$(shell sed -i 's/CONFIG_TCPC_RT1711H=y/# CONFIG_TCPC_RT1711H is not set/g' $(KERNEL_CONFIG_FILE))
-endif
-#endif /*OPLUS_FEATURE_CHG_BASIC*/
-
 clean-kernel:
 	$(hide) rm -rf $(KERNEL_OUT) $(KERNEL_MODULES_OUT) $(INSTALLED_KERNEL_TARGET)
 	$(hide) rm -f $(INSTALLED_DTB_OVERLAY_TARGET)
@@ -122,3 +115,16 @@ include device/mediatek/build/core/build_dtboimage.mk
 
 endif#TARGET_NO_KERNEL
 endif#LINUX_KERNEL_VERSION
+
+#ifdef OPLUS_FEATURE_SECURITY_COMMON
+#Meilin.Zhou@BSP.Security.Basic,2020/11/12,Add for metadata encryption compatible
+ifneq ($(filter oppo6853, $(COMPILE_PLATFORM)),)
+ifeq ($(PRODUCT_SHIPPING_API_LEVEL)_$(PRODUCT_SHIPPING_API_LEVEL_OVERRIDE),30_30)
+$(info set CONFIG_DM_DEFAULT_KEY=y)
+$(shell sed -i 's/CONFIG_DM_DEFAULT_KEY=.*/CONFIG_DM_DEFAULT_KEY=y/g' $(KERNEL_CONFIG_FILE))
+else
+$(shell sed -i 's/CONFIG_DM_DEFAULT_KEY=.*//g' $(KERNEL_CONFIG_FILE))
+$(info not set CONFIG_DM_DEFAULT_KEY=y)
+endif
+endif
+#endif /*OPLUS_FEATURE_SECURITY_COMMON*/

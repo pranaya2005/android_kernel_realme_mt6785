@@ -396,6 +396,10 @@ const uint32_t mtk_cipher_suites[] = {
 
 	/* keep last -- depends on hw flags! */
 	WLAN_CIPHER_SUITE_AES_CMAC,
+	WLAN_CIPHER_SUITE_GCMP_256,
+	WLAN_CIPHER_SUITE_BIP_GMAC_256, /* TODO, HW not support,
+					* SW should handle integrity check
+					*/
 	WLAN_CIPHER_SUITE_NO_GROUP_ADDR
 };
 
@@ -4455,6 +4459,8 @@ int32_t wlanOnWhenProbeSuccess(struct GLUE_INFO *prGlueInfo,
 #endif
 
 	wlanOnP2pRegistration(prGlueInfo, prAdapter, gprWdev[0]);
+	if (prAdapter->u4HostStatusEmiOffset)
+		kalSetSuspendFlagToEMI(prAdapter, FALSE);
 	return 0;
 }
 
@@ -5023,6 +5029,8 @@ static int32_t wlanProbe(void *pvData, void *pvDriverData)
 			kalMetRemoveProcfs();
 		case PROC_INIT_FAIL:
 			wlanNetUnregister(prWdev);
+			/* Unregister notifier callback */
+			wlanUnregisterInetAddrNotifier();
 		case NET_REGISTER_FAIL:
 			set_bit(GLUE_FLAG_HALT_BIT, &prGlueInfo->ulFlag);
 #if CFG_SUPPORT_MULTITHREAD
@@ -5409,10 +5417,6 @@ static int initWlan(void)
 	kalInitIOBuffer(FALSE);
 #endif
 
-
-#if WLAN_INCLUDE_PROC
-	procInitFs();
-#endif
 #if WLAN_INCLUDE_SYS
 	sysInitFs();
 #endif
@@ -5447,6 +5451,10 @@ static int initWlan(void)
 		kalUninitIOBuffer();
 		return ret;
 	}
+
+#if WLAN_INCLUDE_PROC
+	procInitFs();
+#endif
 #if (CFG_CHIP_RESET_SUPPORT)
 	glResetInit(prGlueInfo);
 #endif

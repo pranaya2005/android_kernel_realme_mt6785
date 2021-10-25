@@ -244,6 +244,7 @@ typedef struct _GL_HIF_INFO_T {
 
 	P_GLUE_INFO_T prGlueInfo;
 	enum usb_state state;
+	enum usb_state DriverFWStat;
 
 	spinlock_t rTxDataQLock;
 	spinlock_t rTxCmdQLock;

@@ -128,6 +128,8 @@ UINT_16 assocBuildCapabilityInfo(IN P_ADAPTER_T prAdapter, IN P_STA_RECORD_T prS
 u32 assoc_get_nonwfa_vend_ie_len(IN P_ADAPTER_T prAdapter);
 void assoc_build_nonwfa_vend_ie(P_ADAPTER_T prAdapter,
 			   P_MSDU_INFO_T prMsduInfo);
+void assocGenerateMDIE(IN P_ADAPTER_T prAdapter,
+		      P_MSDU_INFO_T prMsduInfo);
 /*******************************************************************************
 *                              F U N C T I O N S
 ********************************************************************************

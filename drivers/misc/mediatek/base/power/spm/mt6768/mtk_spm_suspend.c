@@ -485,6 +485,9 @@ RESTORE_IRQ:
 	/* record last wakesta */
 	__spm_get_wakeup_status(&spm_wakesta);
 
+	__spm_save_ap_sleep_info(&spm_wakesta);
+	__spm_save_26m_sleep_info();
+
 	spm_suspend_footprint(SPM_SUSPEND_ENTER_UART_AWAKE);
 
 	spm_suspend_pcm_setup_after_wfi(ex_flag, cpu, pwrctrl);

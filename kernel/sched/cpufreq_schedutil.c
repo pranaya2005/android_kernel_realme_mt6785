@@ -465,7 +465,7 @@ static void sugov_get_util(unsigned long *util, unsigned long *max, int cpu)
 	*util = boosted_cpu_util(cpu);
 
 #if defined (CONFIG_SCHED_WALT) && defined (OPLUS_FEATURE_UIFIRST)
-	if (!sysctl_uifirst_enabled || !sysctl_slide_boost_enabled || !ux_task_load[cpu]) {
+	if (!sysctl_uifirst_enabled || !(sysctl_slide_boost_enabled || sysctl_animation_type == LAUNCHER_SI_START)|| !ux_task_load[cpu]) {
 		if (idle_cpu(cpu))
 			*util = 0;
 	}

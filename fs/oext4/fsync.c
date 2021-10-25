@@ -34,11 +34,6 @@
 
 #include <trace/events/ext4.h>
 
-#ifdef CONFIG_OPLUS_FEATURE_EXT4_FSYNC
-bool ext4_fsync_nobarrier = true;
-bool ext4_fsync_protect = false;
-#endif
-
 #ifdef VENDOR_EDIT
 /*jason.tang@TECH.BSP.Kernel.Storage, 2019-05-20, add control ext4 fsync*/
 extern unsigned int ext4_fsync_enable_status;
@@ -155,9 +150,9 @@ int ext4_sync_file(struct file *file, loff_t start, loff_t end, int datasync)
 	}
 
 	commit_tid = datasync ? ei->i_datasync_tid : ei->i_sync_tid;
-#ifdef CONFIG_OPLUS_FEATURE_EXT4_FSYNC
-	if ((!ext4_fsync_nobarrier || ext4_fsync_protect)
-	    && (journal->j_flags & JBD2_BARRIER) &&
+#ifdef VENDOR_EDIT
+/*jason.tang@TECH.BSP.Kernel.Storage, 2019-05-20, add control ext4 fsync*/
+	if (!ext4_fsync_enable_status && journal->j_flags & JBD2_BARRIER &&
 	    !jbd2_trans_will_send_data_barrier(journal, commit_tid))
 #else
 	if (journal->j_flags & JBD2_BARRIER &&

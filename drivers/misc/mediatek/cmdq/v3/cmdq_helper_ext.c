@@ -256,8 +256,7 @@ bool cmdq_core_check_user_valid(void *src, u32 size)
 
 	mutex_unlock(&cmdq_inst_check_mutex);
 
-	cost = sched_clock() - cost;
-	do_div(cost, 1000);
+	cost = div_u64(sched_clock() - cost, 1000);
 
 	CMDQ_MSG("%s size:%u cost:%lluus ret:%s\n", __func__, size, (u64)cost,
 		ret ? "true" : "false");
@@ -1770,6 +1769,7 @@ void *cmdq_core_alloc_hw_buffer_clt(struct device *dev, size_t size,
 		*pool = true;
 	}
 
+
 	alloc_cnt = atomic_inc_return(&cmdq_alloc_cnt[CMDQ_CLT_MAX]);
 	alloc_cnt = atomic_inc_return(&cmdq_alloc_cnt[clt]);
 	if (alloc_cnt > alloc_max)
@@ -1838,7 +1838,6 @@ void cmdq_core_free_hw_buffer_clt(struct device *dev, size_t size,
 {
 	atomic_dec(&cmdq_alloc_cnt[CMDQ_CLT_MAX]);
 	atomic_dec(&cmdq_alloc_cnt[clt]);
-	
 	if (pool)
 		mdp_pool_free_impl(mdp_rb_pool, cpu_addr, dma_handle,
 			&mdp_rb_pool_cnt);
@@ -2025,22 +2024,6 @@ int cmdqCoreAllocWriteAddress(u32 count, dma_addr_t *paStart,
 			status = -ENOMEM;
 			break;
 		}
-		#ifndef OPLUS_FEATURE_CAMERA_COMMON
-		/* pankaj.kumar@camera.driver mtk patch-ALPS05439401 for ALM-591589 */
-		/* clear buffer content */
-		do {
-			u32 *pInt = (u32 *) pWriteAddr->va;
-			int i = 0;
-
-			for (i = 0; i < count; ++i) {
-				*(pInt + i) = 0xcdcdabab;
-				/* make sure instructions are really in DRAM */
-				mb();
-				/* make sure instructions are really in DRAM */
-				smp_mb();
-			}
-		} while (0);
-		#endif /*OPLUS_FEATURE_CAMERA_COMMON*/
 
 		/* assign output pa */
 		*paStart = pWriteAddr->pa;
@@ -2548,7 +2531,7 @@ ssize_t cmdq_core_print_error(struct device *dev,
 		i++) {
 		struct ErrorStruct *pError = &cmdq_ctx.error[i];
 		u64 ts = pError->ts_nsec;
-		unsigned long rem_nsec = do_div(ts, 1000000000);
+		unsigned long rem_nsec = (unsigned long)div_u64(ts, 1000000000);
 
 		length += snprintf(buf + length,
 			PAGE_SIZE - length, "[%5lu.%06lu] ",
@@ -2644,7 +2627,6 @@ EXPORT_SYMBOL(cmdq_core_print_profile_enable);
 ssize_t cmdq_core_write_profile_enable(struct device *dev,
 	struct device_attribute *attr, const char *buf, size_t size)
 {
-	int len = 0;
 	int value = 0;
 	int status = 0;
 
@@ -2656,16 +2638,15 @@ ssize_t cmdq_core_write_profile_enable(struct device *dev,
 			break;
 		}
 
-		len = size;
-		memcpy(textBuf, buf, len);
+		memcpy(textBuf, buf, size);
 
-		textBuf[len] = '\0';
+		textBuf[size] = '\0';
 		if (kstrtoint(textBuf, 10, &value) < 0) {
 			status = -EFAULT;
 			break;
 		}
 
-		status = len;
+		status = size;
 		if (value < 0 || value > CMDQ_PROFILE_MAX)
 			value = 0;
 
@@ -5508,7 +5489,6 @@ void cmdq_core_initialize(void)
 	/* Initialize secure path context */
 	cmdqSecInitialize();
 #endif
-
 	mdp_rb_pool = dma_pool_create("mdp_rb", cmdq_dev_get(),
 		CMDQ_BUF_ALLOC_SIZE, 0, 0);
 	atomic_set(&mdp_rb_pool_cnt, 0);

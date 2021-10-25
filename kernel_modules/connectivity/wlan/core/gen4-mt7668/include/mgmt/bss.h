@@ -139,6 +139,12 @@ P_STA_RECORD_T
 bssCreateStaRecFromBssDesc(IN P_ADAPTER_T prAdapter,
 			   IN ENUM_STA_TYPE_T eStaType, IN UINT_8 uBssIndex, IN P_BSS_DESC_T prBssDesc);
 
+#if CFG_SUPPORT_CFG80211_AUTH
+P_STA_RECORD_T
+bssUpdateStaRecFromCfgAssoc(IN P_ADAPTER_T prAdapter,
+			IN P_BSS_DESC_T prBssDesc, IN P_STA_RECORD_T prStaRec);
+#endif
+
 VOID bssComposeNullFrame(IN P_ADAPTER_T prAdapter, IN PUINT_8 pucBuffer, IN P_STA_RECORD_T prStaRec);
 
 VOID

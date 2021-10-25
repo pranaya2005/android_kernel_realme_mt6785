@@ -1945,7 +1945,7 @@ static bool wmt_step_reg_readable(struct step_reigster_info *p_reg_info)
 	if (p_reg_info->address_type == STEP_REGISTER_PHYSICAL_ADDRESS) {
 		phy_addr = p_reg_info->address + p_reg_info->offset;
 		if (mtk_consys_is_connsys_reg(phy_addr))
-			return wmt_lib_reg_readable();
+                    return wmt_lib_reg_readable_by_addr(phy_addr);
 		else
 			return 1;
 

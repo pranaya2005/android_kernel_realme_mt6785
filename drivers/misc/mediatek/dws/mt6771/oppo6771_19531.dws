@@ -832,7 +832,7 @@
             </gpio64>
             <gpio65>
                 <eint_mode>false</eint_mode>
-                <def_mode>2</def_mode>
+                <def_mode>1</def_mode>
                 <inpull_en>true</inpull_en>
                 <inpull_selhigh>false</inpull_selhigh>
                 <def_dir>IN</def_dir>
@@ -842,7 +842,7 @@
             </gpio65>
             <gpio66>
                 <eint_mode>false</eint_mode>
-                <def_mode>2</def_mode>
+                <def_mode>1</def_mode>
                 <inpull_en>true</inpull_en>
                 <inpull_selhigh>false</inpull_selhigh>
                 <def_dir>IN</def_dir>

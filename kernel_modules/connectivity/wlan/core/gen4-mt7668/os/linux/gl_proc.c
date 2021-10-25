@@ -83,7 +83,7 @@
 */
 #define PROC_MCR_ACCESS                         "mcr"
 
-#ifdef CFG_SUPPORT_DUAL_CARD_DUAL_DRIVER_B
+#if CFG_SUPPORT_DUAL_CARD_DUAL_DRIVER_B
 #define PROC_ROOT_NAME                          "wlanb"
 #else
 #define PROC_ROOT_NAME                          "wlan"
@@ -202,7 +202,6 @@ static ssize_t procCSIDataPrepare(
 	UINT_8 *tmpBuf = buf;
 	UINT_16 u2DataSize = prCSIData->u2DataCount * sizeof(INT_16);
 	UINT_16 u2Rsvd1Size = prCSIData->ucRsvd1Cnt * sizeof(INT_32);
-	UINT_16 u2TotalCSISize = 0;
 	enum ENUM_CSI_MODULATION_BW_TYPE_T eModulationType = CSI_TYPE_CCK_BW20;
 
 	if (prCSIData->ucBw == 0)
@@ -216,17 +215,7 @@ static ssize_t procCSIDataPrepare(
 	put_unaligned(0xAC, (tmpBuf + i4Pos));
 	i4Pos++;
 
-	u2TotalCSISize = u2DataSize * 2 +
-		(CSI_DATA_TLV_TAG_NUM - 4) * 3 +
-		26;
-
-	if (prCSIInfo->ucValue1[CSI_CONFIG_INFO] & CSI_INFO_RSVD1)
-		u2TotalCSISize += u2Rsvd1Size * 2 + 4 + 3 * 3;
-
-	if (prCSIInfo->ucValue1[CSI_CONFIG_INFO] & CSI_INFO_RSVD2)
-		u2TotalCSISize += 4;
-
-	put_unaligned(u2TotalCSISize, (UINT_16 *) (tmpBuf + i4Pos));
+	/* Just bypass total length feild here and update it in the end */
 	i4Pos += 2;
 
 	put_unaligned(CSI_DATA_VER, (UINT_8 *) (tmpBuf + i4Pos));
@@ -367,6 +356,11 @@ static ssize_t procCSIDataPrepare(
 		(UINT_8 *) (tmpBuf + i4Pos));
 	i4Pos += sizeof(UINT_8);
 
+	/*
+	 * The lengths of magic number (1 byte) and total length (2 bytes)
+	 * fields should not be counted in the total length value
+	 */
+	put_unaligned(i4Pos - 3, (UINT_16 *) (tmpBuf + 1));
 
 	return i4Pos;
 }
@@ -1793,8 +1787,11 @@ static ssize_t procDisconnInfoRead(struct file *filp, char __user *buf,
 		prDisconn = g_prDisconnInfo + temp_idx;
 
 		if (prDisconn->ucTrigger != DISCONNECT_TRIGGER_RESERVED) {
-
+#if KERNEL_VERSION(5, 0, 0) <= LINUX_VERSION_CODE
+			time64_to_tm(prDisconn->tv.tv_sec, 0, &broken);
+#else
 			time_to_tm(prDisconn->tv.tv_sec, 0, &broken);
+#endif
 			kalScnprintf(date,
 				sizeof(date),
 				"%02d-%02d %02d:%02d:%02d.%ld",
@@ -1803,7 +1800,12 @@ static ssize_t procDisconnInfoRead(struct file *filp, char __user *buf,
 				broken.tm_hour,
 				broken.tm_min,
 				broken.tm_sec,
-				prDisconn->tv.tv_usec);
+#if KERNEL_VERSION(5, 0, 0) <= LINUX_VERSION_CODE
+				(prDisconn->tv.tv_nsec/USEC_PER_MSEC)
+#else
+				prDisconn->tv.tv_usec
+#endif
+				);
 
 			i4Count += kalScnprintf(temp + i4Count,
 				sizeof(g_aucProcBuf) - i4Count,

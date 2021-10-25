@@ -29,19 +29,23 @@ struct stCAM_CAL_LIST_STRUCT g_camCalList[] = {
 	{IMX471_SENSOR_ID, 0xA8, Common_read_region, MAX_EEPROM_SIZE_16K},
 	{GC02K0_SENSOR_ID, 0xA4, Common_read_region},
 	{HI846_SENSOR_ID, 0xA2, Common_read_region, MAX_EEPROM_SIZE_16K},
-	/* Shipei.Chen@Cam.Drv, 20200525,  otp porting for 20630!*/
-	{S5KGW3_SENSOR_ID, 0xA0, Common_read_region, MAX_EEPROM_SIZE_16K},
-	{ATHENSB_OV32A1Q_SENSOR_ID, 0xA8, Common_read_region},
-	{ATHENSB_HI846_SENSOR_ID, 0xA2, Common_read_region, MAX_EEPROM_SIZE_16K},
-	{ATHENSB_GC02K_SENSOR_ID, 0xA4, Common_read_region},
-	/* Shengguang.Zhu@Cam.Drv, 20200730,  otp porting for 20633!*/
-	{ATHENSC_S5KGM1ST_SENSOR_ID, 0xA0, Common_read_region, MAX_EEPROM_SIZE_16K},
-	{ATHENSC_IMX471_SENSOR_ID, 0xA8, Common_read_region, MAX_EEPROM_SIZE_16K},
-	{ATHENSC_HI846_SENSOR_ID, 0xA2, Common_read_region, MAX_EEPROM_SIZE_16K},
+	{S5KGM1ST_SENSOR_ID, 0xA0, Common_read_region, MAX_EEPROM_SIZE_16K},
+	{OV02B10_SENSOR_ID, 0xA4, Common_read_region},
+
 	{S5KGM1ST_SENSOR_ID_20611, 0xA0, Common_read_region, MAX_EEPROM_SIZE_16K},
 	{S5K3P9SP_SENSOR_ID_20611, 0xA8, Common_read_region},
 	{HI846_SENSOR_ID_20611, 0xA2, Common_read_region, MAX_EEPROM_SIZE_16K},
 	{GC02K_SENSOR_ID_20611, 0xA4, Common_read_region},
+
+    /* Shipei.Chen@Cam.Drv, 20200525,  otp porting for 20630!*/
+        {S5KGW3_SENSOR_ID, 0xA0, Common_read_region, MAX_EEPROM_SIZE_16K},
+        {ATHENSB_OV32A1Q_SENSOR_ID, 0xA8, Common_read_region},
+        {ATHENSB_HI846_SENSOR_ID, 0xA2, Common_read_region, MAX_EEPROM_SIZE_16K},
+        {ATHENSB_GC02K_SENSOR_ID, 0xA4, Common_read_region},
+        /* Shengguang.Zhu@Cam.Drv, 20200730,  otp porting for 20633!*/
+        {ATHENSC_S5KGM1ST_SENSOR_ID, 0xA0, Common_read_region, MAX_EEPROM_SIZE_16K},
+        {ATHENSC_IMX471_SENSOR_ID, 0xA8, Common_read_region, MAX_EEPROM_SIZE_16K},
+        {ATHENSC_HI846_SENSOR_ID, 0xA2, Common_read_region, MAX_EEPROM_SIZE_16K},
 #endif
 	{IMX586_SENSOR_ID, 0xA0, Common_read_region, MAX_EEPROM_SIZE_16K,
 		BL24SA64_write_region},

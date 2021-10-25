@@ -8,10 +8,10 @@
 #include <linux/sort.h>
 #include <linux/stacktrace.h>
 #include <linux/sched/clock.h>
-#include <soc/oppo/oppo_project.h>
 #include <linux/timer.h>
 #include <linux/timex.h>
 #include <linux/rtc.h>
+#include <linux/version.h>
 #include <linux/memleak_stackdepot.h>
 
 /* remember the vmalloc info. */
@@ -30,7 +30,7 @@ static atomic64_t hash_cal_sum_us = ATOMIC64_INIT(0);
 static atomic64_t hash_cal_times = ATOMIC64_INIT(0);
 static unsigned long hash_cal_max_us;
 
-#if defined(CONFIG_MEMLEAK_DETECT_THREAD) && defined(CONFIG_OPPO_SVELTE)
+#if defined(CONFIG_MEMLEAK_DETECT_THREAD) && defined(CONFIG_SVELTE)
 #define LOGGER_PRELOAD_SIZE 4076
 extern void logger_kmsg_nwrite(const char *tag, const char *msg, size_t len);
 
@@ -211,6 +211,12 @@ void enable_vmalloc_debug(void)
 }
 EXPORT_SYMBOL(enable_vmalloc_debug);
 
+void disable_vmalloc_debug(void)
+{
+	vmalloc_debug_enable = 0;
+}
+EXPORT_SYMBOL(disable_vmalloc_debug);
+
 static const struct file_operations hash_cal_time_ops = {
 	.read		= hash_cal_time_read,
 };
@@ -325,10 +331,14 @@ static inline char *dump_vmalloc_debug_info(unsigned int inlen, unsigned int *ou
 	record.count = 0;
 	spin_lock(&vmap_area_lock);
 	list_for_each_entry(va, &vmap_area_list, list) {
+#if LINUX_VERSION_CODE < KERNEL_VERSION(5,4,0)
 		if (!(va->flags & VM_VM_AREA))
 			continue;
-
+#endif
 		v = va->vm;
+		if (!v)
+			continue;
+
 		if (!(v->flags & VM_ALLOC) || (v->hash == 0))
 			continue;
 
@@ -372,7 +382,7 @@ static inline char *dump_vmalloc_debug_info(unsigned int inlen, unsigned int *ou
 	return kbuf;
 }
 
-#if defined(CONFIG_MEMLEAK_DETECT_THREAD) && defined(CONFIG_OPPO_SVELTE)
+#if defined(CONFIG_MEMLEAK_DETECT_THREAD) && defined(CONFIG_SVELTE)
 #define VMALLOC_DEBUG_STEP 30ll
 #define VMALLOC_DUMP_WATER_MIN 180ll
 #define BUFLEN(total, len) (total - len - 25)
@@ -400,10 +410,14 @@ static inline void dump_vmalloc_dmesg(unsigned long used_size, char *dump_buff,
 
 	spin_lock(&vmap_area_lock);
 	list_for_each_entry(va, &vmap_area_list, list) {
+#if LINUX_VERSION_CODE < KERNEL_VERSION(5,4,0)
 		if (!(va->flags & VM_VM_AREA))
 			continue;
-
+#endif
 		v = va->vm;
+		if (!v)
+			continue;
+
 		if (!(v->flags & VM_ALLOC) || (v->hash == 0))
 			continue;
 
@@ -566,8 +580,9 @@ int __init create_vmalloc_debug(struct proc_dir_entry *parent)
 		return -ENOMEM;
 	}
 
-	epentry = proc_create("vmalloc_debug_enable", S_IRUGO|S_IWUGO, parent,
-			&proc_vmalloc_debug_enable_ops);
+	epentry = proc_create("vmalloc_debug_enable",
+			S_IRUSR|S_IWUSR|S_IRGRP|S_IWGRP|S_IROTH|S_IWOTH,
+			parent, &proc_vmalloc_debug_enable_ops);
 	if (!epentry) {
 		pr_err("create vmalloc_debug_enable proc failed.\n");
 		proc_remove(spentry);

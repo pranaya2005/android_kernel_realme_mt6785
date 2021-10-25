@@ -497,36 +497,20 @@ typedef struct _WOW_CTRL_T {
 	UINT_8 ucReason;
 } WOW_CTRL_T, *P_WOW_CTRL_T;
 
-#define MDNS_NAME_MAX_LEN	100
+#if CFG_SUPPORT_MDNS_OFFLOAD
 #define MDNS_RESPONSE_RECORD_MAX_LEN	500
-#define MDNS_TXT_RR_DATA_MAX_LEN		300
-#define MDNS_SRV_RR_LEN			16
-#define	MDNS_TXT_RR_MAX_LEN		310
 #define MDNS_QUESTION_NAME_MAX_LEN	102
-#define MDNS_SERVICE_NAME_MAX_LEN	102
-#define MDNS_A_RR_LEN		14
+#define MAX_MDNS_CACHE_NUM 4
 
-struct MDNS_PARAM_T {
-	UINT_8 ucCmd;
-	UINT_32 u4RecordId;
-	UINT_8 ucQueryName[MDNS_NAME_MAX_LEN];
-	UINT_16 u2QueryNameLen;
-	UINT_16 u2QueryType;
-	UINT_16 u2QueryClass;
-	UINT_8 ucResponseRecord[MDNS_RESPONSE_RECORD_MAX_LEN];
-	UINT_16 u2ResponseRecordLen;
-	UINT_8 ucServiceName[MDNS_NAME_MAX_LEN];
-	UINT_16 u2ServiceNameLen;
-	UINT_8 ucServiceType[MDNS_NAME_MAX_LEN];
-	UINT_16 u2ServiceTypeLen;
-	UINT_8 ucDomainName[MDNS_NAME_MAX_LEN];
-	UINT_16 u2DomainNameLen;
-	UINT_8 ucHostName[MDNS_NAME_MAX_LEN];
-	UINT_16 u2HostNameLen;
-	UINT_32 u4Port;
-	UINT_8 ucTxtRecord[MDNS_TXT_RR_DATA_MAX_LEN];
-	UINT_16 u2TxtRecordLen;
-};
+#define MDNS_CMD_ENABLE	1
+#define MDNS_CMD_DISABLE	2
+#define MDNS_CMD_ADD_RECORD	3
+#define MDNS_CMD_CLEAR_RECORD	4
+#define MDNS_CMD_DEL_RECORD	5
+
+
+#define MDNS_WAKEUP_BY_NO_MATCH_RECORD BIT(0)
+#define MDNS_WAKEUP_BY_SUB_REQ	BIT(1)
 
 struct WLAN_MAC_HEADER_QoS_T {
 	UINT_16 u2FrameCtrl;
@@ -541,49 +525,48 @@ struct WLAN_MAC_HEADER_QoS_T {
 #define UDP_HEADER_LENGTH 8
 #define IPV4_HEADER_LENGTH 20
 
-struct MDNS_ANSWER_RR {
-	UINT_8 data[MDNS_RESPONSE_RECORD_MAX_LEN];
-	UINT_16 data_length;
-};
-
-struct MDNS_SRV_RR {
-	UINT_8 data[MDNS_SRV_RR_LEN];
-	UINT_16 data_length;
-};
-
-struct MDNS_TXT_RR {
-	UINT_8 data[MDNS_TXT_RR_MAX_LEN];
-	UINT_16 data_length;
-};
-
-struct MDNS_QUESTION {
+struct MDNS_TEMPLATE_T {
 	UINT_8 name[MDNS_QUESTION_NAME_MAX_LEN];
 	UINT_8 name_length;
-	UINT_8 label_count;
 	UINT_16 class;
 	UINT_16 type;
 };
 
-struct MDNS_Template_Record {
-	UINT_32 u4RecordId;
-	struct MDNS_QUESTION mdnsQuestionTemplate;
-	struct MDNS_ANSWER_RR mdnsResponseRecord;
-	UINT_8 ucServiceName[MDNS_SERVICE_NAME_MAX_LEN];
-	UINT_16 ServiceNameLen;
-	struct MDNS_TXT_RR mdnsTxtRecord;
-	struct MDNS_SRV_RR mdnsSrvRecord;
-	BOOLEAN bIsUsed;
+struct MDNS_PARAM_T {
+	struct MDNS_TEMPLATE_T query_ptr;
+	struct MDNS_TEMPLATE_T query_srv;
+	struct MDNS_TEMPLATE_T query_txt;
+	struct MDNS_TEMPLATE_T query_a;
+	UINT_16 response_len;
+	UINT_8 response[MDNS_RESPONSE_RECORD_MAX_LEN];
+};
+
+struct MDNS_INFO_UPLAYER_T {
+	UINT_8 ucCmd;
+	struct MDNS_PARAM_T mdns_param;
+};
+
+struct MDNS_PARAM_ENTRY_T {
+	LINK_ENTRY_T rLinkEntry;
+	struct MDNS_PARAM_T mdns_param;
 };
 
 struct CMD_MDNS_PARAM_T {
 	UINT_8 ucCmd;
+	struct MDNS_PARAM_T mdns_param;
 	UINT_32 u4RecordId;
+	UINT_8 ucWakeFlag;
 	struct WLAN_MAC_HEADER_QoS_T aucMdnsMacHdr;
 	UINT_8 aucMdnsIPHdr[IPV4_HEADER_LENGTH];
 	UINT_8 aucMdnsUdpHdr[UDP_HEADER_LENGTH];
-	UINT_8 mdnsARecord[MDNS_A_RR_LEN];
-	struct MDNS_Template_Record mdnsQueryRespTemplate;
 };
+
+struct MDNS_INFO_T {
+	LINK_T rMdnsRecordList;
+	LINK_T rMdnsRecordFreeList;
+	struct MDNS_PARAM_ENTRY_T rMdnsEntry[MAX_MDNS_CACHE_NUM];
+};
+#endif
 #endif
 
 typedef enum _ENUM_NVRAM_MTK_FEATURE_T {
@@ -1504,5 +1487,7 @@ wlanShiftCSI(
 int wlanSuspendRekeyOffload(P_GLUE_INFO_T prGlueInfo, IN UINT_8 ucRekeyMode);
 VOID wlanSuspendPmHandle(P_GLUE_INFO_T prGlueInfo);
 VOID wlanResumePmHandle(P_GLUE_INFO_T prGlueInfo);
+VOID setRekeyOffloadEnterWow(P_GLUE_INFO_T prGlueInfo);
+VOID disableFWOffloadLeaveWow(P_GLUE_INFO_T prGlueInfo);
 
 void disconnect_sta(P_ADAPTER_T prAdapter, P_STA_RECORD_T prStaRec);

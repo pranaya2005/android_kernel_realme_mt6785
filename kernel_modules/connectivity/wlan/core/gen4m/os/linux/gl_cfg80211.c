@@ -266,6 +266,13 @@ mtk_cfg80211_add_key(struct wiphy *wiphy,
 		case WLAN_CIPHER_SUITE_AES_CMAC:
 			rKey.ucCipher = CIPHER_SUITE_BIP;
 			break;
+		case WLAN_CIPHER_SUITE_GCMP_256:
+			rKey.ucCipher = CIPHER_SUITE_GCMP_256;
+			break;
+		case WLAN_CIPHER_SUITE_BIP_GMAC_256:
+			DBGLOG(RSN, INFO,
+				"[TODO] Set BIP-GMAC-256, SW should handle it ...\n");
+			return 0;
 		default:
 			ASSERT(FALSE);
 		}
@@ -1319,7 +1326,7 @@ int mtk_cfg80211_connect(struct wiphy *wiphy,
 		prWpaInfo->u4AuthAlg = IW_AUTH_ALG_SAE;
 		/* To prevent FWKs asks connect without AKM Suite */
 		eAuthMode = AUTH_MODE_WPA3_SAE;
-		u4AkmSuite = RSN_CIPHER_SUITE_SAE;
+		u4AkmSuite = RSN_AKM_SUITE_SAE;
 		break;
 	default:
 		prWpaInfo->u4AuthAlg = IW_AUTH_ALG_OPEN_SYSTEM |
@@ -1353,6 +1360,14 @@ int mtk_cfg80211_connect(struct wiphy *wiphy,
 		case WLAN_CIPHER_SUITE_AES_CMAC:
 			prWpaInfo->u4CipherPairwise =
 							IW_AUTH_CIPHER_CCMP;
+			break;
+		case WLAN_CIPHER_SUITE_BIP_GMAC_256:
+			prWpaInfo->u4CipherPairwise =
+							IW_AUTH_CIPHER_GCMP256;
+			break;
+		case WLAN_CIPHER_SUITE_GCMP_256:
+			prWpaInfo->u4CipherPairwise =
+							IW_AUTH_CIPHER_GCMP256;
 			break;
 		case WLAN_CIPHER_SUITE_NO_GROUP_ADDR:
 			DBGLOG(REQ, INFO, "WLAN_CIPHER_SUITE_NO_GROUP_ADDR\n");
@@ -1388,6 +1403,14 @@ int mtk_cfg80211_connect(struct wiphy *wiphy,
 			prWpaInfo->u4CipherGroup =
 							IW_AUTH_CIPHER_CCMP;
 			break;
+		case WLAN_CIPHER_SUITE_BIP_GMAC_256:
+			prWpaInfo->u4CipherGroup  =
+							IW_AUTH_CIPHER_GCMP256;
+			break;
+		case WLAN_CIPHER_SUITE_GCMP_256:
+			prWpaInfo->u4CipherGroup =
+							IW_AUTH_CIPHER_GCMP256;
+			break;
 		case WLAN_CIPHER_SUITE_NO_GROUP_ADDR:
 			break;
 		default:
@@ -1415,7 +1438,7 @@ int mtk_cfg80211_connect(struct wiphy *wiphy,
 				u4AkmSuite = WPA_AKM_SUITE_PSK;
 				break;
 			default:
-				DBGLOG(REQ, WARN, "invalid Akm Suite (%d)\n",
+				DBGLOG(REQ, WARN, "invalid Akm Suite (%08x)\n",
 				       sme->crypto.akm_suites[0]);
 				return -EINVAL;
 			}
@@ -1462,12 +1485,12 @@ int mtk_cfg80211_connect(struct wiphy *wiphy,
 					eAuthMode = AUTH_MODE_WPA3_SAE;
 				else
 					eAuthMode = AUTH_MODE_OPEN;
-				u4AkmSuite = RSN_CIPHER_SUITE_SAE;
+				u4AkmSuite = RSN_AKM_SUITE_SAE;
 				break;
 
 			case WLAN_AKM_SUITE_OWE:
 				eAuthMode = AUTH_MODE_WPA3_OWE;
-				u4AkmSuite = RSN_CIPHER_SUITE_OWE;
+				u4AkmSuite = RSN_AKM_SUITE_OWE;
 				break;
 			default:
 				DBGLOG(REQ, WARN, "invalid Akm Suite (%d)\n",
@@ -1636,7 +1659,9 @@ int mtk_cfg80211_connect(struct wiphy *wiphy,
 		 prWpaInfo->u4CipherPairwise;
 
 	if (1 /* prWpaInfo->fgPrivacyInvoke */) {
-		if (cipher & IW_AUTH_CIPHER_CCMP) {
+		if (cipher & IW_AUTH_CIPHER_GCMP256) {
+			eEncStatus = ENUM_ENCRYPTION4_ENABLED;
+		} else if (cipher & IW_AUTH_CIPHER_CCMP) {
 			eEncStatus = ENUM_ENCRYPTION3_ENABLED;
 		} else if (cipher & IW_AUTH_CIPHER_TKIP) {
 			eEncStatus = ENUM_ENCRYPTION2_ENABLED;
@@ -1717,30 +1742,9 @@ int mtk_cfg80211_connect(struct wiphy *wiphy,
 #endif
 	rNewSsid.pucSsid = (uint8_t *)sme->ssid;
 	rNewSsid.u4SsidLen = sme->ssid_len;
+	rNewSsid.pucIEs = (uint8_t *)sme->ie;
+	rNewSsid.u4IesLen = sme->ie_len;
 	rNewSsid.ucBssIdx = ucBssIndex;
-
-	/* Check former assocIE to prevent memory leakage in situations like
-	 * upper layer requests connection without disconnecting first, ...
-	 */
-	if (prConnSettings->assocIeLen > 0) {
-		kalMemFree(prConnSettings->pucAssocIEs, VIR_MEM_TYPE,
-			   prConnSettings->assocIeLen);
-		prConnSettings->assocIeLen = 0;
-	}
-
-	if (sme->ie_len > 0) {
-		prConnSettings->assocIeLen = sme->ie_len;
-		prConnSettings->pucAssocIEs =
-			kalMemAlloc(prConnSettings->assocIeLen, VIR_MEM_TYPE);
-		if (prConnSettings->pucAssocIEs) {
-			kalMemCopy(prConnSettings->pucAssocIEs,
-				   sme->ie, prConnSettings->assocIeLen);
-		} else {
-			DBGLOG(INIT, INFO,
-			       "allocate memory for prConnSettings->pucAssocIEs failed!\n");
-			prConnSettings->assocIeLen = 0;
-		}
-	}
 
 	rStatus = kalIoctl(prGlueInfo, wlanoidSetConnect,
 			   (void *)&rNewSsid, sizeof(struct PARAM_CONNECT),
@@ -3993,7 +3997,7 @@ mtk_cfg80211_change_station(struct wiphy *wiphy,
 	/* from supplicant -- wpa_supplicant_tdls_peer_addset() */
 	struct GLUE_INFO *prGlueInfo = NULL;
 	struct CMD_PEER_UPDATE rCmdUpdate;
-	uint32_t rStatus;
+	uint32_t rStatus = WLAN_STATUS_SUCCESS;
 	uint32_t u4BufLen, u4Temp;
 	struct ADAPTER *prAdapter;
 	struct BSS_INFO *prBssInfo;
@@ -4013,6 +4017,9 @@ mtk_cfg80211_change_station(struct wiphy *wiphy,
 	prBssInfo = GET_BSS_INFO_BY_INDEX(prAdapter,
 		ucBssIndex);
 	if (!prBssInfo)
+		return -EINVAL;
+
+	if (rStatus != WLAN_STATUS_SUCCESS)
 		return -EINVAL;
 
 	if (params == NULL)
@@ -4120,7 +4127,7 @@ mtk_cfg80211_change_station(struct wiphy *wiphy,
 	/* from supplicant -- wpa_supplicant_tdls_peer_addset() */
 	struct GLUE_INFO *prGlueInfo = NULL;
 	struct CMD_PEER_UPDATE rCmdUpdate;
-	uint32_t rStatus;
+	uint32_t rStatus = WLAN_STATUS_SUCCESS;
 	uint32_t u4BufLen, u4Temp;
 	struct ADAPTER *prAdapter;
 	struct BSS_INFO *prBssInfo;
@@ -4139,6 +4146,9 @@ mtk_cfg80211_change_station(struct wiphy *wiphy,
 	prBssInfo = GET_BSS_INFO_BY_INDEX(prAdapter,
 		ucBssIndex);
 	if (!prBssInfo)
+		return -EINVAL;
+
+	if (rStatus != WLAN_STATUS_SUCCESS)
 		return -EINVAL;
 
 	if (params == NULL)
@@ -5921,6 +5931,8 @@ int mtk_cfg80211_suspend(struct wiphy *wiphy,
 			&prGlueInfo->prAdapter->ulSuspendFlag);
 		set_bit(SUSPEND_FLAG_CLEAR_WHEN_RESUME,
 			&prGlueInfo->prAdapter->ulSuspendFlag);
+		if (prGlueInfo->prAdapter->u4HostStatusEmiOffset)
+			kalSetSuspendFlagToEMI(prGlueInfo->prAdapter, TRUE);
 	}
 end:
 	kalHaltUnlock();
@@ -5970,6 +5982,8 @@ int mtk_cfg80211_resume(struct wiphy *wiphy)
 	if (rStatus != WLAN_STATUS_SUCCESS)
 		DBGLOG(REQ, WARN, "ScanResultLog error:%x\n",
 		       rStatus);
+	if (prGlueInfo->prAdapter->u4HostStatusEmiOffset)
+		kalSetSuspendFlagToEMI(prGlueInfo->prAdapter, FALSE);
 end:
 	kalHaltUnlock();
 

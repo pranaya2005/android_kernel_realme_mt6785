@@ -94,7 +94,7 @@ bool mt_get_irq_gic_targets(struct irq_data *d, cpumask_t *mask)
 	u32 cpu;
 	u32 cluster;
 	u64 routing_val;
-	u32 target_mask;
+	u64 target_mask;
 
 	/* for SPI/PPI, target to current cpu */
 	if (gic_irq(d) < 32) {
@@ -124,7 +124,7 @@ bool mt_get_irq_gic_targets(struct irq_data *d, cpumask_t *mask)
 		 */
 		target_mask = 1<<(cluster*4 + cpu);
 
-		pr_debug("%s:%d: irq(%d) target_mask(0x%x)\n",
+		pr_debug("%s:%d: irq(%d) target_mask(0x%llx)\n",
 				__func__, __LINE__, gic_irq(d), target_mask);
 	}
 
@@ -429,7 +429,7 @@ void mt_irq_mask_for_sleep(unsigned int irq)
 
 char *mt_irq_dump_status_buf(int irq, char *buf)
 {
-	int rc;
+	int rc, is_gic600 = 0;
 	unsigned int result;
 	char *ptr = buf;
 
@@ -437,6 +437,10 @@ char *mt_irq_dump_status_buf(int irq, char *buf)
 
 	if (!ptr)
 		return NULL;
+
+	result = readl(GIC_DIST_BASE + GIC_IIDR);
+	is_gic600 =
+		((result >> GICD_V3_IIDR_PROD_ID_SHIFT) == GICD_V3_IIDR_GIC600) ? 1 : 0;
 
 	ptr += sprintf(ptr, "[mt gic dump] irq = %d\n", irq);
 	rc = mt_secure_call(MTK_SIP_KERNEL_GIC_DUMP, irq, 0, 0, 0);
@@ -481,7 +485,10 @@ char *mt_irq_dump_status_buf(int irq, char *buf)
 #endif
 
 	/* get target cpu mask */
-	result = (rc >> 14) & 0xffff;
+	if (is_gic600)
+		result = (rc >> 15) & 0xffff;
+	else
+		result = (rc >> 14) & 0xffff;
 	ptr += sprintf(ptr, "[mt gic dump] tartget cpu mask = 0x%x\n", result);
 
 	return ptr;

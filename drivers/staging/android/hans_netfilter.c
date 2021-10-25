@@ -139,6 +139,23 @@ static unsigned int hans_nf_ipv4v6_in(void *priv,
 	unsigned int thoff = 0;
 	unsigned short frag_off = 0;
 	bool found = false;
+	uint hook;
+	struct net_device *dev = NULL;
+
+	/* skb protection code */
+	if (!skb || !skb->len || !state) {
+		pr_err("%s, buffer empty\n", __func__);
+		return NF_ACCEPT;
+	}
+
+	hook = state->hook;
+	if (NF_INET_LOCAL_IN == hook) {
+		dev = state->in;
+	}
+	if (NULL == dev) {
+		return NF_ACCEPT;
+	}
+	/* skb protection code end */
 
 	if (ip_hdr(skb)->version == 4) {
 		if (ip_hdr(skb)->protocol != IPPROTO_TCP)

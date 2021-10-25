@@ -91,7 +91,7 @@
 	};
 	vibrator0:vibrator@0 {
 		compatible = "mediatek,vibrator";
-		vib_timer = <50>;
+		vib_timer = <25>;
 		vib_limit = <9>;
 		vib_vol= <9>;
 	};
@@ -191,10 +191,6 @@
 		status = "okay";
 		new-arch-supported = <0>;
 	};
-	mtk_cali: mtk_cali {
-		status = "okay";
-		mtk-cali-supported = <1>;
-	};
 /* sensor end */
 /*VNDOR_EDIT oppo project start */
 /*Kun.Wang@BSP.Kernel.Debug, 2019/10/09, Add for oppo project & devinfo*/
@@ -278,35 +274,6 @@
 //#endif /* OPLUS_FEATURE_NFC_BRINGUP */
 
 //#ifdef OPLUS_FEATURE_CHG_BASIC
-/*Liu.Yong@BSP.CHG.Basic, 2020/02/12, Add for uart0*/
-&apuart0 {
-	pinctrl-names = "uart0_rx_gpio",
-			"uart0_tx_gpio";
-	pinctrl-0 = <&uart0_rx_gpio_input>;
-	pinctrl-1 = <&uart0_tx_gpio_input>;
-	status = "okay";
-};
-
-&pio {
-	uart0_rx_gpio_input:uart0_rx_gpio@gpio95 {
-		pins_cmd_dat {
-			pinmux = <PINMUX_GPIO95__FUNC_GPIO95>;
-			input-enable;
-			slew-rate = <0>;
-			bias-pull-down;
-		};
-	};
-	uart0_tx_gpio_input:uart0_tx_gpio@gpio96 {
-		pins_cmd_dat {
-			pinmux = <PINMUX_GPIO96__FUNC_GPIO96>;
-			input-enable;
-			slew-rate = <0>;
-			bias-pull-down;
-		};
-	};
-};
-
-//#ifdef OPLUS_FEATURE_CHG_BASIC
 &mt_charger {
 	mtk,usb-type = <2> ;
 	/* 0 "Mini-USB"  */
@@ -375,8 +342,8 @@
 	qcom,temp_little_cold_usbchg_current_ma_high = <650>;
 	qcom,temp_little_cold_usbchg_current_ma_low = <650>;
 	qcom,temp_little_cold_usbchg_current_ma = <650>;
-        qcom,qc_temp_little_cold_fastchg_current_ma_high = <650>;
-        qcom,qc_temp_little_cold_fastchg_current_ma_low = <650>;
+        qcom,qc_temp_little_cold_fastchg_current_ma_high = <2750>;
+        qcom,qc_temp_little_cold_fastchg_current_ma_low = <1650>;
 
 	qcom,cool_bat_decidegc = <50>;	/* 5C ~ 12C */
 	qcom,temp_cool_vfloat_mv = <4435>;
@@ -384,16 +351,16 @@
 	qcom,temp_cool_fastchg_current_ma_low = <650>;
 	qcom,temp_cool_usbchg_current_ma_high = <650>;
 	qcom,temp_cool_usbchg_current_ma_low = <550>;
-        qcom,qc_temp_cool_fastchg_current_ma_high = <1350>;
-        qcom,qc_temp_cool_fastchg_current_ma_low = <1350>;
+        qcom,qc_temp_cool_fastchg_current_ma_high = <2750>;
+        qcom,qc_temp_cool_fastchg_current_ma_low = <2750>;
 
 	qcom,little_cool_bat_decidegc = <120>;	/* 12C ~ 16C */
 	qcom,temp_little_cool_vfloat_mv = <4435>;
-	qcom,temp_little_cool_fastchg_current_ma = <2050>;
+	qcom,temp_little_cool_fastchg_current_ma = <2100>;
 	qcom,temp_little_cool_usbchg_current_ma = <550>;
-	qcom,temp_little_cool_fastchg_current_ma_high = <2050>;
-	qcom,temp_little_cool_fastchg_current_ma_low = <2050>;
-        qcom,qc_temp_little_cool_fastchg_current_ma = <2050>;
+	qcom,temp_little_cool_fastchg_current_ma_high = <2200>;
+	qcom,temp_little_cool_fastchg_current_ma_low = <2200>;
+        qcom,qc_temp_little_cool_fastchg_current_ma = <3400>;
 
 	qcom,normal_bat_decidegc = <160>;	/* 16C ~ 45C */
 	qcom,temp_normal_fastchg_current_ma = <2200>;
@@ -407,7 +374,7 @@
 	qcom,temp_warm_fastchg_current_ma = <1350>;
 	qcom,temp_warm_usbchg_current_ma = <550>;
 	qcom,temp_warm_fastchg_current_ma_led_on = <500>;
-        qcom,qc_temp_warm_fastchg_current_ma = <1350>;
+        qcom,qc_temp_warm_fastchg_current_ma = <1650>;
 
 	qcom,hot_bat_decidegc = <530>;  /* > 53C */
 
@@ -443,16 +410,16 @@
 
         qcom,normal_phase4_bat_decidegc = <360>;       /* 36C ~ 40C */
         qcom,temp_normal_phase4_vfloat_mv = <4435>;
-        qcom,temp_normal_phase4_fastchg_current_ma_high = <2750>;
-        qcom,temp_normal_phase4_fastchg_current_ma_low = <2750>;
+        qcom,temp_normal_phase4_fastchg_current_ma_high = <1600>;
+        qcom,temp_normal_phase4_fastchg_current_ma_low = <1600>;
 
         qcom,normal_phase5_bat_decidegc = <400>;       /* 40C ~ 42C */
         qcom,temp_normal_phase5_vfloat_mv = <4435>;
-        qcom,temp_normal_phase5_fastchg_current_ma = <1650>;
+        qcom,temp_normal_phase5_fastchg_current_ma = <1800>;
 
         qcom,normal_phase6_bat_decidegc = <420>;       /* 42C ~ 45C */
         qcom,temp_normal_phase6_vfloat_mv = <4435>;
-        qcom,temp_normal_phase6_fastchg_current_ma = <1650>;
+        qcom,temp_normal_phase6_fastchg_current_ma = <1600>;
 
 	qcom,max_chg_time_sec = <36000>;
 	qcom,charger_hv_thr = <9800>;
@@ -749,6 +716,7 @@
 };
 
 &egis_fp {
+	egis,spi_cs_mode = <1>;
 	pinctrl-names = "default", "rst-low", "rst-high",
 	                "irq-init", "power_high","power_low";
 	pinctrl-0 = <&silfp_default>;
@@ -833,12 +801,6 @@
 		vendor-chip = <18>; /* please refer to the struct fp_vendor_t in oppo_fp_commmon.n */
 		eng-menu = "-1,-1"; /* represents SNR, inclination test item in engineer menu, and 0/1 means off/on */
 		chip-name = "E_520";  /* /proc/fp_id, will be displayed in engineer menu  */
-        };
-        silead_6150 {
-                oplus,fp-id = <0>; /* fp id mapping table */
-                vendor-chip = <21>; /* please refer to the struct fp_vendor_t in oppo_fp_commmon.n */
-                eng-menu = "-1,-1"; /* represents SNR, inclination test item in engineer menu, and 0/1 means off/on */
-                chip-name = "S_gsl6150";  /* /proc/fp_id, will be displayed in engineer menu  */
 	};
 };
 //Qi.zhang@BSP.Biometrics.Fingerprint 2020/09/08 add  fingerprint driver end
@@ -911,7 +873,7 @@
 /* accdet start */
 &accdet {
 	/* accdet micbias voltage: 0x07,2.7v;0x05,2.5v;0x02,1.9v */
-	accdet-mic-vol = <7>;
+	accdet-mic-vol = <6>;
 	headset-mode-setting = <0x500 0x500 1 0x1f0 0x800 0x800 0x20 0x44>;
 	accdet-plugout-debounce = <1>;
 	/*1:ACC mode, 2:low cost without in bias, 6:low cost with in bias*/
@@ -1055,9 +1017,8 @@
 	//pinctrl-6 = <&mtkfb_pins_lcd_vddio18_en0>;
 	//pinctrl-7 = <&mtkfb_pins_lcd_vddio18_en1>;
         status = "okay";
-	oplus_display_elevenbits_support;
-	oplus_display_cabc_cmdq_support;
-	oplus_display_panelnum_support;
+	oplus_display_twelvebits_support;
+	oplus_display_cabc_support;
 };
 
 

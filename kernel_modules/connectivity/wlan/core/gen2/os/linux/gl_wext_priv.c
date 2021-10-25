@@ -2745,7 +2745,7 @@ _priv_get_int(IN struct net_device *prNetDev,
 			UINT_16 i, j = 0;
 			UINT_8 NumOfChannel = 50;
 			UINT_8 ucMaxChannelNum = 50;
-			INT_32 ch[50];
+			INT_32 ch[50] = {0};
 			/* RF_CHANNEL_INFO_T aucChannelList[50]; */
 			P_RF_CHANNEL_INFO_T paucChannelList;
 			P_RF_CHANNEL_INFO_T ChannelList_t;

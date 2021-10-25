@@ -5198,9 +5198,9 @@ static kal_uint32 feature_control(MSDK_SENSOR_FEATURE_ENUM feature_id,
 			return ERROR_MSDK_IS_ACTIVATED;
 	}
 	/*Caohua.Lin@Camera.Driver , 20190318, add for ITS--sensor_fusion*/
-	case SENSOR_FEATURE_GET_OFFSET_TO_START_OF_EXPOSURE:
-		*(MUINT32 *)(uintptr_t)(*(feature_data + 1)) = -16933000;
-		break;
+	/*case SENOSR_FEATURE_GET_OFFSET_TO_START_OF_EXPOSURE:
+		*(MUINT32 *)(uintptr_t)(*(feature_data + 1)) = 0;
+		break;*/
 	/*Longyuan.Yang@camera.driver add for video crash */
 	#endif
 	case SENSOR_FEATURE_GET_SEAMLESS_SCENARIOS:

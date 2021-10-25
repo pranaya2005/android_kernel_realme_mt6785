@@ -653,16 +653,12 @@ static int mt6360_ldo_apply_pdata(struct mt6360_ldo_info *mli,
 		return ret;
 #ifdef CONFIG_OPLUS_FEATURE_SDCARD
 //WeiZhenXi@BSP.Storage.Sdcard, 2020/09/27, Modify for enable sdcard
-	if (!(is_project(20630) || is_project(20631) || is_project(20632) || is_project(20633) || is_project(20633)
-	|| is_project(20634) || is_project(20635) || is_project(0x206B4) || is_project(20637) || is_project(20638)
-	|| is_project(20639) || is_project(0x206B7))){
-		for (i = 0; i < MT6360_LDO_CTRLS_NUM; i++) {
-			ret = mt6360_ldo_reg_update_bits(mli,
-					 MT6360_LDO_LDO5_EN_CTRL1 + i, ldo_ctrl_mask[i],
-					 pdata->ldo5_ctrls[i]);
-			if (ret < 0)
-				return ret;
-		}
+	for (i = 0; i < MT6360_LDO_CTRLS_NUM; i++) {
+		ret = mt6360_ldo_reg_update_bits(mli,
+				 MT6360_LDO_LDO5_EN_CTRL1 + i, ldo_ctrl_mask[i],
+				 pdata->ldo5_ctrls[i]);
+		if (ret < 0)
+			return ret;
 	}
 #endif /* OPLUS_FEATURE_SDCARD */
 	dev_dbg(mli->dev, "%s --\n", __func__);
@@ -697,9 +693,6 @@ static int mt6360_ldo_parse_dt_data(struct device *dev,
 	pdata->irq_res_cnt = ret;
 #ifdef CONFIG_OPLUS_FEATURE_SDCARD
 //WeiZhenXi@BSP.Storage.Sdcard, 2020/09/27, Modify for enable sdcard
-	if (!(is_project(20630) || is_project(20631) || is_project(20632) || is_project(20633) || is_project(20633)
-	|| is_project(20634) || is_project(20635) || is_project(0x206B4) || is_project(20637) || is_project(20638)
-	|| is_project(20639) || is_project(0x206B7)))
 	of_property_read_u8_array(np, "ldo5_ctrls",
 				  pdata->ldo5_ctrls, MT6360_LDO_CTRLS_NUM);
 #endif /* OPLUS_FEATURE_SDCARD */

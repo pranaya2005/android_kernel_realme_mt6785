@@ -6,10 +6,6 @@
 #ifndef __OPPO_FOREGROUND_IO_OPT__
 #define __OPPO_FOREGROUND_IO_OPT__
 
-#ifdef CONFIG_FG_TASK_UID
-#include <linux/oppo_healthinfo/oppo_fg.h>
-#endif /*CONFIG_FG_TASK_UID*/
-
 extern unsigned int sysctl_fg_io_opt;
 
 extern void fg_bg_max_count_init(struct request_queue *q);

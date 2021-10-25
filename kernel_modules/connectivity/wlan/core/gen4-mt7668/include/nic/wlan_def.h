@@ -374,6 +374,11 @@
 /* PF TCP/UDP max port number */
 #define MAX_TCP_UDP_PORT            20
 
+#if CFG_SUPPORT_WAC
+/*Single WAC IE Length*/
+#define ELEM_MAX_LEN_WAC_INFO 256
+#endif
+
 /*******************************************************************************
  *                             D A T A   T Y P E S
  ********************************************************************************
@@ -901,21 +906,22 @@ enum ENUM_CSI_MODULATION_BW_TYPE_T {
 #define MAX_NUM_SUPPORTED_CIPHER_SUITES 10
 #if CFG_SUPPORT_802_11W
 /* max number of supported AKM suites */
-#define MAX_NUM_SUPPORTED_AKM_SUITES    15
+#define MAX_NUM_SUPPORTED_AKM_SUITES    16
 #else
 /* max number of supported AKM suites */
-#define MAX_NUM_SUPPORTED_AKM_SUITES    13
+#define MAX_NUM_SUPPORTED_AKM_SUITES    15
 #endif
 #else
 #define MAX_NUM_SUPPORTED_CIPHER_SUITES 8
 #if CFG_SUPPORT_802_11W
 /* max number of supported AKM suites */
-#define MAX_NUM_SUPPORTED_AKM_SUITES    8
+#define MAX_NUM_SUPPORTED_AKM_SUITES    14
 #else
 /* max number of supported AKM suites */
-#define MAX_NUM_SUPPORTED_AKM_SUITES    6
+#define MAX_NUM_SUPPORTED_AKM_SUITES    14
 #endif
 #endif
+
 /* max number of supported PMKID */
 #define MAX_NUM_SUPPORTED_PMKID	10
 

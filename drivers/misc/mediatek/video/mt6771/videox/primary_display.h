@@ -269,7 +269,13 @@ struct display_primary_path_context {
 	cmdqBackupSlotHandle dither_status_info;
 	cmdqBackupSlotHandle dsi_vfp_line;
 	cmdqBackupSlotHandle night_light_params;
-
+	/* #ifdef OPLUS_FEATURE_ONSCREENFINGERPRINT */
+	/*
+	* Ling.Guo@PSW.MM.Display.LCD.Stability, 2019/01/21,
+	* add for fingerprint notify frigger
+	*/
+	cmdqBackupSlotHandle fpd_fence;
+	/* #endif */ /* OPLUS_FEATURE_ONSCREENFINGERPRINT */
 	int is_primary_sec;
 	int scen;
 #ifdef CONFIG_MTK_DISPLAY_120HZ_SUPPORT
@@ -363,6 +369,7 @@ int primary_display_diagnose_oneshot(const char *func, int line);
 int primary_display_get_info(struct disp_session_info *info);
 int primary_display_capture_framebuffer(unsigned long pbuf);
 int primary_display_capture_framebuffer_ovl(unsigned long pbuf,
+					    unsigned int buf_sz,
 					    unsigned int format);
 
 int primary_display_is_video_mode(void);
@@ -439,6 +446,22 @@ int do_primary_display_switch_mode(int sess_mode, unsigned int session,
 int primary_display_check_test(void);
 void _primary_path_switch_dst_lock(void);
 void _primary_path_switch_dst_unlock(void);
+
+/* #ifdef OPLUS_FEATURE_ONSCREENFINGERPRINT */
+/*
+* Ling.Guo@PSW.MM.Display.LCD.Feature, 2019/06/12,
+* add for get dimming layer hbm state
+*/
+int primary_display_set_lcm_hbm(bool en);
+int primary_display_hbm_wait(bool en);
+int notify_display_fpd(bool mode);
+/*
+* Ling.Guo@PSW.MM.Display.LCD.Stability, 2019/01/21,
+* add for fingerprint notify frigger
+*/
+void fpd_notify_check_trig(void);
+void fpd_notify(void);
+/* #endif */ /* OPLUS_FEATURE_ONSCREENFINGERPRINT */
 
 /* AOD */
 enum lcm_power_state primary_display_set_power_state(

@@ -93,6 +93,12 @@
 #include <sound/soc.h>
 #include <sound/soc-dapm.h>
 #include "mtk-soc-speaker-amp.h"
+#ifdef OPLUS_BUG_COMPATIBILITY
+#ifdef CONFIG_SND_SOC_CODEC_SIA_ALG
+/* Yongzhi.Zhang@MULTIMEDIA.AUDIODRIVER.CODEC, 2019/09/27, add for SIA PA ALGO */
+#include "../sia81xx/sia81xx_aux_dev_if.h"
+#endif /* CONFIG_SND_SOC_CODEC_SIA_ALG */
+#endif /* OPLUS_BUG_COMPATIBILITY */
 
 #if defined(CONFIG_SND_SOC_CS43130)
 #include "mtk-cs43130-machine-ops.h"
@@ -660,6 +666,19 @@ static struct snd_soc_dai_link mt_soc_exthp_dai[] = {
 	},
 };
 
+#ifdef OPLUS_BUG_COMPATIBILITY
+#ifdef CONFIG_SND_SOC_ALSACODEC_TFA9890
+/* Liang.Wang@MULTIMEDIA.AUDIODRIVER.CODEC, 2020/11/01,
+ * add TFA9894 ALSA driver for MT6771 */
+static struct snd_soc_dai_link mt_soc_tfa98xx_dai[] = {
+	{
+		.codec_dai_name = "tfa98xx-aif-3-35",
+		.codec_name = "tfa98xx.3-0035",
+	},
+};
+#endif /* CONFIG_SND_SOC_ALSACODEC_TFA9890 */
+#endif /* OPLUS_BUG_COMPATIBILITY */
+
 static struct snd_soc_dai_link mt_soc_extspk_dai[] = {
 	{
 		.name = "ext_Speaker_Multimedia",
@@ -678,20 +697,8 @@ static struct snd_soc_dai_link mt_soc_extspk_dai[] = {
 			   SND_SOC_DAIFMT_NB_NF,
 		.ops = &cs35l35_ops,
 #else
-#ifdef OPLUS_BUG_COMPATIBILITY
-		/* Hongxiang.Jin@MULTIMEDIA.AUDIODRIVER.MACHINE, 2019/08/26,
-		 * add TFA9890 ALSA driver for MT6763 */
-#ifdef CONFIG_SND_SOC_ALSACODEC_TFA9890
-		.codec_dai_name = "tfa98xx-aif-3-35",
-		.codec_name = "tfa98xx.3-0035",
-#else /* CONFIG_SND_SOC_ALSACODEC_TFA9890 */
 		.codec_dai_name = "snd-soc-dummy-dai",
 		.codec_name = "snd-soc-dummy",
-#endif /* CONFIG_SND_SOC_ALSACODEC_TFA9890 */
-#else /* OPLUS_BUG_COMPATIBILITY */
-		.codec_dai_name = "snd-soc-dummy-dai",
-		.codec_name = "snd-soc-dummy",
-#endif /* OPLUS_BUG_COMPATIBILITY */
 #endif
 	},
 	{
@@ -872,6 +879,17 @@ static int mt_soc_snd_probe(struct platform_device *pdev)
 			__func__);
 		return -EINVAL;
 	}
+#else
+#ifdef CONFIG_SND_SOC_ALSACODEC_TFA9890
+	/* Liang.Wang@MULTIMEDIA.AUDIODRIVER.CODEC, 2020/11/01,
+	 * add TFA9894 ALSA driver for MT6771 */
+	if (is_nxp_pa_type()) {
+		mt_soc_extspk_dai[0].codec_dai_name =
+			mt_soc_tfa98xx_dai[0].codec_dai_name;
+		mt_soc_extspk_dai[0].codec_name =
+			mt_soc_tfa98xx_dai[0].codec_name;
+	}
+#endif /* CONFIG_SND_SOC_ALSACODEC_TFA9890 */
 #endif /* OPLUS_BUG_COMPATIBILITY */
 	/*get_ext_dai_codec_name();*/
 	pr_debug("dai_link = %p\n",
@@ -910,6 +928,18 @@ static int mt_soc_snd_probe(struct platform_device *pdev)
 
 	card->dev = &pdev->dev;
 	platform_set_drvdata(pdev, card);
+
+#ifdef OPLUS_BUG_COMPATIBILITY
+#ifdef CONFIG_SND_SOC_CODEC_SIA_ALG
+	if (is_awinic_pa_type()) {
+		/* Yongzhi.Zhang@MULTIMEDIA.AUDIODRIVER.CODEC, 2019/09/27, add for SIA PA ALGO */
+		ret = soc_aux_init_only_sia81xx(pdev, card);
+		if (ret)
+			dev_err(&pdev->dev, "%s soc_aux_init_only_sia8108 fail %d\n",
+				__func__, ret);
+	}
+#endif /* CONFIG_SND_SOC_CODEC_SIA_ALG */
+#endif /* OPLUS_BUG_COMPATIBILITY */
 
 	ret = devm_snd_soc_register_card(&pdev->dev, card);
 	if (ret)

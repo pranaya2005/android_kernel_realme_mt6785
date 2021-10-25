@@ -373,7 +373,7 @@ static int handle_dhcp_packet(struct sock *sk, struct sk_buff *skb, struct net_d
 			}
 
 			// notify offers
-			if (oplus_dhcp_get_notify_state(dev) && mt == DHCPOFFER) {
+			if (oplus_dhcp_get_notify_state(dev) && (mt == DHCPOFFER || mt == DHCPACK)) {
 				char server_mac[ETH_ALEN] = {0};
 
 				memcpy(server_mac, eth_hdr(skb)->h_source, ETH_ALEN);

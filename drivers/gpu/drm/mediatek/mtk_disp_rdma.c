@@ -260,10 +260,8 @@ static inline struct mtk_disp_rdma *comp_to_rdma(struct mtk_ddp_comp *comp)
 
 //#ifdef OPLUS_FEATURE_ONSCREENFINGERPRINT
 /* LiPing-M@PSW.MM.DisplayDriver.Stability, 2019/12/07, modify for fpd_notify timing */
-extern int frame_wait_num;
 extern int hbm_eof_flag;
 extern void fingerprint_send_notify(unsigned int fingerprint_op_mode);
-int fingerprint_delay_idx_num = 1;
 //#endif
 static irqreturn_t mtk_disp_rdma_irq_handler(int irq, void *dev_id)
 {
@@ -307,34 +305,9 @@ static irqreturn_t mtk_disp_rdma_irq_handler(int irq, void *dev_id)
 		DDPIRQ("[IRQ] %s: reg update done!\n", mtk_dump_comp_str(rdma));
 
 	if (val & (1 << 2)) {
-		//#ifdef OPLUS_FEATURE_ONSCREENFINGERPRINT
-		/* LiPing-M@PSW.MM.DisplayDriver.Stability, 2019/12/07, modify for fpd_notify timing */
-		static unsigned int prev_fp_idx = 0;
-		unsigned int fp_idx = 0;
-		struct cmdq_pkt_buffer *qbuf = &rdma->mtk_crtc->gce_obj.buf;
-
-		fp_idx = *(unsigned int *)(qbuf->va_base + DISP_SLOT_FP0_IDX);
-		DDPINFO("%s: prev_fp_idx:%u, fp_idx:%u\n", __func__,
-		       prev_fp_idx, fp_idx);
-		if (fp_idx > prev_fp_idx) {
-			DDPINFO("%s:fingerprint_delay_idx_num=%d, frame_wait_num=%d\n",__func__, fingerprint_delay_idx_num, frame_wait_num);
-			if (fingerprint_delay_idx_num > 0) {
-				fingerprint_delay_idx_num--;
-				if (fingerprint_delay_idx_num == 0) {
-					prev_fp_idx = *(unsigned int *)(qbuf->va_base + DISP_SLOT_FP0_IDX);
-					DDPPR_ERR("%s: ramless panel-send uiready to fp\n",__func__);
-					//send uiready for ramless panel
-					if (mtk_crtc->panel_ext && mtk_crtc->panel_ext->params
-						&& mtk_crtc->panel_ext->params->oplus_panel_cv_switch) {
-						fingerprint_send_notify(1);
-					}
-					//fingerprint_delay_idx_num = frame_wait_num;
-				}
-			}
-		}
-		//#endif
 		set_swpm_disp_work(); /* counting fps for swpm */
-
+		if (rdma->id == DDP_COMPONENT_RDMA0)
+			DRM_MMP_EVENT_END(rdma0, val, 0);
 		DDPIRQ("[IRQ] %s: frame done!\n", mtk_dump_comp_str(rdma));
 		if (rdma->mtk_crtc && rdma->mtk_crtc->esd_ctx)
 			atomic_set(&rdma->mtk_crtc->esd_ctx->target_time, 0);
@@ -349,6 +322,8 @@ static irqreturn_t mtk_disp_rdma_irq_handler(int irq, void *dev_id)
 	}
 
 	if (val & (1 << 1)) {
+		if (rdma->id == DDP_COMPONENT_RDMA0)
+			DRM_MMP_EVENT_START(rdma0, val, 0);
 		DDPIRQ("[IRQ] %s: frame start!\n", mtk_dump_comp_str(rdma));
 		//#ifdef OPLUS_FEATURE_ONSCREENFINGERPRINT
 		/* liwei.a@PSW.MM.DisplayDriver.FP, 2019/12/07, add for accurate time notify fp to take effect*/
@@ -407,6 +382,11 @@ static irqreturn_t mtk_disp_rdma_irq_handler(int irq, void *dev_id)
 	}
 	if (val & (1 << 5)) {
 		DDPIRQ("[IRQ] %s: target line!\n", mtk_dump_comp_str(rdma));
+		if (mtk_crtc &&
+		    !mtk_crtc_is_frame_trigger_mode(&mtk_crtc->base)) {
+			atomic_set(&mtk_crtc->sf_pf_event, 1);
+			wake_up_interruptible(&mtk_crtc->sf_present_fence_wq);
+		}
 		if (rdma->mtk_crtc && rdma->mtk_crtc->esd_ctx &&
 			(!(val & (1 << 2)))) {
 			atomic_set(&rdma->mtk_crtc->esd_ctx->target_time, 1);
@@ -780,7 +760,7 @@ static void mtk_rdma_set_ultra_l(struct mtk_ddp_comp *comp,
 #endif
 
 	/*esd will wait this target line irq*/
-	mtk_ddp_write(comp, (cfg->h << 3)/10,
+	mtk_ddp_write(comp, (cfg->h * 9) / 10,
 		DISP_REG_RDMA_TARGET_LINE, handle);
 #if 0
 	val = gs[GS_RDMA_SELF_FIFO_SIZE] + (gs[GS_RDMA_RSZ_FIFO_SIZE] << 16);

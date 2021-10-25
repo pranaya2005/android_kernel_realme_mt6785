@@ -625,7 +625,7 @@ struct IMGSENSOR_HW_POWER_SEQ sensor_power_sequence_20151[] = {
             {IMGSENSOR_HW_PIN_MIPI_SWITCH_EN, Vol_Low, 10},
             {RST, Vol_Low, 1},
             {DOVDD, Vol_1800, 5},
-            {AVDD, Vol_2800, 5},
+            {AVDD, Vol_2800, 10},
             {SensorMCLK, Vol_High, 1},
             {RST, Vol_High, 2},
         },
@@ -637,10 +637,10 @@ struct IMGSENSOR_HW_POWER_SEQ sensor_power_sequence_20151[] = {
         {
             {IMGSENSOR_HW_PIN_MIPI_SWITCH_EN, Vol_High, 10},
             {RST, Vol_High, 1, Vol_Low, 1},
-            {AVDD, Vol_2800, 0},
             {DOVDD, Vol_1800, 0},
+            {AVDD, Vol_2800, 0},
+            {RST, Vol_Low, 9, Vol_High, 9},
             {SensorMCLK, Vol_High, 5},
-            {RST, Vol_Low, 9},
         },
     },
 #endif
@@ -650,10 +650,10 @@ struct IMGSENSOR_HW_POWER_SEQ sensor_power_sequence_20151[] = {
         {
             {IMGSENSOR_HW_PIN_MIPI_SWITCH_EN, Vol_High, 10},
             {RST, Vol_Low, 1},
-            {DOVDD, Vol_1800, 5},
-            {AVDD, Vol_2800, 5},
-            {SensorMCLK, Vol_High, 1},
-            {RST, Vol_High, 2},
+            {DOVDD, Vol_1800, 0},
+            {AVDD, Vol_2800, 10},
+            {SensorMCLK, Vol_High, 5},
+            {RST, Vol_High, 5},
         },
     },
 #endif
@@ -1002,6 +1002,25 @@ struct CAMERA_DEVICE_INFO gImgEepromInfo_20075= {
     .i4FrontDataIdx = 0xFF,
     .i4NormDataLen = 40,
     .i4MWDataLen = 3102,
+    .i4MWStereoAddr = {OV48B_STEREO_START_ADDR, HI846_STEREO_START_ADDR_19131},
+    .i4MTStereoAddr = {0xFFFF, 0xFFFF},
+    .i4FrontStereoAddr = {0xFFFF, 0xFFFF},
+};
+
+struct CAMERA_DEVICE_INFO gImgEepromInfo_20151= {
+    .i4SensorNum = 5,
+    .pCamModuleInfo = {
+        {OV48B_SENSOR_ID,  0xA0, {0x00, 0x06}, 0xB0, 1, {0x92,0x96,0x98,0x94}, "Cam_r0", "ov48b"},
+        {IMX471_SENSOR_ID,  0xA8, {0x00, 0x06}, 0xB0, 0, {0xFF,0xFF,0xFF,0xFF}, "Cam_f", "imx471"},
+        {HI846_SENSOR_ID,  0xA2, {0x00, 0x06}, 0xB0, 0, {0xFF,0xFF,0xFF,0xFF}, "Cam_r1", "hi846"},
+        {OV02B10_SENSOR_ID,  0xA4, {0x00, 0x06}, 0xE0, 0, {0xFF,0xFF,0xFF,0xFF}, "Cam_r2", "ov02b10"},
+        {OV02A1B_SENSOR_ID,  0xFF, {0xFF, 0xFF}, 0xFF, 0, {0xFF,0xFF,0xFF,0xFF}, "Cam_r3", "ov02a1b"},
+    },
+    .i4MWDataIdx = IMGSENSOR_SENSOR_IDX_MAIN2,
+    .i4MTDataIdx = 0xFF,
+    .i4FrontDataIdx = 0xFF,
+    .i4NormDataLen = 40,
+    .i4MWDataLen = 3102,
     .i4MWStereoAddr = {OV48B_STEREO_START_ADDR, HI846_STEREO_START_ADDR },
     .i4MTStereoAddr = {0xFFFF, 0xFFFF},
     .i4FrontStereoAddr = {0xFFFF, 0xFFFF},
@@ -1066,11 +1085,16 @@ struct CAMERA_DEVICE_INFO gImgEepromInfo_20611 = {
 
 void oplus_imgsensor_hwcfg()
 {
-    if (is_project(20075)|| is_project(20076)) {
+    if (is_project(20075) || is_project(20076)) {
          oplus_gimgsensor_sensor_list = gimgsensor_sensor_list_20075;
          oplus_imgsensor_custom_config = imgsensor_custom_config_20075;
          oplus_sensor_power_sequence = sensor_power_sequence_20075;
          gImgEepromInfo = gImgEepromInfo_20075;
+    } else if (is_project(20151) || is_project(20301) || is_project(20302)) {
+         oplus_gimgsensor_sensor_list = gimgsensor_sensor_list_20151;
+         oplus_imgsensor_custom_config = imgsensor_custom_config_20151;
+         oplus_sensor_power_sequence = sensor_power_sequence_20151;
+         gImgEepromInfo = gImgEepromInfo_20151;
     } else if (is_project(20630) ||is_project(20631) || is_project(20632) || is_project(0x206B4)) {
          oplus_gimgsensor_sensor_list = gimgsensor_sensor_list_20630;
          oplus_imgsensor_custom_config = imgsensor_custom_config_20630;

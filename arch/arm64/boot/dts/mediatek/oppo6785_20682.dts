@@ -18,6 +18,7 @@
 #include <dt-bindings/interrupt-controller/arm-gic.h>
 #include <dt-bindings/pinctrl/mt6785-pinfunc.h>
 
+
 #include "mediatek/oppo6785/common/oppo6785_common.dtsi"
 #include "mediatek/oppo6785/20682/oppo6785_20682_charger.dtsi"
 

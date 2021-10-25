@@ -85,7 +85,10 @@
 
 /* NOP OUT retries waiting for NOP IN response */
 #define NOP_OUT_RETRIES    10
-
+#ifdef OPLUS_FEATURE_STORAGE_TOOL
+/* hexiaosen@BSP.Storage.UFS 2020-08-13 add for ufs reset after ffu write buffer */
+#define UFS_FFU_DOWNLOAD_MODE 0x0E
+#endif
 /* MTK PATCH */
 /* Timeout after 100 msecs if NOP OUT hangs without response */
 #define NOP_OUT_TIMEOUT    100 /* msecs */
@@ -2859,6 +2862,90 @@ static inline u16 ufshcd_upiu_wlun_to_scsi_wlun(u8 upiu_wlun_id)
 }
 */
 
+
+#ifdef OPLUS_FEATURE_STORAGE_TOOL
+/* hexiaosen@BSP.Storage.UFS 2020-08-13 add for ufs reset after ffu write buffer */
+static int ufshcd_ffu_wait_for_doorbell_clr(struct ufs_hba *hba,
+					u64 wait_timeout_us)
+{
+	unsigned long flags;
+	int ret = 0;
+	u32 tm_doorbell;
+	u32 tr_doorbell;
+	bool timeout = false, do_last_check = false;
+	ktime_t start;
+
+	spin_lock_irqsave(hba->host->host_lock, flags);
+	/*
+	 * Wait for all the outstanding tasks/transfer requests.
+	 * Verify by checking the doorbell registers are clear.
+	 */
+	start = ktime_get();
+	do {
+		if (hba->ufshcd_state != UFSHCD_STATE_OPERATIONAL) {
+			ret = -EBUSY;
+			goto out;
+		}
+
+		tm_doorbell = ufshcd_readl(hba, REG_UTP_TASK_REQ_DOOR_BELL);
+		tr_doorbell = ufshcd_readl(hba, REG_UTP_TRANSFER_REQ_DOOR_BELL);
+		if (!tm_doorbell && !tr_doorbell) {
+			timeout = false;
+			break;
+		} else if (do_last_check) {
+			break;
+		}
+
+		spin_unlock_irqrestore(hba->host->host_lock, flags);
+		schedule();
+		if (ktime_to_us(ktime_sub(ktime_get(), start)) >
+		    wait_timeout_us) {
+			timeout = true;
+			/*
+			 * We might have scheduled out for long time so make
+			 * sure to check if doorbells are cleared by this time
+			 * or not.
+			 */
+			do_last_check = true;
+		}
+		spin_lock_irqsave(hba->host->host_lock, flags);
+	} while (tm_doorbell || tr_doorbell);
+
+	if (timeout) {
+		dev_err(hba->dev,
+			"%s: timedout waiting for doorbell to clear (tm=0x%x, tr=0x%x)\n",
+			__func__, tm_doorbell, tr_doorbell);
+		ret = -EBUSY;
+	}
+out:
+	spin_unlock_irqrestore(hba->host->host_lock, flags);
+	return ret;
+}
+
+static int ufshcd_ffu_write_buffer_prepare(struct ufs_hba *hba)
+{
+	#define DOORBELL_CLR_TOUT_US		(1000 * 1000) /* 1 sec */
+	int ret = 0;
+	/*
+	 * make sure that there are no outstanding requests when
+	 * clock scaling is in progress
+	 */
+	ufshcd_scsi_block_requests(hba);
+	if (ufshcd_ffu_wait_for_doorbell_clr(hba, DOORBELL_CLR_TOUT_US)) {
+		ret = -EBUSY;
+		ufshcd_scsi_unblock_requests(hba);
+	}
+
+	return ret;
+}
+
+static void ufshcd_ffu_write_buffer_unprepare(struct ufs_hba *hba)
+{
+	ufshcd_scsi_unblock_requests(hba);
+}
+#endif
+
+
 /**
  * ufshcd_queuecommand - main entry point for SCSI requests
  * @cmd: command from SCSI Midlayer
@@ -2872,6 +2959,10 @@ static int ufshcd_queuecommand(struct Scsi_Host *host, struct scsi_cmnd *cmd)
 	struct ufs_hba *hba;
 	unsigned long flags;
 	int tag;
+#ifdef OPLUS_FEATURE_STORAGE_TOOL
+/* hexiaosen@BSP.Storage.UFS 2020-08-13 add for ufs reset after ffu write buffer */
+	int retry = 3;
+#endif
 	int err = 0;
 	u32 line = 0;
 #if defined(CONFIG_UFSFEATURE) && defined(CONFIG_UFSHPB)
@@ -3049,6 +3140,20 @@ send_orig_cmd:
 	}
 	/* Make sure descriptors are ready before ringing the doorbell */
 	wmb();
+#ifdef OPLUS_FEATURE_STORAGE_TOOL
+/* hexiaosen@BSP.Storage.UFS 2020-08-13 add for ufs reset after ffu write buffer
+   If it is ffu write buffer cmd, try to block the host from dispatching requests, and wait for
+   the doorbells of transfer requests and task management requests to be cleared. */
+	if ((UFS_FFU_DOWNLOAD_MODE == cmd->req.cmd[1]) && (WRITE_BUFFER == cmd->req.cmd[0])) {
+		while(retry--) {
+			pr_err("ufs ffu block host retry: %d\n", retry);
+			if (!ufshcd_ffu_write_buffer_prepare(hba)) {
+				hba->set_host_blocked = 1;
+				break;
+			}
+		}
+	}
+#endif
 
 #if defined(CONFIG_UFSFEATURE) && defined(CONFIG_UFSHPB)
 	if (!pre_req_err)
@@ -4953,7 +5058,9 @@ static inline void ufshcd_hba_stop(struct ufs_hba *hba, bool can_sleep)
 int ufshcd_hba_enable(struct ufs_hba *hba)
 {
 	int retry;
+	bool retry_reset = false;
 
+hba_retry:
 	/*
 	 * msleep of 1 and 5 used in this function might result in msleep(20),
 	 * but it was necessary to send the UFS FPGA to reset mode during
@@ -4997,7 +5104,12 @@ int ufshcd_hba_enable(struct ufs_hba *hba)
 			ufs_mtk_pltfrm_host_sw_rst(hba,
 				SW_RST_TARGET_UFSHCI |
 				SW_RST_TARGET_UFSCPT | SW_RST_TARGET_UNIPRO);
-			return -EIO;
+			/* try again after sw reset */
+			if (!retry_reset) {
+				retry_reset = true;
+				goto hba_retry;
+			} else
+				return -EIO;
 		}
 		usleep_range(1000, 1100);
 	}
@@ -5744,6 +5856,32 @@ static void ufshcd_lrb_devcmd_time_statistics(struct ufs_hba *hba, struct ufshcd
 	}
 }
 #endif /*OPLUS_FEATURE_MIDAS*/
+
+#ifdef OPLUS_FEATURE_STORAGE_TOOL
+/* hexiaosen@BSP.Storage.UFS 2020-08-13 add for ufs reset after ffu write buffer
+   Reset UFS device and link again, unblock the host from dispatching requests after ffu write buffer cmd finished
+*/
+static void ffu_write_buffer_finish_work_fun(struct work_struct *work) {
+	struct ufs_hba *hba = NULL;
+	struct scsi_cmnd cmd;
+	int ret = -1;
+
+	hba = container_of(work, struct ufs_hba, ffu_write_buffer_finished_work);
+	cmd.device = hba->sdev_ufs_device;
+	ret = ufshcd_eh_host_reset_handler(&cmd);
+	if (SUCCESS == ret ) {
+		pr_err("ufs ffu reset succeed\n");
+	} else {
+		pr_err("ufs ffu reset failed\n");
+	}
+
+	if (hba->set_host_blocked) {
+		hba->set_host_blocked = 0;
+		ufshcd_ffu_write_buffer_unprepare(hba);
+	}
+}
+#endif
+
 /**
  * __ufshcd_transfer_req_compl - handle SCSI and query command completion
  * @hba: per adapter instance
@@ -5754,6 +5892,11 @@ static int __ufshcd_transfer_req_compl(struct ufs_hba *hba,
 {
 	struct ufshcd_lrb *lrbp;
 	struct scsi_cmnd *cmd;
+#ifdef OPLUS_FEATURE_STORAGE_TOOL
+/* hexiaosen@BSP.Storage.UFS 2020-08-13 add for ufs reset after ffu write buffer */
+	struct scsi_request *rq = NULL;
+	unsigned char scmd[2] = {0};
+#endif
 	int result;
 	int index;
 	u32 ocs_err_status;
@@ -5766,6 +5909,12 @@ static int __ufshcd_transfer_req_compl(struct ufs_hba *hba,
 		lrbp = &hba->lrb[index];
 		cmd = lrbp->cmd;
 		if (cmd) {
+#ifdef OPLUS_FEATURE_STORAGE_TOOL
+/* hexiaosen@BSP.Storage.UFS 2020-08-13 add for ufs reset after ffu write buffer */
+			rq = &(cmd->req);
+			scmd[0] = rq->cmd[0];
+			scmd[1] = rq->cmd[1];
+#endif
 			/* MTK PATCH */
 			ufshcd_cond_add_cmd_trace(hba, index,
 				UFS_TRACE_COMPLETED);
@@ -5863,6 +6012,13 @@ static int __ufshcd_transfer_req_compl(struct ufs_hba *hba,
 			cmd->scsi_done(cmd);
 			__ufshcd_release(hba);
 			ufs_mtk_biolog_scsi_done_end(index); /* MTK PATCH */
+#ifdef OPLUS_FEATURE_STORAGE_TOOL
+/* hexiaosen@BSP.Storage.UFS 2020-08-13 add for ufs reset after ffu write buffer */
+			if ((UFS_FFU_DOWNLOAD_MODE == scmd[1]) && (WRITE_BUFFER == scmd[0]))
+			{
+				schedule_work(&hba->ffu_write_buffer_finished_work);
+			}
+#endif
 		} else if (lrbp->command_type == UTP_CMD_TYPE_DEV_MANAGE ||
 			lrbp->command_type == UTP_CMD_TYPE_UFS_STORAGE) {
 #ifdef OPLUS_FEATURE_MIDAS
@@ -10074,7 +10230,11 @@ int ufshcd_alloc_host(struct device *dev, struct ufs_hba **hba_handle)
 	hba->dev = dev;
 	*hba_handle = hba;
 	hba->sg_entry_size = sizeof(struct ufshcd_sg_entry);
-
+#ifdef OPLUS_FEATURE_STORAGE_TOOL
+/* hexiaosen@BSP.Storage.UFS 2020-08-13 add for ufs reset after ffu write buffer */
+	hba->set_host_blocked = 0;
+	INIT_WORK(&hba->ffu_write_buffer_finished_work, ffu_write_buffer_finish_work_fun);
+#endif
 	INIT_LIST_HEAD(&hba->clk_list_head);
 
 out_error:

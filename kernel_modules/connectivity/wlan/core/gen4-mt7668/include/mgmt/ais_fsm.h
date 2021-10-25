@@ -317,7 +317,11 @@ typedef struct _AIS_FSM_INFO_T {
 
 #if CFG_DISCONN_DEBUG_FEATURE
 struct AIS_DISCONN_INFO_T {
+#if KERNEL_VERSION(5, 0, 0) <= LINUX_VERSION_CODE
+	struct timespec64 tv;
+#else
 	struct timeval tv;
+#endif
 	UINT_8 ucTrigger;
 	UINT_8 ucDisConnReason;
 	UINT_8 ucBcnTimeoutReason;

@@ -86,6 +86,8 @@ int disp_lcm_aod_doze_resume(struct disp_lcm_handle *plcm);
 /* #endif */ /* OPLUS_FEATURE_AOD */
 
 #ifdef OPLUS_BUG_STABILITY
+/*Jian.Zhou.MM.Display.LCD.Stability,2020/04/18,checklist pick,Incorporate ramless screen frequency hopping modification*/
+int disp_lcm_set_safe_mode(struct disp_lcm_handle *plcm, void *handle, unsigned int mode);
 /* Yongpeng.Yi@PSW.MultiMedia.Display.LCD.Machine, 2018/09/10, Add for Porting cabc interface */
 int disp_lcm_oplus_set_lcm_cabc_cmd(struct disp_lcm_handle *plcm, void *handle, unsigned int level);
 /* liping-m@PSW.MM.Display.LCD.Stability, 2018/07/21,
@@ -96,4 +98,19 @@ int disp_lcm_poweroff_after_ulps(struct disp_lcm_handle *plcm);
 /* YongPeng.Yi@PSW.MM.Display.LCD.Stability, 2018/12/10, add for Lcd tm td4330 */
 int disp_lcm_init_code(struct disp_lcm_handle *plcm);
 #endif /* OPLUS_BUG_STABILITY */
+
+/* #ifdef OPLUS_FEATURE_ONSCREENFINGERPRINT */
+/*
+* Yongpeng.Yi@PSW.MM.Display.LCD.Stability, 2018/01/16,
+* add for samsung lcd hbm node
+*/
+int disp_lcm_set_hbm(struct disp_lcm_handle *plcm, void *handle, unsigned int hbm_level);
+int mtk_disp_lcm_set_hbm(bool en, struct disp_lcm_handle *plcm, void *qhandle);
+int disp_lcm_set_hbm_wait_ramless(bool wait, struct disp_lcm_handle *plcm, void *qhandle);
+int disp_lcm_get_hbm_state(struct disp_lcm_handle *plcm);
+int disp_lcm_get_hbm_wait(struct disp_lcm_handle *plcm);
+int disp_lcm_set_hbm_wait(bool wait, struct disp_lcm_handle *plcm);
+unsigned int disp_lcm_get_hbm_time(bool en, struct disp_lcm_handle *plcm);
+/* #endif */ /* OPLUS_FEATURE_ONSCREENFINGERPRINT */
+
 #endif /* _DISP_LCM_H_ */

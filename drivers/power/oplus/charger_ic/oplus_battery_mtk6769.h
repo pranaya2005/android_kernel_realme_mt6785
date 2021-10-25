@@ -36,7 +36,6 @@ struct charger_manager;
 #define RT9467 1
 #define BQ2589X 2
 #define BQ2591X 3
-#define SY6974 4
 
 #ifdef OPLUS_FEATURE_CHG_BASIC
 /*Liu.Yong@BSP.CHG.Basic, 2020/12/25, Add for micro-usb issue.*/

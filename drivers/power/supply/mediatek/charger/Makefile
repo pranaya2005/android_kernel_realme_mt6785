@@ -40,6 +40,14 @@ else ifeq ($(CONFIG_OPLUS_CHARGER_MTK6769),y)
 obj-y += charger_class.o mtk_switch_charging.o mtk_pdc_intf.o\
 	 oplus_chg_type_det.o mtk_pe40_intf.o mtk_linear_charging.o\
 	 adapter_class.o mtk_pd_adapter.o mtk_hvdcp_intf.o
+else ifeq ($(CONFIG_OPLUS_CHARGER_MTK6768),y)
+obj-y += charger_class.o mtk_switch_charging.o mtk_pdc_intf.o\
+         oplus_chg_type_det.o mtk_pe40_intf.o mtk_linear_charging.o\
+         adapter_class.o mtk_pd_adapter.o mtk_hvdcp_intf.o
+else ifeq ($(CONFIG_OPLUS_CHARGER_MTK6769R),y)
+obj-y += charger_class.o mtk_switch_charging.o mtk_pdc_intf.o\
+         oplus_chg_type_det.o mtk_pe40_intf.o mtk_linear_charging.o\
+         adapter_class.o mtk_pd_adapter.o mtk_hvdcp_intf.o
 else
 obj-y += charger_class.o mtk_charger.o mtk_switch_charging.o mtk_pdc_intf.o\
 	 mtk_chg_type_det.o mtk_pe40_intf.o mtk_linear_charging.o\

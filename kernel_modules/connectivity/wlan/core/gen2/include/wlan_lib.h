@@ -26,7 +26,7 @@
 #include "CFG_Wifi_File.h"
 #include "rlm_domain.h"
 #include "wlan_typedef.h"
-
+#include "queue.h"
 
 extern BOOLEAN fgIsResetting;
 

@@ -122,7 +122,7 @@ static struct LCM_setting_table lcm_aod_to_normal[] = {
 	{REGFLAG_CMD,2,{0x65,0x00}},
 	{REGFLAG_CMD,1,{0x38}},
 	{REGFLAG_CMD,1,{0x2C}},
-
+	{REGFLAG_CMD,2,{0x2F,0x05}},
 	{REGFLAG_END_OF_TABLE, 0x00, {}}
 };
 
@@ -520,7 +520,7 @@ static int lcm_disable(struct drm_panel *panel)
 
 #ifdef VENDOR_EDIT
 /* Hujie@PSW.MM.DisplayDriver.AOD, 2019/12/10, add for keylog*/
-	pr_err("debug for lcm %s, ctx->enabled=%d\n", __func__, ctx->enabled);
+	pr_err("debug for lcm %s\n", __func__);
 #endif
 	if (!ctx->enabled)
 		return 0;
@@ -541,21 +541,16 @@ static int lcm_unprepare(struct drm_panel *panel)
 
 #ifdef VENDOR_EDIT
 	/* Hujie@PSW.MM.DisplayDriver.AOD, 2019/12/10, add for keylog*/
-	pr_err("debug for lcm %s, ctx->prepared=%d\n", __func__, ctx->prepared);
+	pr_err("debug for lcm %s\n", __func__);
 #endif
 
 	if (!ctx->prepared)
 		return 0;
 
-	if (aod_state) {
-		lcm_dcs_write_seq_static(ctx,0xF0,0x55,0xAA,0x52,0x08,0x01);
-		lcm_dcs_write_seq_static(ctx, 0xCE, 0x0C);
-	}
-
 	lcm_dcs_write_seq_static(ctx, 0x28);
 	msleep(10);
 	lcm_dcs_write_seq_static(ctx, 0x10);
-	msleep(180);
+	msleep(150);
 
 	ctx->error = 0;
 	ctx->prepared = false;
@@ -724,8 +719,6 @@ static struct mtk_panel_params ext_params = {
 	.data_rate = 418,
 	.hbm_en_time = 2,
 	.hbm_dis_time = 1,
-	.oplus_hbm_on_sync_with_flush = 1,
-	.oplus_hbm_off_sync_with_flush = 1,
     .dyn_fps = {
         .switch_en = 0, .vact_timing_fps = 60,
     },
@@ -791,8 +784,6 @@ static struct mtk_panel_params ext_params_90hz = {
         },
     .hbm_en_time = 2,
 	.hbm_dis_time = 1,
-	.oplus_hbm_on_sync_with_flush = 1,
-	.oplus_hbm_off_sync_with_flush = 1,
 	.data_rate = 830,
     .dyn_fps = {
         .switch_en = 0, .vact_timing_fps = 90,
@@ -1471,6 +1462,7 @@ static void lcm_setbrightness(void *dsi,
 {
 	unsigned int BL_MSB = 0;
 	unsigned int BL_LSB = 0;
+	unsigned int hbm_brightness = 0;
 	int i = 0;
 
 	pr_err("TM lcm: %s level is %d\n", __func__, level);
@@ -1786,7 +1778,7 @@ static int lcm_probe(struct mipi_dsi_device *dsi)
                    }
 	}
 	if (remote_node != dev->of_node) {
-		pr_info("%s+ skip probe due to not current lcm. of_node=%s\n", __func__, dev->of_node);
+		pr_info("%s+ skip probe due to not current lcm. of_node=%s\n", __func__, dev->of_node->name);
 		return 0;
 	}
 	ctx = devm_kzalloc(dev, sizeof(struct lcm), GFP_KERNEL);

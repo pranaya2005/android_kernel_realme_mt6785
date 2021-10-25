@@ -26,6 +26,7 @@
 #include <linux/sched.h>
 #include <linux/wait.h>
 #include <linux/sched/clock.h>	/* local_clock */
+#include <tee_sanity.h>
 
 #include "platform.h"			/* CPU-related information */
 
@@ -281,7 +282,8 @@ static int irq_bh_worker(void *arg)
 		/* This is needed to properly handle secure interrupts when */
 		/* there is no active worker.                               */
 		if (!get_workers())
-			wake_up(&l_ctx.workers_wq);
+			wake_up_process(
+				l_ctx.tee_worker[NQ_TEE_WORKER_THREADS - 1]);
 	}
 	return 0;
 }
@@ -390,7 +392,7 @@ int nq_session_notify(struct nq_session *session, u32 id, u32 payload)
 		if (fc_nsiq(session->id, payload))
 			ret = -EPROTO;
 		tee_restore_affinity(old_affinity);
-		wake_up(&l_ctx.workers_wq);
+		wake_up_process(l_ctx.tee_worker[NQ_TEE_WORKER_THREADS - 1]);
 		logging_run();
 	}
 
@@ -768,7 +770,7 @@ out:
 
 static int tee_wait_infinite(void)
 {
-	return wait_event_interruptible(l_ctx.workers_wq,
+	return wait_event_interruptible_exclusive(l_ctx.workers_wq,
 					!l_ctx.tee_scheduler_run ||
 					get_workers() < get_required_workers());
 }
@@ -892,6 +894,9 @@ static s32 tee_schedule(uintptr_t arg, unsigned int *timeout_ms)
 		 */
 		tee_set_affinity();
 
+		/* Set basic utils to boost TEE performance. */
+		mtk_set_task_basic_util(current);
+
 		/* Refresh MCI REE time */
 		nq_update_time();
 
@@ -957,9 +962,15 @@ static s32 tee_schedule(uintptr_t arg, unsigned int *timeout_ms)
 
 		/* If SWd has more threads to run, then add a worker */
 		if (run < req_workers && run < NQ_TEE_WORKER_THREADS) {
+			int i = 0;
 			mc_dev_devel("[%d] R1 run=%d sc=%d", id, run,
 				     req_workers);
-			wake_up(&l_ctx.workers_wq);
+			while ((i < NQ_TEE_WORKER_THREADS)) {
+				if (wake_up_process(
+			    l_ctx.tee_worker[NQ_TEE_WORKER_THREADS - 1 - i]))
+					break;
+				i++;
+			}
 		}
 
 		/* If SWd has less threads to run, then current worker */

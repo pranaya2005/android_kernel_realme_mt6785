@@ -33,10 +33,6 @@
 #include <mtk_gauge_time_service.h>
 #include "mtk_battery_internal.h"
 
-#ifdef OPLUS_FEATURE_CHG_BASIC
-/*Liu.Yong@BSP.CHG.basic 2020/11/26, add for shutdown use oppo uisoc*/
-extern int oplus_chg_get_ui_soc(void);
-#endif /*OPLUS_FEATURE_CHG_BASIC*/
 
 struct shutdown_condition {
 	bool is_overheat;
@@ -308,12 +304,7 @@ static int shutdown_event_handler(struct shutdown_controller *sdd)
 	static int ui_zero_time_flag;
 	static int down_to_low_bat;
 	int now_current = 0;
-#ifndef OPLUS_FEATURE_CHG_BASIC
-/*Liu.Yong@BSP.CHG.basic 2020/11/26, add for shutdown use oppo uisoc*/
 	int current_ui_soc = battery_get_uisoc();
-#else  /*ODM_WT_EDIT*/
-	int current_ui_soc = oplus_chg_get_ui_soc();
-#endif /*OPLUS_FEATURE_CHG_BASIC*/
 	int current_soc = battery_get_soc();
 	int vbat = battery_get_bat_voltage();
 	int tmp = 25;
@@ -389,10 +380,12 @@ static int shutdown_event_handler(struct shutdown_controller *sdd)
 
 #ifndef OPLUS_FEATURE_CHG_BASIC
 /* Jianchao.Shi@PSW.BSP.CHG.Basic, 2018/10/16, sjc Delete for remove dlpt shutdown */
+			kernel_power_off();
+#endif
+
 			mutex_lock(&pm_mutex);
 			kernel_power_off();
 			mutex_unlock(&pm_mutex);
-#endif /*OPLUS_FEATURE_CHG_BASIC*/
 			return next_waketime(polling);
 		}
 	}

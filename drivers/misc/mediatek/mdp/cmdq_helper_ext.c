@@ -42,6 +42,10 @@
 #include <cmdq-sec.h>
 #endif
 
+#if defined(CONFIG_MACH_MT6853)
+#include <soc/mediatek/smi.h>
+#endif
+
 #define CMDQ_GET_COOKIE_CNT(thread) \
 	(CMDQ_REG_GET32(CMDQ_THR_EXEC_CNT(thread)) & CMDQ_MAX_COOKIE_VALUE)
 
@@ -2337,7 +2341,6 @@ ssize_t cmdq_core_print_profile_enable(struct device *dev,
 ssize_t cmdq_core_write_profile_enable(struct device *dev,
 	struct device_attribute *attr, const char *buf, size_t size)
 {
-	int len = 0;
 	int value = 0;
 	int status = 0;
 
@@ -2349,16 +2352,15 @@ ssize_t cmdq_core_write_profile_enable(struct device *dev,
 			break;
 		}
 
-		len = size;
-		memcpy(textBuf, buf, len);
+		memcpy(textBuf, buf, size);
 
-		textBuf[len] = '\0';
+		textBuf[size] = '\0';
 		if (kstrtoint(textBuf, 10, &value) < 0) {
 			status = -EFAULT;
 			break;
 		}
 
-		status = len;
+		status = size;
 		if (value < 0 || value > CMDQ_PROFILE_MAX)
 			value = 0;
 
@@ -3354,6 +3356,12 @@ static void cmdq_core_group_clk_cb(bool enable,
 				cmdq_core_group_clk_off(index, engine_clk);
 		}
 	}
+
+#if defined(CONFIG_MACH_MT6853)
+	if ((engine_flag & CMDQ_ENG_MDP_GROUP_BITS) && enable)
+		smi_larb_port_check();
+#endif
+
 }
 
 bool cmdq_thread_in_use(void)
@@ -4697,8 +4705,8 @@ static s32 cmdq_pkt_flush_async_ex_impl(struct cmdqRecStruct *handle,
 	mutex_unlock(&ctx->thread[(u32)thread].thread_mutex);
 
 	if (err < 0) {
-		CMDQ_ERR("pkt flush failed err:%d pkt:0x%p thread:%d\n",
-			err, handle->pkt, thread);
+		CMDQ_ERR("pkt flush failed err:%d handle:0x%p thread:%d\n",
+			err, handle, thread);
 		return err;
 	}
 
@@ -4856,9 +4864,16 @@ s32 cmdq_helper_mbox_register(struct device *dev)
 	u32 i;
 	s32 chan_id;
 	struct cmdq_client *clt;
+	int thread_cnt;
+
+	thread_cnt = of_count_phandle_with_args(
+		dev->of_node, "mboxes", "#mbox-cells");
+	CMDQ_LOG("thread count:%d\n", thread_cnt);
+	if (thread_cnt <= 0)
+		thread_cnt = CMDQ_MAX_THREAD_COUNT;
 
 	/* for display we start from thread 0 */
-	for (i = 0; i < CMDQ_MAX_THREAD_COUNT; i++) {
+	for (i = 0; i < thread_cnt; i++) {
 		clt = cmdq_mbox_create(dev, i);
 		if (!clt || IS_ERR(clt)) {
 			CMDQ_MSG("register mbox stop:0x%p idx:%u\n", clt, i);

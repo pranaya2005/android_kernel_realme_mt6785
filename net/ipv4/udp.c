@@ -2573,9 +2573,10 @@ int udp_lib_getsockopt(struct sock *sk, int level, int optname,
 	case UDPLITE_RECV_CSCOV:
 		val = up->pcrlen;
 		break;
+
 	case UDP_GRO:
 		if (up->gro_disabled == UDP_GRO_DISABLED)
-			val = 0xEAEA;
+		val = 0xEAEA;
 		else
 			val = -1;
 		break;

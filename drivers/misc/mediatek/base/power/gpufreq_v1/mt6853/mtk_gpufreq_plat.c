@@ -61,11 +61,6 @@
 #endif
 #include "mtk_gpu_utility.h"
 
-/*#ifdef OPLUS_BUG_STABILITY*/
-//Jinzhu.Han@MULTIMEDIA.MEDIA.PLAYER, 2020/12/18, Add for athens/zola gpu freq set
-#include <soc/oppo/oppo_project.h>
-/*#endif*/
-
 #ifdef CONFIG_MTK_GPU_SUPPORT
 /* adb pull "/d/ged/logbufs/gfreq" */
 extern GED_LOG_BUF_HANDLE gpufreq_ged_log;
@@ -3012,14 +3007,6 @@ static void __mt_gpufreq_init_table(void)
 	g_segment_max_opp_idx = 0;
 #endif
 #endif
-
-/*#ifdef OPLUS_BUG_STABILITY*/
-	if ((20613 == get_project()) || (20680 == get_project()) || (20686 == get_project())
-		|| (20631 == get_project()) || (20632 == get_project()) || (0x206B4 == get_project())
-		|| (20633 == get_project()) || (20634 == get_project()) || (20635 == get_project())) {
-		g_segment_max_opp_idx = 0;
-	}
-/*#endif*/
 
 	g_segment_min_opp_idx = NUM_OF_OPP_IDX - 1;
 

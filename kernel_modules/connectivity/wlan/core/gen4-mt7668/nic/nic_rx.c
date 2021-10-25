@@ -193,6 +193,8 @@ static RX_EVENT_HANDLER_T arEventTable[] = {
 #if CFG_SUPPORT_REPLAY_DETECTION
 	{EVENT_ID_GET_GTK_REKEY_DATA,       nicEventGetGtkDataSync},
 #endif
+	{EVENT_ID_GET_TEMPERATURE,               nicEventGetTemperature},
+
 };
 
 /*******************************************************************************
@@ -1014,6 +1016,18 @@ VOID nicRxProcessForwardPkt(IN P_ADAPTER_T prAdapter, IN P_SW_RFB_T prSwRfb)
 		prSwRfb->pvPacket = NULL;
 		nicRxReturnRFB(prAdapter, prSwRfb);
 
+		/* Handle if prMsduInfo out of bss index range*/
+		if (prMsduInfo->ucBssIndex > HW_BSSID_NUM) {
+			DBGLOG(QM, INFO,
+			    "Invalid bssidx:%u\n", prMsduInfo->ucBssIndex);
+			if (prMsduInfo->pfTxDoneHandler != NULL)
+				prMsduInfo->pfTxDoneHandler(prAdapter,
+						prMsduInfo,
+						TX_RESULT_DROPPED_IN_DRIVER);
+			nicTxReturnMsduInfo(prAdapter, prMsduInfo);
+			return;
+		}
+
 		/* increase forward frame counter */
 		GLUE_INC_REF_CNT(prTxCtrl->i4PendingFwdFrameCount);
 
@@ -1445,7 +1459,7 @@ VOID nicRxProcessDataPacket(IN P_ADAPTER_T prAdapter, IN OUT P_SW_RFB_T prSwRfb)
 		if ((prRxStatus->u2StatusFlag & RXS_DW2_RX_FRAG_BITMAP) == RXS_DW2_RX_FRAG_VALUE)
 			prSwRfb->fgFragFrame = TRUE;
 
-	} else {
+		} else {
 		fgDrop = TRUE;
 		if (!HAL_RX_STATUS_IS_ICV_ERROR(prRxStatus)
 		    && HAL_RX_STATUS_IS_TKIP_MIC_ERROR(prRxStatus)) {
@@ -1480,6 +1494,32 @@ VOID nicRxProcessDataPacket(IN P_ADAPTER_T prAdapter, IN OUT P_SW_RFB_T prSwRfb)
 			fgDrop = FALSE;	/* Drop after send de-auth  */
 		}
 #endif
+	}
+
+	/* Drop plain text during security connection */
+	if (HAL_RX_STATUS_IS_CIPHER_MISMATCH(prRxStatus)
+		&& (prSwRfb->fgDataFrame == TRUE)) {
+		PUINT_16 pu2EtherType;
+
+		DBGLOG(RSN, INFO, "HAL_RX_STATUS_IS_CIPHER_MISMATCH\n");
+
+		pu2EtherType =
+			(PUINT_16)((PUINT_8)prSwRfb->pvHeader + 2*MAC_ADDR_LEN);
+
+		if (prSwRfb->u2HeaderLen >= ETH_HLEN
+			&& (*pu2EtherType == NTOHS(ETH_P_1X)
+#if CFG_SUPPORT_WAPI
+			|| (*pu2EtherType == NTOHS(ETH_WPI_1X))
+#endif
+		)) {
+			fgDrop = FALSE;
+			DBGLOG(RSN, INFO,
+				"Don't drop eapol or wpi packet\n");
+		} else {
+			fgDrop = TRUE;
+			DBGLOG(RSN, INFO,
+				"Drop plain text during security connection\n");
+		}
 	}
 
 #if 0				/* Check 1x Pkt */

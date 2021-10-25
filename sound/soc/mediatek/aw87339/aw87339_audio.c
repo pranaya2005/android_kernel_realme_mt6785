@@ -343,15 +343,6 @@ unsigned char aw87339_audio_off(void)
 	return 0;
 }
 
-/* wuhui@Multimedia.AudioDriver 2021/01/02,Add for aw87339 probed */
-int aw87339_audio_probe_get(void)
-{
-	if (aw87339_probed == 1) {
-		return 1;
-	}
-	return 0;
-}
-
 /**********************************************************
  * aw87339 firmware cfg update
 **********************************************************/

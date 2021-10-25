@@ -548,7 +548,7 @@ uint32_t nicTxAcquireResource(IN struct ADAPTER *prAdapter,
 			(prTc->au4FreePageCount[ucTC] / u4MaxPageCntPerFrame);
 		prQM->au4QmTcUsedPageCounter[ucTC] += u4PageCount;
 
-		DBGLOG(TX, TEMP,
+		DBGLOG(TX, LOUD,
 		       "Acquire: TC%d AcquirePageCnt[%u] FreeBufferCnt[%u] FreePageCnt[%u]\n",
 		       ucTC, u4PageCount, prTc->au4FreeBufferCount[ucTC],
 		       prTc->au4FreePageCount[ucTC]);
@@ -3414,7 +3414,7 @@ void nicTxProcessTxDoneEvent(IN struct ADAPTER *prAdapter,
 
 		if (prTxDone->ucStatus == 0 &&
 			prMsduInfo->ucBssIndex < MAX_BSSID_NUM)
-			GET_CURRENT_SYSTIME(
+			GET_BOOT_SYSTIME(
 				&prTxCtrl->u4LastTxTime
 				[prMsduInfo->ucBssIndex]);
 	}
@@ -3886,6 +3886,15 @@ void nicTxSetPktRetryLimit(struct MSDU_INFO *prMsduInfo,
 {
 	prMsduInfo->ucRetryLimit = ucRetryLimit;
 	prMsduInfo->u4Option |= MSDU_OPT_MANUAL_RETRY_LIMIT;
+}
+
+void nicTxSetForceRts(IN struct MSDU_INFO *prMsduInfo,
+				int8_t fgForceRts)
+{
+	if (fgForceRts)
+		prMsduInfo->u4Option |= MSDU_OPT_FORCE_RTS;
+	else
+		prMsduInfo->u4Option &= ~MSDU_OPT_FORCE_RTS;
 }
 
 void nicTxSetPktPowerOffset(struct MSDU_INFO *prMsduInfo,

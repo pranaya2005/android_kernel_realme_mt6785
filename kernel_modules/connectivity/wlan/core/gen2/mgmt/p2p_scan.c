@@ -746,7 +746,7 @@ scanP2pProcessBeaconAndProbeResp(IN P_ADAPTER_T prAdapter,
 				/* Only report Probe Response frame to supplicant. */
 				/* Probe response collect much more information. */
 
-				if (fgIsSkipThisBeacon || prBssDesc->eBand == BAND_2G4) {
+				if (fgIsSkipThisBeacon) {
 					DBGLOG(P2P, TRACE, "Skip beacon [" MACSTR "][%s][ch %d]\n",
 							MAC2STR(prWlanBeaconFrame->aucBSSID),
 							prBssDesc->aucSSID,

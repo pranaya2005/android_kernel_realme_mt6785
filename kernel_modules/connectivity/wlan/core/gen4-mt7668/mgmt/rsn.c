@@ -236,9 +236,13 @@ BOOLEAN rsnParseRsnIE(IN P_ADAPTER_T prAdapter, IN P_RSN_INFO_ELEM_T prInfoElem,
 
 		/* Parse the RSN u2Capabilities field. */
 		if (u4RemainRsnIeLen < 2) {
+			/* Sync with wpa_supplicant,
+			* ignore truncated RSN Cap but view as valid RSNE
+			*/
 			DBGLOG(RSN, TRACE,
-			       "Fail to parse RSN IE in RSN capabilities (IE len: %d)\n", prInfoElem->ucLength);
-			return FALSE;
+			       "Ignore truncated RSN capabilities (IE len: %d)\n",
+			       prInfoElem->ucLength);
+			break;
 		}
 
 		WLAN_GET_FIELD_16(cp, &u2Cap);
@@ -255,10 +259,13 @@ BOOLEAN rsnParseRsnIE(IN P_ADAPTER_T prAdapter, IN P_RSN_INFO_ELEM_T prInfoElem,
 		*/
 		/* Parse PMKID count field */
 		if (u4RemainRsnIeLen < 2) {
+			/* Sync with wpa_supplicant,
+			* ignore truncated PMKID count but view as valid RSNE
+			*/
 			DBGLOG(RSN, TRACE,
-				"Fail to parse RSN IE in PMKID (IE len: %d)\n",
-				prInfoElem->ucLength);
-			return FALSE;
+			       "Ignore truncated PMKID count (IE len: %d)\n",
+			       prInfoElem->ucLength);
+			break;
 		}
 
 		WLAN_GET_FIELD_16(cp, &u2DesiredPmkidCnt);
@@ -277,7 +284,7 @@ BOOLEAN rsnParseRsnIE(IN P_ADAPTER_T prAdapter, IN P_RSN_INFO_ELEM_T prInfoElem,
 		i = (uint32_t) u2DesiredPmkidCnt * RSN_PMKID_LEN;
 		if (u4RemainRsnIeLen < (int32_t) i) {
 			DBGLOG(RSN, TRACE,
-				"Fail to parse RSN IE in pairwise cipher suite list (IE len: %d)\n",
+				"Fail to parse RSN IE in PMKID (IE len: %d)\n",
 				prInfoElem->ucLength);
 			return FALSE;
 		}
@@ -851,6 +858,10 @@ BOOLEAN rsnPerformPolicySelection(IN P_ADAPTER_T prAdapter, IN P_BSS_DESC_T prBs
 			== AUTH_MODE_WPA2
 			|| prAdapter->rWifiVar.rConnSettings.eAuthMode
 			== AUTH_MODE_WPA2_PSK
+			|| prAdapter->rWifiVar.rConnSettings.eAuthMode
+			== AUTH_MODE_WPA2_FT_PSK
+			|| prAdapter->rWifiVar.rConnSettings.eAuthMode
+			== AUTH_MODE_WPA2_FT
 #if CFG_SUPPORT_SAE
 			|| prAdapter->rWifiVar.rConnSettings.eAuthMode
 			== AUTH_MODE_WPA2_SAE
@@ -1045,7 +1056,16 @@ BOOLEAN rsnPerformPolicySelection(IN P_ADAPTER_T prAdapter, IN P_BSS_DESC_T prBs
 		       u4PairwiseCipher, u4GroupCipher);
 		return FALSE;
 	}
-
+	if (prAdapter->rWifiVar.rConnSettings.eAuthMode ==
+			AUTH_MODE_WPA2_FT_PSK &&
+			rsnSearchAKMSuite(prAdapter, RSN_AKM_SUITE_FT_PSK, &j))
+		u4AkmSuite = RSN_AKM_SUITE_FT_PSK;
+	else if (prAdapter->rWifiVar.rConnSettings.eAuthMode ==
+			AUTH_MODE_WPA2_FT &&
+			rsnSearchAKMSuite(prAdapter,
+				RSN_AKM_SUITE_FT_802_1X, &j))
+		u4AkmSuite = RSN_AKM_SUITE_FT_802_1X;
+	else
 	/* Select AKM */
 	/* If the driver cannot support any authentication suites advertised in
 	 *  the given BSS, we fail to perform RSNA policy selection.
@@ -1377,7 +1397,7 @@ VOID rsnGenerateRSNIE(IN P_ADAPTER_T prAdapter, IN P_MSDU_INFO_T prMsduInfo)
 	P_BSS_INFO_T prBssInfo;
 #if !CFG_SUPPORT_CFG80211_AUTH
 	UINT_32 u4Entry;
-	P_STA_RECORD_T prStaRec;
+	P_STA_RECORD_T prStaRec = NULL;
 #endif
 #if CFG_SUPPORT_CFG80211_AUTH
 	UINT_32 u4GroupMgmt = 0;
@@ -1415,6 +1435,10 @@ VOID rsnGenerateRSNIE(IN P_ADAPTER_T prAdapter, IN P_MSDU_INFO_T prMsduInfo)
 		    ((prAdapter->rWifiVar.rConnSettings.eAuthMode == AUTH_MODE_WPA2)
 		|| (prAdapter->rWifiVar.rConnSettings.eAuthMode ==
 		AUTH_MODE_WPA2_PSK)
+		|| (prAdapter->rWifiVar.rConnSettings.eAuthMode ==
+			AUTH_MODE_WPA2_FT_PSK)
+		|| (prAdapter->rWifiVar.rConnSettings.eAuthMode ==
+			AUTH_MODE_WPA2_FT)
 #if CFG_SUPPORT_CFG80211_AUTH
 		|| (prAdapter->rWifiVar.rConnSettings.eAuthMode ==
 		AUTH_MODE_WPA2_SAE)
@@ -1423,20 +1447,21 @@ VOID rsnGenerateRSNIE(IN P_ADAPTER_T prAdapter, IN P_MSDU_INFO_T prMsduInfo)
 		/* Construct a RSN IE for association request frame. */
 		RSN_IE(pucBuffer)->ucElemId = ELEM_ID_RSN;
 #if CFG_SUPPORT_CFG80211_AUTH
-		RSN_IE(pucBuffer)->ucLength =
-			prAdapter->prGlueInfo->rWpaInfo.ucRsneLen;
-		if (RSN_IE(pucBuffer)->ucLength < 2) {
-			if ((prBssInfo->eCurrentOPMode ==
+		if (prBssInfo->eNetworkType == NETWORK_TYPE_AIS) {
+			RSN_IE(pucBuffer)->ucLength =
+				prAdapter->prGlueInfo->rWpaInfo.ucRsneLen;
+		} else if ((prBssInfo->eCurrentOPMode ==
 				OP_MODE_ACCESS_POINT) ||
 				(prBssInfo->eNetworkType == NETWORK_TYPE_P2P)) {
-				RSN_IE(pucBuffer)->ucLength =
+			RSN_IE(pucBuffer)->ucLength =
 							ELEM_ID_RSN_LEN_FIXED;
-			} else {
-				DBGLOG(RSN, WARN,
-					"Desired RSN IE from upper is too short (length=%d)\n",
-					RSN_IE(pucBuffer)->ucLength);
-				return;
-			}
+		}
+
+		if (RSN_IE(pucBuffer)->ucLength < 2) {
+			DBGLOG(RSN, WARN,
+				"Desired RSN IE from upper is too short (length=%d)\n",
+				RSN_IE(pucBuffer)->ucLength);
+			return;
 		}
 #else
 		RSN_IE(pucBuffer)->ucLength = ELEM_ID_RSN_LEN_FIXED;
@@ -1449,11 +1474,26 @@ VOID rsnGenerateRSNIE(IN P_ADAPTER_T prAdapter, IN P_MSDU_INFO_T prMsduInfo)
 		WLAN_SET_FIELD_16(&RSN_IE(pucBuffer)->u2PairwiseKeyCipherSuiteCount, 1);
 		WLAN_SET_FIELD_32(cp, GET_BSS_INFO_BY_INDEX(prAdapter, ucBssIndex)->u4RsnSelectedPairwiseCipher);
 		cp = pucBuffer + sizeof(RSN_INFO_ELEM_T);
+#if CFG_SUPPORT_SOFTAP_WPA3
+		if (GET_BSS_INFO_BY_INDEX(prAdapter, ucBssIndex)->u4RsnSelectedAKMSuiteCnt == 2) {
+			WLAN_SET_FIELD_16(cp, 2);
+		} else {
+#endif
 		WLAN_SET_FIELD_16(cp, 1);	/* AKM suite count */
+#if CFG_SUPPORT_SOFTAP_WPA3
+		}
+#endif
 		cp += 2;
 		/* AKM suite */
 		WLAN_SET_FIELD_32(cp, GET_BSS_INFO_BY_INDEX(prAdapter, ucBssIndex)->u4RsnSelectedAKMSuite);
 		cp += 4;
+#if CFG_SUPPORT_SOFTAP_WPA3
+		if (GET_BSS_INFO_BY_INDEX(prAdapter, ucBssIndex)->u4RsnSelectedAKMSuiteCnt == 2) {
+			WLAN_SET_FIELD_32(cp, GET_BSS_INFO_BY_INDEX(prAdapter, ucBssIndex)->u4RsnSelectedAKMSuite2);
+			cp += 4;
+			RSN_IE(pucBuffer)->ucLength = ELEM_ID_RSN_LEN_FIXED + 4;
+		}
+#endif
 #if CFG_SUPPORT_802_11W
 		/* Capabilities */
 		WLAN_SET_FIELD_16(cp, GET_BSS_INFO_BY_INDEX(prAdapter, ucBssIndex)->u2RsnSelectedCapInfo);
@@ -1545,6 +1585,7 @@ VOID rsnGenerateRSNIE(IN P_ADAPTER_T prAdapter, IN P_MSDU_INFO_T prMsduInfo)
 			prStaRec = cnmGetStaRecByIndex(prAdapter, prMsduInfo->ucStaRecIndex);
 
 		if (GET_BSS_INFO_BY_INDEX(prAdapter, ucBssIndex)->eNetworkType == NETWORK_TYPE_AIS
+		    && (prStaRec != NULL)
 		    && rsnSearchPmkidEntry(prAdapter, prStaRec->aucMacAddr, &u4Entry)) {
 #if 0
 			DBGLOG(RSN, TRACE, ("Add Pmk at assoc req\n"));
@@ -1691,12 +1732,20 @@ void rsnParserCheckForRSNCCMPPSK(P_ADAPTER_T prAdapter, P_RSN_INFO_ELEM_T prIe,
 			*pu2StatusCode = STATUS_CODE_INVALID_GROUP_CIPHER;
 			return;
 		}
+#if CFG_SUPPORT_SOFTAP_WPA3
+		if ((rRsnIe.u4AuthKeyMgtSuiteCount != 1)
+		    || ((rRsnIe.au4AuthKeyMgtSuite[0] != RSN_AKM_SUITE_PSK)
+			&& (rRsnIe.au4AuthKeyMgtSuite[0] != RSN_AKM_SUITE_SAE) )) {
+			*pu2StatusCode = STATUS_CODE_INVALID_AKMP;
+			return;
+		}
+#else
 		if ((rRsnIe.u4AuthKeyMgtSuiteCount != 1)
 		    || (rRsnIe.au4AuthKeyMgtSuite[0] != RSN_AKM_SUITE_PSK)) {
 			*pu2StatusCode = STATUS_CODE_INVALID_AKMP;
 			return;
 		}
-
+#endif
 		DBGLOG(RSN, TRACE, "RSN with CCMP-PSK\n");
 		*pu2StatusCode = WLAN_STATUS_SUCCESS;
 
@@ -1716,6 +1765,13 @@ void rsnParserCheckForRSNCCMPPSK(P_ADAPTER_T prAdapter, P_RSN_INFO_ELEM_T prIe,
 
 		prStaRec->rPmfCfg.fgMfpc = (rRsnIe.u2RsnCap & ELEM_WPA_CAP_MFPC) ? 1 : 0;
 		prStaRec->rPmfCfg.fgMfpr = (rRsnIe.u2RsnCap & ELEM_WPA_CAP_MFPR) ? 1 : 0;
+
+#if CFG_SUPPORT_SOFTAP_WPA3
+		prStaRec->rPmfCfg.fgSaeRequireMfp = FALSE;
+		if (rRsnIe.au4AuthKeyMgtSuite[0] == RSN_AKM_SUITE_SAE) {
+			prStaRec->rPmfCfg.fgSaeRequireMfp = TRUE;
+		}
+#endif
 
 		for (i = 0; i < rRsnIe.u4AuthKeyMgtSuiteCount; i++) {
 			if ((rRsnIe.au4AuthKeyMgtSuite[i] == RSN_AKM_SUITE_802_1X_SHA256) ||
@@ -2723,6 +2779,13 @@ UINT_16 rsnPmfCapableValidation(IN P_ADAPTER_T prAdapter, IN P_BSS_INFO_T prBssI
 			DBGLOG(RSN, ERROR, "PMF policy violation for case 7\n");
 			return STATUS_CODE_ROBUST_MGMT_FRAME_POLICY_VIOLATION;
 		}
+
+#if CFG_SUPPORT_SOFTAP_WPA3
+		if (prStaRec->rPmfCfg.fgSaeRequireMfp == TRUE) {
+			DBGLOG(RSN, ERROR, "PMF policy violation sae require pmf\n");
+			return STATUS_CODE_ROBUST_MGMT_FRAME_POLICY_VIOLATION;
+		}
+#endif
 	}
 
 	if ((selfMfpc == TRUE) && (peerMfpc == TRUE)) {
@@ -3111,6 +3174,74 @@ void rsnApSaQueryAction(IN P_ADAPTER_T prAdapter, IN P_SW_RFB_T prSwRfb)
 	}
 
 }
-
 #endif /* CFG_SUPPORT_802_11W */
 
+#if CFG_SUPPORT_OWE
+/*----------------------------------------------------------------------------*/
+/*!
+ *
+ * \brief This routine is called to generate OWE IE for
+ *        associate request frame.
+ *
+ * \param[in]  prAdapter	The Selected BSS description
+ * \param[in]  prMsduInfo	MSDU packet buffer
+ *
+ * \retval N/A
+ *
+ * \note
+ *      Called by: AIS module, Associate request
+ */
+/*----------------------------------------------------------------------------*/
+void rsnGenerateOWEIE(IN P_ADAPTER_T prAdapter,
+		      IN P_MSDU_INFO_T prMsduInfo)
+{
+	UINT_8 *pucBuffer = NULL;
+	P_CONNECTION_SETTINGS_T prConnSettings = NULL;
+	UINT_8 ucLength = 0;
+
+	DBGLOG(RSN, INFO, "rsnGenerateOWEIE\n");
+	prConnSettings = &prAdapter->rWifiVar.rConnSettings;
+
+	if (prConnSettings->rOweInfo.ucLength == 0)
+		return;
+	ucLength = prConnSettings->rOweInfo.ucLength + 2;
+	ASSERT(prMsduInfo);
+
+	pucBuffer = (UINT_8 *) ((unsigned long)
+				 prMsduInfo->prPacket + (unsigned long)
+				 prMsduInfo->u2FrameLength);
+	ASSERT(pucBuffer);
+
+	/* if (eNetworkId != NETWORK_TYPE_AIS_INDEX) */
+	/* return; */
+	kalMemCopy(pucBuffer, &(prAdapter->rWifiVar.rConnSettings.rOweInfo),
+		   ucLength);
+	prMsduInfo->u2FrameLength += IE_SIZE(pucBuffer);
+	DBGLOG_MEM8(RSN, INFO, pucBuffer, IE_SIZE(pucBuffer));
+}
+
+/*----------------------------------------------------------------------------*/
+/*!
+ *
+ * \brief This routine is called to calculate OWE IE length for
+ *        associate request frame.
+ *
+ * \param[in]  prAdapter	Major data structure for driver operation
+ * \param[in]  ucBssIndex	unused for this function
+ * \param[in]  prStaRec		unused for this function
+ *
+ * \retval The append WPA IE length
+ *
+ * \note
+ *      Called by: AIS module, Associate request
+ */
+/*----------------------------------------------------------------------------*/
+uint32_t rsnCalOweIELen(IN P_ADAPTER_T prAdapter,
+	IN UINT_8 ucBssIndex, P_STA_RECORD_T prStaRec)
+{
+	if (prAdapter->rWifiVar.rConnSettings.rOweInfo.ucLength != 0)
+		return prAdapter->rWifiVar.rConnSettings.rOweInfo.ucLength + 2;
+	else
+		return 0;
+}
+#endif

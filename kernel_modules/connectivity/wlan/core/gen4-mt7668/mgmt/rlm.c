@@ -4599,3 +4599,64 @@ rlmClientSupportsHtETxBF(P_STA_RECORD_T prStaRec)
 }
 
 #endif
+
+/*----------------------------------------------------------------------------*/
+/*!
+* \brief
+*
+* \param[in]
+*
+* \return none
+*/
+/*----------------------------------------------------------------------------*/
+#if CFG_SUPPORT_WAC
+UINT_32 rlmCalculateWAC_IELen(IN P_ADAPTER_T prAdapter, IN UINT_8 ucBssIdx,
+				IN P_STA_RECORD_T prStaRec)
+{
+	UINT_32 u4IELen = 0;
+
+	do {
+		ASSERT_BREAK((prAdapter != NULL) && (ucBssIdx < BSS_INFO_NUM));
+
+		if (!prAdapter->rWifiVar.fgEnableWACIE) {
+			DBGLOG(RLM, ERROR, "WAC IE disabled, return len=0.\n");
+			return 0;
+			}
+
+		if (!prAdapter->fgIsP2PRegistered)
+			break;
+
+		/*WAC IE will in Bea Pro Resp Frame softAP*/
+		if (!p2pFuncIsAPMode((IN P_P2P_CONNECTION_SETTINGS_T)
+				prAdapter->rWifiVar.prP2PConnSettings))
+			break;
+
+		u4IELen = prAdapter->rWifiVar.u2WACIELen;
+	} while (FALSE);
+
+	DBGLOG(RLM, ERROR, "WAC IE len=%d.\n");
+	return u4IELen;
+}
+
+VOID rlmGenerateWAC_IE(IN P_ADAPTER_T prAdapter, IN P_MSDU_INFO_T prMsduInfo)
+{
+	PUINT_8 pucIEBuf = (PUINT_8) NULL;
+
+	do {
+		ASSERT_BREAK((prAdapter != NULL) && (prMsduInfo != NULL));
+
+		if (!prAdapter->rWifiVar.fgEnableWACIE) {
+			DBGLOG(RLM, ERROR, "WAC IE disabled, return null.\n");
+			return;
+			}
+
+		DBGLOG(RLM, ERROR, "WACIE:len=%d\n",
+			prAdapter->rWifiVar.u2WACIELen);
+		pucIEBuf = (PUINT_8) ((ULONG) prMsduInfo->prPacket +
+					(ULONG) prMsduInfo->u2FrameLength);
+		kalMemCopy(pucIEBuf, prAdapter->rWifiVar.aucWACIECache,
+				prAdapter->rWifiVar.u2WACIELen);
+		prMsduInfo->u2FrameLength += prAdapter->rWifiVar.u2WACIELen;
+	} while (FALSE);
+}
+#endif

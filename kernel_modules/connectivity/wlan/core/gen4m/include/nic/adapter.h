@@ -894,7 +894,9 @@ struct WIFI_VAR {
 	uint8_t ucTWTResponder;
 	uint8_t ucTWTStaBandBitmap;
 #endif
-
+#if (CFG_TWT_SMART_STA == 1)
+	uint8_t ucTWTSmartSta;
+#endif
 	uint8_t ucTspec;
 	uint8_t ucUapsd;
 	uint8_t ucStaUapsd;
@@ -1640,6 +1642,9 @@ struct ADAPTER {
 
 	/* COEX feature */
 	uint32_t u4FddMode;
+
+	/* host status EMI offset*/
+	uint32_t u4HostStatusEmiOffset;
 
 #if CFG_WOW_SUPPORT
 	struct WOW_CTRL	rWowCtrl;

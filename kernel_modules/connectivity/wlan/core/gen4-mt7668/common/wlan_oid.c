@@ -541,6 +541,9 @@ wlanoidSetBssidListScan(IN P_ADAPTER_T prAdapter,
 		       "Fail in set BSSID list scan! (Adapter not ready). ACPI=D%d, Radio=%d\n",
 		       prAdapter->rAcpiState, prAdapter->fgIsRadioOff);
 		return WLAN_STATUS_ADAPTER_NOT_READY;
+	} else if (prAdapter->fgTestMode) {
+		DBGLOG(OID, WARN, "didn't support Scan in test mode\n");
+		return WLAN_STATUS_FAILURE;
 	}
 
 	ASSERT(pu4SetInfoLen);
@@ -705,6 +708,9 @@ wlanoidSetBssidListScanAdv(IN P_ADAPTER_T prAdapter,
 		       "Fail in set BSSID list scan! (Adapter not ready). ACPI=D%d, Radio=%d\n",
 		       prAdapter->rAcpiState, prAdapter->fgIsRadioOff);
 		return WLAN_STATUS_ADAPTER_NOT_READY;
+	} else if (prAdapter->fgTestMode) {
+		DBGLOG(OID, WARN, "didn't support Scan in test mode\n");
+		return WLAN_STATUS_FAILURE;
 	}
 
 	ASSERT(pu4SetInfoLen);
@@ -1591,6 +1597,8 @@ wlanoidSetAuthMode(IN P_ADAPTER_T prAdapter,
 	case AUTH_MODE_WPA_PSK:
 	case AUTH_MODE_WPA2:
 	case AUTH_MODE_WPA2_PSK:
+	case AUTH_MODE_WPA2_FT:
+	case AUTH_MODE_WPA2_FT_PSK:
 		/* infrastructure mode only */
 		if (prAdapter->rWifiVar.rConnSettings.eOPMode != NET_TYPE_INFRA)
 			return WLAN_STATUS_NOT_ACCEPTED;
@@ -4267,6 +4275,54 @@ wlanoidQueryStatistics(IN P_ADAPTER_T prAdapter,
 				   pvQueryBuffer, u4QueryBufferLen);
 
 }				/* wlanoidQueryStatistics */
+
+WLAN_STATUS
+wlanoidQueryTemperature(IN P_ADAPTER_T prAdapter,
+			  IN PVOID pvQueryBuffer, IN UINT_32 u4QueryBufferLen,
+			  OUT PUINT_32 pu4QueryInfoLen)
+{
+	WLAN_STATUS rResult = WLAN_STATUS_FAILURE;
+	struct EVENT_TEMPERATURE_T temp;
+
+	DEBUGFUNC("wlanoidQuerytemperature");
+
+	if (prAdapter == NULL)
+		return WLAN_STATUS_FAILURE;
+
+	if (prAdapter->fgIsEnableLpdvt)
+		return WLAN_STATUS_NOT_SUPPORTED;
+
+	do {
+		ASSERT(pvQueryBuffer);
+
+		/*1. Sanity test */
+		if (pu4QueryInfoLen == NULL)
+			break;
+
+		if ((u4QueryBufferLen) && (pvQueryBuffer == NULL))
+			break;
+
+		if (u4QueryBufferLen < sizeof(UINT_8)) {
+			*pu4QueryInfoLen = sizeof(UINT_8);
+			rResult = WLAN_STATUS_BUFFER_TOO_SHORT;
+			break;
+		}
+
+		rResult = wlanSendSetQueryCmd(prAdapter,
+			      CMD_ID_GET_TEMPERATURE,
+			      FALSE,
+			      TRUE,
+			      TRUE,
+			      nicCmdEventQueryTemperature,
+			      nicOidCmdTimeoutCommon,
+			      sizeof(temp),
+			      (PUINT_8)&temp,
+			      pvQueryBuffer, u4QueryBufferLen);
+
+	} while (FALSE);
+
+	return rResult;
+}
 
 /*----------------------------------------------------------------------------*/
 /*! \brief  This routine is called to query current media streaming status.
@@ -7695,9 +7751,11 @@ wlanoidSetAcpiDevicePowerState(IN P_ADAPTER_T prAdapter,
 		break;
 	case ParamDeviceStateD1:
 		DBGLOG(REQ, INFO, "Set Power State: D1\n");
+		/* FALLTHRU */
 		/* no break here */
 	case ParamDeviceStateD2:
 		DBGLOG(REQ, INFO, "Set Power State: D2\n");
+		/* FALLTHRU */
 		/* no break here */
 	case ParamDeviceStateD3:
 		DBGLOG(REQ, INFO, "Set Power State: D3\n");
@@ -10492,6 +10550,75 @@ wlanoidSetCountryCode(IN P_ADAPTER_T prAdapter,
 	return WLAN_STATUS_SUCCESS;
 }
 
+WLAN_STATUS
+wlanoidSet5gEnable(IN P_ADAPTER_T prAdapter,
+			IN PVOID pvSetBuffer,
+			IN UINT_32 u4SetBufferLen,
+			OUT PUINT_32 pu4SetInfoLen)
+{
+	UINT_32 enable;
+	UINT_8 ucBssIndex;
+	P_BSS_INFO_T prAisBssInfo = NULL;
+	P_AIS_FSM_INFO_T prAisFsmInfo = NULL;
+	P_CONNECTION_SETTINGS_T prConnSettings = NULL;
+
+	ASSERT(prAdapter);
+	ASSERT(pvSetBuffer);
+
+	*pu4SetInfoLen = sizeof(UINT_32);
+
+	if (u4SetBufferLen < sizeof(UINT_32))
+		return WLAN_STATUS_INVALID_LENGTH;
+
+	enable = *((PUINT_32)pvSetBuffer);
+	DBGLOG(INIT, INFO, "set 5G enable %d.\n", enable);
+
+	ucBssIndex = wlanGetAisBssIndex(prAdapter);
+	prAisBssInfo = prAdapter->prAisBssInfo;
+	prAisFsmInfo = &(prAdapter->rWifiVar.rAisFsmInfo);
+
+	/* if driver has been set enable or disable */
+	/* the same set value directly do nothing */
+	if (enable == 1 && prAdapter->fg5gDisable != FALSE) {
+		prAdapter->aePreferBand[ucBssIndex] = BAND_NULL;
+		prAdapter->fg5gDisable = FALSE;
+	} else if (enable == 0 && prAdapter->fg5gDisable != TRUE) {
+		prAdapter->aePreferBand[ucBssIndex] = BAND_2G4;
+		prAdapter->fg5gDisable = TRUE;
+
+		if (prAisBssInfo->eBand == BAND_5G) {
+			DBGLOG(INIT, INFO,
+				"Adapt disconnect when disable 5G\n");
+			aisFsmStateAbort(prAdapter,
+					DISCONNECT_REASON_CODE_RADIO_LOST,
+					FALSE);
+			/* clear scan result */
+			prAdapter->rWlanInfo.u4ScanResultNum = 0;
+			prAdapter->rWlanInfo.u4ScanIEBufferUsage = 0;
+
+			prConnSettings = &(prAdapter->rWifiVar.rConnSettings);
+			prConnSettings->fgIsConnReqIssued = FALSE;
+		} else {
+			if ((prAisFsmInfo->eCurrentState == AIS_STATE_SCAN) ||
+					(prAisFsmInfo->eCurrentState ==
+						AIS_STATE_ONLINE_SCAN) ||
+					(prAisFsmInfo->eCurrentState ==
+						AIS_STATE_LOOKING_FOR)) {
+				DBGLOG(INIT, INFO, "Abort scan\n");
+				aisFsmStateAbort_SCAN(prAdapter);
+			}
+			wlanClearScanningResult(prAdapter);
+		}
+	} else {
+		DBGLOG(INIT, STATE,
+			"device is already 5G %s, set value is %s\n",
+			prAdapter->fg5gDisable ? "disable" : "enable",
+			enable ? "enable" : "disable");
+	}
+
+	return WLAN_STATUS_SUCCESS;
+}
+
 #if 0
 WLAN_STATUS
 wlanoidSetNoaParam(IN P_ADAPTER_T prAdapter,
@@ -12267,6 +12394,57 @@ wlanoidNotifyFwSuspend(
 					NULL,
 					0);
 }
+
+WLAN_STATUS
+wlanoidPacketKeepAlive(IN P_ADAPTER_T prAdapter,
+		IN PVOID pvSetBuffer,
+		IN UINT_32 u4SetBufferLen,
+		OUT PUINT_32 pu4SetInfoLen) {
+	WLAN_STATUS rStatus = WLAN_STATUS_SUCCESS;
+	struct PARAM_PACKET_KEEPALIVE_T *prPacket;
+
+	DEBUGFUNC("wlanoidPacketKeepAlive");
+	ASSERT(prAdapter);
+	ASSERT(pu4SetInfoLen);
+	if (u4SetBufferLen)
+		ASSERT(pvSetBuffer);
+
+	*pu4SetInfoLen = sizeof(struct PARAM_PACKET_KEEPALIVE_T);
+
+	/* Check for query buffer length */
+	if (u4SetBufferLen < *pu4SetInfoLen) {
+		DBGLOG(OID, WARN, "Too short length %u\n", u4SetBufferLen);
+		return WLAN_STATUS_BUFFER_TOO_SHORT;
+	}
+
+	prPacket = (struct PARAM_PACKET_KEEPALIVE_T *)
+		kalMemAlloc(sizeof(struct PARAM_PACKET_KEEPALIVE_T),
+				VIR_MEM_TYPE);
+	if (!prPacket) {
+		DBGLOG(OID, ERROR,
+		       "Can not alloc memory for struct PARAM_PACKET_KEEPALIVE_T\n");
+		return -ENOMEM;
+	}
+	kalMemCopy(prPacket, pvSetBuffer,
+		sizeof(struct PARAM_PACKET_KEEPALIVE_T));
+
+	DBGLOG(OID, INFO, "enable=%d, index=%d\r\n",
+		prPacket->enable, prPacket->index);
+
+	rStatus = wlanSendSetQueryCmd(prAdapter,
+				CMD_ID_WFC_KEEP_ALIVE,
+				TRUE,
+				FALSE,
+				g_fgIsOid,
+				nicCmdEventSetCommon,
+				nicOidCmdTimeoutCommon,
+				sizeof(struct PARAM_PACKET_KEEPALIVE_T),
+				(uint8_t *)prPacket, NULL, 0);
+	kalMemFree(prPacket, VIR_MEM_TYPE,
+		sizeof(struct PARAM_PACKET_KEEPALIVE_T));
+	return rStatus;
+}
+
 #if CFG_SUPPORT_DBDC
 WLAN_STATUS
 wlanoidSetDbdcEnable(
@@ -12669,3 +12847,22 @@ wlanoidConfigRoaming(IN P_ADAPTER_T prAdapter,
 
 	return WLAN_STATUS_SUCCESS;
 }
+
+WLAN_STATUS
+wlanoidAbortScan(IN P_ADAPTER_T prAdapter,
+		 IN PVOID pvQueryBuffer, IN UINT_32 u4QueryBufferLen,
+		 OUT PUINT_32 pu4QueryInfoLen) {
+
+	P_AIS_FSM_INFO_T prAisFsmInfo = (P_AIS_FSM_INFO_T) NULL;
+
+	ASSERT(prAdapter);
+
+	prAisFsmInfo = &(prAdapter->rWifiVar.rAisFsmInfo);
+	if (prAisFsmInfo->eCurrentState == AIS_STATE_SCAN ||
+	    prAisFsmInfo->eCurrentState == AIS_STATE_ONLINE_SCAN) {
+		DBGLOG(OID, INFO,  "wlanoidAbortScan\n");
+		aisFsmStateAbort_SCAN(prAdapter);
+	}
+	return WLAN_STATUS_SUCCESS;
+}
+

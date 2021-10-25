@@ -26,10 +26,6 @@
 #include "sia81xx_tuning_if.h"
 #include "sia81xx_socket.h"
 
-#ifndef SO_RCVTIMEO
-#define SO_RCVTIMEO SO_RCVTIMEO_NEW
-#endif
-
 #define SOCK_PORT_NUM		(5678)
 #define RECV_WATI_TIME_MS	(10)
 #define MAX_CAL_MAP_NUM		(16)

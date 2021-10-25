@@ -249,6 +249,7 @@ s32 goodix_send_cmd(void *chip_data, u8 cmd, u8 data)
             buf_read_back = 0;
             touch_i2c_write_block(chip_info->client, 0x4100, 1, &buf_read_back);
             chip_info->send_cmd_err_count ++;
+            tp_healthinfo_report(chip_info->monitor_data_v2, HEALTH_REPORT, "SENT_CMD_ERR");
         }
         usleep_range(10000, 11000);
     }
@@ -293,14 +294,14 @@ static void getSpecialCornerPoint(uint8_t *buf, int n, struct Coordinate *point)
 {
     int x, y, i;
 
-    point[0].x = (buf[0] & 0xFF) | (buf[1] & 0x0F) << 8;
-    point[0].y = (buf[2] & 0xFF) | (buf[3] & 0x0F) << 8;
+    point[0].x = (buf[0] & 0xFF) | (buf[1] & 0xFF) << 8;
+    point[0].y = (buf[2] & 0xFF) | (buf[3] & 0xFF) << 8;
     point[1] = point[0];
     point[2] = point[0];
     point[3] = point[0];
     for (i = 0; i < n; i++) {
-        x = (buf[0 + 4 * i] & 0xFF) | (buf[1 + 4 * i] & 0x0F) << 8;
-        y = (buf[2 + 4 * i] & 0xFF) | (buf[3 + 4 * i] & 0x0F) << 8;
+        x = (buf[0 + 4 * i] & 0xFF) | (buf[1 + 4 * i] & 0xFF) << 8;
+        y = (buf[2 + 4 * i] & 0xFF) | (buf[3 + 4 * i] & 0xFF) << 8;
         if (point[3].x < x) {   //xmax
             point[3].x = x;
             point[3].y = y;
@@ -332,12 +333,12 @@ static int clockWise(uint8_t *buf, int n)
     for (i = 0; i < n; i++) {
         j = (i + 1) % n;
         k = (i + 2) % n;
-        p[0].x = (buf[0 + 4 * i] & 0xFF) | (buf[1 + 4 * i] & 0x0F) << 8;
-        p[0].y = (buf[2 + 4 * i] & 0xFF) | (buf[3 + 4 * i] & 0x0F) << 8;
-        p[1].x = (buf[0 + 4 * j] & 0xFF) | (buf[1 + 4 * j] & 0x0F) << 8;
-        p[1].y = (buf[2 + 4 * j] & 0xFF) | (buf[3 + 4 * j] & 0x0F) << 8;
-        p[2].x = (buf[0 + 4 * k] & 0xFF) | (buf[1 + 4 * k] & 0x0F) << 8;
-        p[2].y = (buf[2 + 4 * k] & 0xFF) | (buf[3 + 4 * k] & 0x0F) << 8;
+        p[0].x = (buf[0 + 4 * i] & 0xFF) | (buf[1 + 4 * i] & 0xFF) << 8;
+        p[0].y = (buf[2 + 4 * i] & 0xFF) | (buf[3 + 4 * i] & 0xFF) << 8;
+        p[1].x = (buf[0 + 4 * j] & 0xFF) | (buf[1 + 4 * j] & 0xFF) << 8;
+        p[1].y = (buf[2 + 4 * j] & 0xFF) | (buf[3 + 4 * j] & 0xFF) << 8;
+        p[2].x = (buf[0 + 4 * k] & 0xFF) | (buf[1 + 4 * k] & 0xFF) << 8;
+        p[2].y = (buf[2 + 4 * k] & 0xFF) | (buf[3 + 4 * k] & 0xFF) << 8;
         if ((p[0].x == p[1].x) && (p[1].x == p[1].y))
             continue;
         z = (p[1].x - p[0].x) * (p[2].y - p[1].y);
@@ -1972,17 +1973,20 @@ static fw_update_state goodix_fw_update(void *chip_data, const struct firmware *
     int r;
     int ret;
     struct chip_data_gt9886 *chip_info = (struct chip_data_gt9886 *)chip_data;
+    struct monitor_data_v2 *monitor_data = chip_info->monitor_data_v2;
     struct fw_update_ctrl *fwu_ctrl = NULL;
     struct firmware fw_firmware;
 
     fwu_ctrl = kzalloc(sizeof(struct fw_update_ctrl), GFP_KERNEL);
     if (!fwu_ctrl) {
+        tp_healthinfo_report(monitor_data, HEALTH_FW_UPDATE, "FWU_CTRL_KZL_failed");
         TPD_INFO("Failed to alloc memory for fwu_ctrl");
         return -ENOMEM;
     }
 
     r = gtx8_get_cfg_parms(chip_data, cfg_fw_firmware);
     if(r < 0) {
+        tp_healthinfo_report(monitor_data, HEALTH_FW_UPDATE, "GET_CFG_failed");
         TPD_INFO("%s Failed get cfg from firmware\n", __func__);
         //return -ENOMEM;
     } else {
@@ -1991,6 +1995,7 @@ static fw_update_state goodix_fw_update(void *chip_data, const struct firmware *
 
     r = gtx8_get_fw_parms(chip_data, cfg_fw_firmware, &fw_firmware);
     if(r < 0) {
+        tp_healthinfo_report(monitor_data, HEALTH_FW_UPDATE, "GET_FW_failed");
         TPD_INFO("%s Failed get ic fw from firmware\n", __func__);
         goto err_parse_fw;
     } else {
@@ -2007,6 +2012,7 @@ static fw_update_state goodix_fw_update(void *chip_data, const struct firmware *
 
     r = goodix_parse_firmware(&fwu_ctrl->fw_data);
     if (r < 0) {
+        tp_healthinfo_report(monitor_data, HEALTH_FW_UPDATE, "PARSE_FW_failed");
         fwu_ctrl->status = UPSTA_ABORT;
         goto err_parse_fw;
     }
@@ -2031,6 +2037,7 @@ start_update:
         TPD_INFO("Bus error, retry prepare ISP:%d", FW_UPDATE_RETRY - retry0);
         goto start_update;
     } else if (r < 0) {
+        tp_healthinfo_report(monitor_data, HEALTH_FW_UPDATE, "PPR_ISP_failed");
         TPD_INFO("Failed to prepare ISP, exit update:%d", r);
         fwu_ctrl->status = UPSTA_FAILED;
         goto err_fw_prepare;
@@ -2046,6 +2053,7 @@ start_update:
         TPD_INFO("Bus error, retry firmware update:%d", FW_UPDATE_RETRY - retry1);
         goto start_update;
     } else if (r < 0) {
+        tp_healthinfo_report(monitor_data, HEALTH_FW_UPDATE, "FLSH_FW_failed");
         TPD_INFO("Fatal error, exit update:%d", r);
         fwu_ctrl->status = UPSTA_FAILED;
         goto err_fw_flash;
@@ -2061,6 +2069,7 @@ err_parse_fw:
 
     ret = goodix_send_config(chip_info, chip_info->normal_cfg.data, chip_info->normal_cfg.length);
     if(ret < 0) {
+        tp_healthinfo_report(monitor_data, HEALTH_FW_UPDATE, "SENT_NML_CFG_failed");
         TPD_INFO("%s: send normal cfg failed:%d\n", __func__, ret);
     } else {
         TPD_INFO("%s: send normal cfg success\n", __func__);
@@ -2287,9 +2296,9 @@ static int goodix_get_gesture_info(void *chip_data, struct gesture_info *gesture
     switch (gesture_id) {   //judge gesture type //Jarvis: need check with FW.protocol 3
     case FP_DOWN_DETECT:
         gesture->gesture_type = FingerprintDown;
-        chip_info->fp_coor_report.fp_x_coor = (doze_buf[4] & 0xFF) | (doze_buf[5] & 0x0F) << 8;
-        chip_info->fp_coor_report.fp_y_coor = (doze_buf[6] & 0xFF) | (doze_buf[7] & 0x0F) << 8;
-        chip_info->fp_coor_report.fp_area = (doze_buf[12] & 0xFF) | (doze_buf[13] & 0x0F) << 8;
+        chip_info->fp_coor_report.fp_x_coor = (doze_buf[4] & 0xFF) | (doze_buf[5] & 0xFF) << 8;
+        chip_info->fp_coor_report.fp_y_coor = (doze_buf[6] & 0xFF) | (doze_buf[7] & 0xFF) << 8;
+        chip_info->fp_coor_report.fp_area = (doze_buf[12] & 0xFF) | (doze_buf[13] & 0xFF) << 8;
 
         gesture->Point_start.x = chip_info->fp_coor_report.fp_x_coor;
         gesture->Point_start.y = chip_info->fp_coor_report.fp_y_coor;
@@ -2300,9 +2309,9 @@ static int goodix_get_gesture_info(void *chip_data, struct gesture_info *gesture
 
     case FP_UP_DETECT:
         gesture->gesture_type = FingerprintUp;
-        chip_info->fp_coor_report.fp_x_coor = (doze_buf[4] & 0xFF) | (doze_buf[5] & 0x0F) << 8;
-        chip_info->fp_coor_report.fp_y_coor = (doze_buf[6] & 0xFF) | (doze_buf[7] & 0x0F) << 8;
-        chip_info->fp_coor_report.fp_area = (doze_buf[12] & 0xFF) | (doze_buf[13] & 0x0F) << 8;
+        chip_info->fp_coor_report.fp_x_coor = (doze_buf[4] & 0xFF) | (doze_buf[5] & 0xFF) << 8;
+        chip_info->fp_coor_report.fp_y_coor = (doze_buf[6] & 0xFF) | (doze_buf[7] & 0xFF) << 8;
+        chip_info->fp_coor_report.fp_area = (doze_buf[12] & 0xFF) | (doze_buf[13] & 0xFF) << 8;
 
         gesture->Point_start.x = chip_info->fp_coor_report.fp_x_coor;
         gesture->Point_start.y = chip_info->fp_coor_report.fp_y_coor;
@@ -2325,104 +2334,104 @@ static int goodix_get_gesture_info(void *chip_data, struct gesture_info *gesture
     switch (gesture_id) {   //judge gesture type //Jarvis: need check with FW.protocol 3
     case RIGHT_SLIDE_DETECT :
         gesture->gesture_type  = Left2RightSwip;
-        gesture->Point_start.x = (point_data[0] & 0xFF) | (point_data[1] & 0x0F) << 8;
-        gesture->Point_start.y = (point_data[2] & 0xFF) | (point_data[3] & 0x0F) << 8;
-        gesture->Point_end.x   = (point_data[4] & 0xFF) | (point_data[5] & 0x0F) << 8;
-        gesture->Point_end.y   = (point_data[6] & 0xFF) | (point_data[7] & 0x0F) << 8;
+        gesture->Point_start.x = (point_data[0] & 0xFF) | (point_data[1] & 0xFF) << 8;
+        gesture->Point_start.y = (point_data[2] & 0xFF) | (point_data[3] & 0xFF) << 8;
+        gesture->Point_end.x   = (point_data[4] & 0xFF) | (point_data[5] & 0xFF) << 8;
+        gesture->Point_end.y   = (point_data[6] & 0xFF) | (point_data[7] & 0xFF) << 8;
         break;
 
     case LEFT_SLIDE_DETECT :
         gesture->gesture_type  = Right2LeftSwip;
-        gesture->Point_start.x = (point_data[0] & 0xFF) | (point_data[1] & 0x0F) << 8;
-        gesture->Point_start.y = (point_data[2] & 0xFF) | (point_data[3] & 0x0F) << 8;
-        gesture->Point_end.x   = (point_data[4] & 0xFF) | (point_data[5] & 0x0F) << 8;
-        gesture->Point_end.y   = (point_data[6] & 0xFF) | (point_data[7] & 0x0F) << 8;
+        gesture->Point_start.x = (point_data[0] & 0xFF) | (point_data[1] & 0xFF) << 8;
+        gesture->Point_start.y = (point_data[2] & 0xFF) | (point_data[3] & 0xFF) << 8;
+        gesture->Point_end.x   = (point_data[4] & 0xFF) | (point_data[5] & 0xFF) << 8;
+        gesture->Point_end.y   = (point_data[6] & 0xFF) | (point_data[7] & 0xFF) << 8;
         break;
 
     case DOWN_SLIDE_DETECT  :
         gesture->gesture_type  = Up2DownSwip;
-        gesture->Point_start.x = (point_data[0] & 0xFF) | (point_data[1] & 0x0F) << 8;
-        gesture->Point_start.y = (point_data[2] & 0xFF) | (point_data[3] & 0x0F) << 8;
-        gesture->Point_end.x   = (point_data[4] & 0xFF) | (point_data[5] & 0x0F) << 8;
-        gesture->Point_end.y   = (point_data[6] & 0xFF) | (point_data[7] & 0x0F) << 8;
+        gesture->Point_start.x = (point_data[0] & 0xFF) | (point_data[1] & 0xFF) << 8;
+        gesture->Point_start.y = (point_data[2] & 0xFF) | (point_data[3] & 0xFF) << 8;
+        gesture->Point_end.x   = (point_data[4] & 0xFF) | (point_data[5] & 0xFF) << 8;
+        gesture->Point_end.y   = (point_data[6] & 0xFF) | (point_data[7] & 0xFF) << 8;
         break;
 
     case UP_SLIDE_DETECT :
         gesture->gesture_type  = Down2UpSwip;
-        gesture->Point_start.x = (point_data[0] & 0xFF) | (point_data[1] & 0x0F) << 8;
-        gesture->Point_start.y = (point_data[2] & 0xFF) | (point_data[3] & 0x0F) << 8;
-        gesture->Point_end.x   = (point_data[4] & 0xFF) | (point_data[5] & 0x0F) << 8;
-        gesture->Point_end.y   = (point_data[6] & 0xFF) | (point_data[7] & 0x0F) << 8;
+        gesture->Point_start.x = (point_data[0] & 0xFF) | (point_data[1] & 0xFF) << 8;
+        gesture->Point_start.y = (point_data[2] & 0xFF) | (point_data[3] & 0xFF) << 8;
+        gesture->Point_end.x   = (point_data[4] & 0xFF) | (point_data[5] & 0xFF) << 8;
+        gesture->Point_end.y   = (point_data[6] & 0xFF) | (point_data[7] & 0xFF) << 8;
         break;
 
     case DTAP_DETECT:
         gesture->gesture_type  = DouTap;
-        gesture->Point_start.x = (point_data[0] & 0xFF) | (point_data[1] & 0x0F) << 8;
-        gesture->Point_start.y = (point_data[2] & 0xFF) | (point_data[3] & 0x0F) << 8;
-        gesture->Point_end.x   = (point_data[0] & 0xFF) | (point_data[1] & 0x0F) << 8;
-        gesture->Point_end.y   = (point_data[2] & 0xFF) | (point_data[3] & 0x0F) << 8;
+        gesture->Point_start.x = (point_data[0] & 0xFF) | (point_data[1] & 0xFF) << 8;
+        gesture->Point_start.y = (point_data[2] & 0xFF) | (point_data[3] & 0xFF) << 8;
+        gesture->Point_end.x   = (point_data[0] & 0xFF) | (point_data[1] & 0xFF) << 8;
+        gesture->Point_end.y   = (point_data[2] & 0xFF) | (point_data[3] & 0xFF) << 8;
         break;
 
     case STAP_DETECT:
         gesture->gesture_type  = SingleTap;
-        gesture->Point_start.x = (point_data[0] & 0xFF) | (point_data[1] & 0x0F) << 8;
-        gesture->Point_start.y = (point_data[2] & 0xFF) | (point_data[3] & 0x0F) << 8;
-        gesture->Point_end.x   = (point_data[0] & 0xFF) | (point_data[1] & 0x0F) << 8;
-        gesture->Point_end.y   = (point_data[2] & 0xFF) | (point_data[3] & 0x0F) << 8;
+        gesture->Point_start.x = (point_data[0] & 0xFF) | (point_data[1] & 0xFF) << 8;
+        gesture->Point_start.y = (point_data[2] & 0xFF) | (point_data[3] & 0xFF) << 8;
+        gesture->Point_end.x   = (point_data[0] & 0xFF) | (point_data[1] & 0xFF) << 8;
+        gesture->Point_end.y   = (point_data[2] & 0xFF) | (point_data[3] & 0xFF) << 8;
         break;
 
     case UP_VEE_DETECT :
         gesture->gesture_type  = UpVee;
-        gesture->Point_start.x = (point_data[0] & 0xFF) | (point_data[1] & 0x0F) << 8;
-        gesture->Point_start.y = (point_data[2] & 0xFF) | (point_data[3] & 0x0F) << 8;
-        gesture->Point_end.x   = (point_data[8] & 0xFF) | (point_data[9] & 0x0F) << 8;
-        gesture->Point_end.y   = (point_data[10] & 0xFF) | (point_data[11] & 0x0F) << 8;
-        gesture->Point_1st.x   = (point_data[4] & 0xFF) | (point_data[5] & 0x0F) << 8;
-        gesture->Point_1st.y   = (point_data[6] & 0xFF) | (point_data[7] & 0x0F) << 8;
+        gesture->Point_start.x = (point_data[0] & 0xFF) | (point_data[1] & 0xFF) << 8;
+        gesture->Point_start.y = (point_data[2] & 0xFF) | (point_data[3] & 0xFF) << 8;
+        gesture->Point_end.x   = (point_data[8] & 0xFF) | (point_data[9] & 0xFF) << 8;
+        gesture->Point_end.y   = (point_data[10] & 0xFF) | (point_data[11] & 0xFF) << 8;
+        gesture->Point_1st.x   = (point_data[4] & 0xFF) | (point_data[5] & 0xFF) << 8;
+        gesture->Point_1st.y   = (point_data[6] & 0xFF) | (point_data[7] & 0xFF) << 8;
         break;
 
     case DOWN_VEE_DETECT :
         gesture->gesture_type  = DownVee;
         getSpecialCornerPoint(&point_data[0], point_num, &limitPoint[0]);
-        gesture->Point_start.x = (point_data[0] & 0xFF) | (point_data[1] & 0x0F) << 8;
-        gesture->Point_start.y = (point_data[2] & 0xFF) | (point_data[3] & 0x0F) << 8;
-        gesture->Point_end.x   = (point_data[8] & 0xFF) | (point_data[9] & 0x0F) << 8;
-        gesture->Point_end.y   = (point_data[10] & 0xFF) | (point_data[11] & 0x0F) << 8;
-        gesture->Point_1st.x   = (point_data[4] & 0xFF) | (point_data[5] & 0x0F) << 8;
-        gesture->Point_1st.y   = (point_data[6] & 0xFF) | (point_data[7] & 0x0F) << 8;
+        gesture->Point_start.x = (point_data[0] & 0xFF) | (point_data[1] & 0xFF) << 8;
+        gesture->Point_start.y = (point_data[2] & 0xFF) | (point_data[3] & 0xFF) << 8;
+        gesture->Point_end.x   = (point_data[8] & 0xFF) | (point_data[9] & 0xFF) << 8;
+        gesture->Point_end.y   = (point_data[10] & 0xFF) | (point_data[11] & 0xFF) << 8;
+        gesture->Point_1st.x   = (point_data[4] & 0xFF) | (point_data[5] & 0xFF) << 8;
+        gesture->Point_1st.y   = (point_data[6] & 0xFF) | (point_data[7] & 0xFF) << 8;
         break;
 
     case LEFT_VEE_DETECT:
         gesture->gesture_type = LeftVee;
         getSpecialCornerPoint(&point_data[0], point_num, &limitPoint[0]);
-        gesture->Point_start.x = (point_data[0] & 0xFF) | (point_data[1] & 0x0F) << 8;
-        gesture->Point_start.y = (point_data[2] & 0xFF) | (point_data[3] & 0x0F) << 8;
-        gesture->Point_end.x   = (point_data[8] & 0xFF) | (point_data[9] & 0x0F) << 8;
-        gesture->Point_end.y   = (point_data[10] & 0xFF) | (point_data[11] & 0x0F) << 8;
-        gesture->Point_1st.x   = (point_data[4] & 0xFF) | (point_data[5] & 0x0F) << 8;
-        gesture->Point_1st.y   = (point_data[6] & 0xFF) | (point_data[7] & 0x0F) << 8;
+        gesture->Point_start.x = (point_data[0] & 0xFF) | (point_data[1] & 0xFF) << 8;
+        gesture->Point_start.y = (point_data[2] & 0xFF) | (point_data[3] & 0xFF) << 8;
+        gesture->Point_end.x   = (point_data[8] & 0xFF) | (point_data[9] & 0xFF) << 8;
+        gesture->Point_end.y   = (point_data[10] & 0xFF) | (point_data[11] & 0xFF) << 8;
+        gesture->Point_1st.x   = (point_data[4] & 0xFF) | (point_data[5] & 0xFF) << 8;
+        gesture->Point_1st.y   = (point_data[6] & 0xFF) | (point_data[7] & 0xFF) << 8;
         break;
 
     case RIGHT_VEE_DETECT ://this gesture is C
     case RIGHT_VEE_DETECT2://this gesture is <
         gesture->gesture_type  = RightVee;
         getSpecialCornerPoint(&point_data[0], point_num, &limitPoint[0]);
-        gesture->Point_start.x = (point_data[0] & 0xFF) | (point_data[1] & 0x0F) << 8;
-        gesture->Point_start.y = (point_data[2] & 0xFF) | (point_data[3] & 0x0F) << 8;
-        gesture->Point_end.x   = (point_data[8] & 0xFF) | (point_data[9] & 0x0F) << 8;
-        gesture->Point_end.y   = (point_data[10] & 0xFF) | (point_data[11] & 0x0F) << 8;
-        gesture->Point_1st.x   = (point_data[4] & 0xFF) | (point_data[5] & 0x0F) << 8;
-        gesture->Point_1st.y   = (point_data[6] & 0xFF) | (point_data[7] & 0x0F) << 8;
+        gesture->Point_start.x = (point_data[0] & 0xFF) | (point_data[1] & 0xFF) << 8;
+        gesture->Point_start.y = (point_data[2] & 0xFF) | (point_data[3] & 0xFF) << 8;
+        gesture->Point_end.x   = (point_data[8] & 0xFF) | (point_data[9] & 0xFF) << 8;
+        gesture->Point_end.y   = (point_data[10] & 0xFF) | (point_data[11] & 0xFF) << 8;
+        gesture->Point_1st.x   = (point_data[4] & 0xFF) | (point_data[5] & 0xFF) << 8;
+        gesture->Point_1st.y   = (point_data[6] & 0xFF) | (point_data[7] & 0xFF) << 8;
         break;
 
     case CIRCLE_DETECT  :
         gesture->gesture_type = Circle;
         gesture->clockwise = clockWise(&point_data[0], point_num);
         getSpecialCornerPoint(&point_data[0], point_num, &limitPoint[0]);
-        gesture->Point_start.x = (point_data[0] & 0xFF) | (point_data[1] & 0x0F) << 8;
-        gesture->Point_start.y = (point_data[2] & 0xFF) | (point_data[3] & 0x0F) << 8;
-        gesture->Point_end.x   = (point_data[20] & 0xFF) | (point_data[21] & 0x0F) << 8;
-        gesture->Point_end.y   = (point_data[22] & 0xFF) | (point_data[23] & 0x0F) << 8;
+        gesture->Point_start.x = (point_data[0] & 0xFF) | (point_data[1] & 0xFF) << 8;
+        gesture->Point_start.y = (point_data[2] & 0xFF) | (point_data[3] & 0xFF) << 8;
+        gesture->Point_end.x   = (point_data[20] & 0xFF) | (point_data[21] & 0xFF) << 8;
+        gesture->Point_end.y   = (point_data[22] & 0xFF) | (point_data[23] & 0xFF) << 8;
         gesture->Point_1st = limitPoint[0]; //ymin
         gesture->Point_2nd = limitPoint[1]; //xmin
         gesture->Point_3rd = limitPoint[2]; //ymax
@@ -2431,42 +2440,42 @@ static int goodix_get_gesture_info(void *chip_data, struct gesture_info *gesture
 
     case DOUSWIP_DETECT  :
         gesture->gesture_type  = DouSwip;
-        gesture->Point_start.x = (point_data[0] & 0xFF) | (point_data[1] & 0x0F) << 8;
-        gesture->Point_start.y = (point_data[2] & 0xFF) | (point_data[3] & 0x0F) << 8;
-        gesture->Point_end.x   = (point_data[4] & 0xFF) | (point_data[5] & 0x0F) << 8;
-        gesture->Point_end.y   = (point_data[6] & 0xFF) | (point_data[7] & 0x0F) << 8;
-        gesture->Point_1st.x   = (point_data[8] & 0xFF) | (point_data[9] & 0x0F) << 8;
-        gesture->Point_1st.y   = (point_data[10] & 0xFF) | (point_data[11] & 0x0F) << 8;
-        gesture->Point_2nd.x   = (point_data[12] & 0xFF) | (point_data[13] & 0x0F) << 8;
-        gesture->Point_2nd.y   = (point_data[14] & 0xFF) | (point_data[15] & 0x0F) << 8;
+        gesture->Point_start.x = (point_data[0] & 0xFF) | (point_data[1] & 0xFF) << 8;
+        gesture->Point_start.y = (point_data[2] & 0xFF) | (point_data[3] & 0xFF) << 8;
+        gesture->Point_end.x   = (point_data[4] & 0xFF) | (point_data[5] & 0xFF) << 8;
+        gesture->Point_end.y   = (point_data[6] & 0xFF) | (point_data[7] & 0xFF) << 8;
+        gesture->Point_1st.x   = (point_data[8] & 0xFF) | (point_data[9] & 0xFF) << 8;
+        gesture->Point_1st.y   = (point_data[10] & 0xFF) | (point_data[11] & 0xFF) << 8;
+        gesture->Point_2nd.x   = (point_data[12] & 0xFF) | (point_data[13] & 0xFF) << 8;
+        gesture->Point_2nd.y   = (point_data[14] & 0xFF) | (point_data[15] & 0xFF) << 8;
         break;
 
     case M_DETECT  :
         gesture->gesture_type  = Mgestrue;
-        gesture->Point_start.x = (point_data[0] & 0xFF) | (point_data[1] & 0x0F) << 8;
-        gesture->Point_start.y = (point_data[2] & 0xFF) | (point_data[3] & 0x0F) << 8;
-        gesture->Point_end.x = (point_data[16] & 0xFF) | (point_data[17] & 0x0F) << 8;
-        gesture->Point_end.y = (point_data[18] & 0xFF) | (point_data[19] & 0x0F) << 8;
-        gesture->Point_1st.x = (point_data[4] & 0xFF) | (point_data[5] & 0x0F) << 8;
-        gesture->Point_1st.y = (point_data[6] & 0xFF) | (point_data[7] & 0x0F) << 8;
-        gesture->Point_2nd.x = (point_data[8] & 0xFF) | (point_data[9] & 0x0F) << 8;
-        gesture->Point_2nd.y = (point_data[10] & 0xFF) | (point_data[11] & 0x0F) << 8;
-        gesture->Point_3rd.x = (point_data[12] & 0xFF) | (point_data[13] & 0x0F) << 8;
-        gesture->Point_3rd.y = (point_data[14] & 0xFF) | (point_data[15] & 0x0F) << 8;
+        gesture->Point_start.x = (point_data[0] & 0xFF) | (point_data[1] & 0xFF) << 8;
+        gesture->Point_start.y = (point_data[2] & 0xFF) | (point_data[3] & 0xFF) << 8;
+        gesture->Point_end.x = (point_data[16] & 0xFF) | (point_data[17] & 0xFF) << 8;
+        gesture->Point_end.y = (point_data[18] & 0xFF) | (point_data[19] & 0xFF) << 8;
+        gesture->Point_1st.x = (point_data[4] & 0xFF) | (point_data[5] & 0xFF) << 8;
+        gesture->Point_1st.y = (point_data[6] & 0xFF) | (point_data[7] & 0xFF) << 8;
+        gesture->Point_2nd.x = (point_data[8] & 0xFF) | (point_data[9] & 0xFF) << 8;
+        gesture->Point_2nd.y = (point_data[10] & 0xFF) | (point_data[11] & 0xFF) << 8;
+        gesture->Point_3rd.x = (point_data[12] & 0xFF) | (point_data[13] & 0xFF) << 8;
+        gesture->Point_3rd.y = (point_data[14] & 0xFF) | (point_data[15] & 0xFF) << 8;
         break;
 
     case W_DETECT :
         gesture->gesture_type  = Wgestrue;
-        gesture->Point_start.x = (point_data[0] & 0xFF) | (point_data[1] & 0x0F) << 8;
-        gesture->Point_start.y = (point_data[2] & 0xFF) | (point_data[3] & 0x0F) << 8;
-        gesture->Point_end.x = (point_data[16] & 0xFF) | (point_data[17] & 0x0F) << 8;
-        gesture->Point_end.y = (point_data[18] & 0xFF) | (point_data[19] & 0x0F) << 8;
-        gesture->Point_1st.x = (point_data[4] & 0xFF) | (point_data[5] & 0x0F) << 8;
-        gesture->Point_1st.y = (point_data[6] & 0xFF) | (point_data[7] & 0x0F) << 8;
-        gesture->Point_2nd.x = (point_data[8] & 0xFF) | (point_data[9] & 0x0F) << 8;
-        gesture->Point_2nd.y = (point_data[10] & 0xFF) | (point_data[11] & 0x0F) << 8;
-        gesture->Point_3rd.x = (point_data[12] & 0xFF) | (point_data[13] & 0x0F) << 8;
-        gesture->Point_3rd.y = (point_data[14] & 0xFF) | (point_data[15] & 0x0F) << 8;
+        gesture->Point_start.x = (point_data[0] & 0xFF) | (point_data[1] & 0xFF) << 8;
+        gesture->Point_start.y = (point_data[2] & 0xFF) | (point_data[3] & 0xFF) << 8;
+        gesture->Point_end.x = (point_data[16] & 0xFF) | (point_data[17] & 0xFF) << 8;
+        gesture->Point_end.y = (point_data[18] & 0xFF) | (point_data[19] & 0xFF) << 8;
+        gesture->Point_1st.x = (point_data[4] & 0xFF) | (point_data[5] & 0xFF) << 8;
+        gesture->Point_1st.y = (point_data[6] & 0xFF) | (point_data[7] & 0xFF) << 8;
+        gesture->Point_2nd.x = (point_data[8] & 0xFF) | (point_data[9] & 0xFF) << 8;
+        gesture->Point_2nd.y = (point_data[10] & 0xFF) | (point_data[11] & 0xFF) << 8;
+        gesture->Point_3rd.x = (point_data[12] & 0xFF) | (point_data[13] & 0xFF) << 8;
+        gesture->Point_3rd.y = (point_data[14] & 0xFF) | (point_data[15] & 0xFF) << 8;
         break;
 
     default:
@@ -2592,6 +2601,110 @@ END_HEALTH:
     return;
 }
 
+static void goodix_get_health_info_v2(void *chip_data, struct monitor_data_v2 *mon_data_v2)
+{
+    struct chip_data_gt9886 *chip_info = (struct chip_data_gt9886 *)chip_data;
+    struct goodix_health_info *health_info;
+    struct goodix_health_info *health_local = &chip_info->health_info;
+    //u8 log[20];
+    struct goodix_health_info health_data;
+    int ret = 0;
+    u8 clear_flag = 0;
+
+    ret = touch_i2c_read_block(chip_info->client, chip_info->reg_info.GTP_REG_DEBUG, sizeof(struct goodix_health_info), (unsigned char *)&health_data);
+    if (ret < 0) {
+        TPD_INFO("%s: read debug log data i2c faild\n", __func__);
+        goto END_HEALTH;
+    }
+    TPD_DEBUG("GTP_REG_DEBUG:%*ph\n", sizeof(struct goodix_health_info), &health_data);
+
+    //health_info = (struct goodix_health_info *)log;
+    health_info = &health_data;
+
+    if (health_info->shield_water) {
+        tp_healthinfo_report(mon_data_v2, HEALTH_REPORT, HEALTH_REPORT_SHIELD_WATER);
+        if (tp_debug != 0) {
+            TPD_INFO("%s: enter water mode\n", __func__);
+        }
+    }
+    if (health_info->baseline_refresh) {
+        switch(health_info->baseline_refresh_type) {
+            case BASE_DC_COMPONENT:
+                tp_healthinfo_report(mon_data_v2, HEALTH_REPORT, "BASE_DC_COMPONENT");
+                break;
+            case BASE_SYS_UPDATE:
+                tp_healthinfo_report(mon_data_v2, HEALTH_REPORT, "BASE_SYS_UPDATE");
+                break;
+            case BASE_NEGATIVE_FINGER:
+                tp_healthinfo_report(mon_data_v2, HEALTH_REPORT, "BASE_NEGATIVE_FINGER");
+                break;
+            case BASE_MONITOR_UPDATE:
+                tp_healthinfo_report(mon_data_v2, HEALTH_REPORT, "BASE_MONITOR_UPDATE");
+                break;
+            case BASE_CONSISTENCE:
+                tp_healthinfo_report(mon_data_v2, HEALTH_REPORT, "BASE_CONSISTENCE");
+                break;
+            case BASE_FORCE_UPDATE:
+                tp_healthinfo_report(mon_data_v2, HEALTH_REPORT, HEALTH_REPORT_BASELINE_ERR);
+                break;
+            default:
+                break;
+        }
+        if (tp_debug != 0) {
+            TPD_INFO("%s: baseline refresh type: %d \n", __func__, health_info->baseline_refresh_type);
+        }
+    }
+    if (health_info->shield_freq != 0) {
+        tp_healthinfo_report(mon_data_v2, HEALTH_REPORT, HEALTH_REPORT_NOISE);
+        if (tp_debug != 0) {
+            TPD_INFO("%s: freq before: %d HZ, freq after: %d HZ\n", __func__, health_info->freq_before, health_info->freq_after);
+        }
+    }
+    if (health_info->fw_rst != 0) {
+        switch(health_info->reset_reason) {
+            case RST_MAIN_REG:
+                tp_healthinfo_report(mon_data_v2, HEALTH_REPORT, HEALTH_REPORT_RST_HARD);
+                break;
+            case RST_OVERLAY_ERROR:
+                tp_healthinfo_report(mon_data_v2, HEALTH_REPORT, HEALTH_REPORT_RST_INST);
+                break;
+            case RST_LOAD_OVERLAY:
+                tp_healthinfo_report(mon_data_v2, HEALTH_REPORT, HEALTH_REPORT_RST_PARITY);
+                break;
+            case RST_CHECK_PID:
+                tp_healthinfo_report(mon_data_v2, HEALTH_REPORT, HEALTH_REPORT_RST_WD);
+                break;
+            case RST_CHECK_RAM:
+                tp_healthinfo_report(mon_data_v2, HEALTH_REPORT, HEALTH_REPORT_RST_OTHER);
+                break;
+            case RST_CHECK_RAWDATA:
+                tp_healthinfo_report(mon_data_v2, HEALTH_REPORT, HEALTH_REPORT_RST_OTHER);
+                break;
+            default:
+                break;
+        }
+
+        if (tp_debug != 0) {
+            TPD_INFO("%s: fw reset type : %d\n", __func__, health_info->reset_reason);
+        }
+    }
+    if (health_info->shield_palm != 0) {
+        tp_healthinfo_report(mon_data_v2, HEALTH_REPORT, HEALTH_REPORT_SHIELD_PALM);
+        TPD_DEBUG("%s: enter palm mode\n", __func__);
+    }
+    memcpy(health_local, health_info, sizeof(struct goodix_health_info));
+
+    ret = touch_i2c_write_block(chip_info->client, chip_info->reg_info.GTP_REG_DEBUG, 1, &clear_flag);
+    if (ret < 0) {
+        TPD_INFO("%s: clear debug log data i2c faild\n", __func__);
+    }
+
+END_HEALTH:
+    ret = goodix_clear_irq(chip_info);  //clear int
+
+    return;
+}
+
 static int goodix_mode_switch(void *chip_data, work_mode mode, bool flag)
 {
     int ret = -1;
@@ -2679,6 +2792,7 @@ static int goodix_esd_handle(void *chip_data) //Jarvis:have not finished
         enable_irq(chip_info->client->irq);
         TPD_INFO("%s: Goodix esd reset over.", __func__);
         chip_info->esd_err_count ++;
+        tp_healthinfo_report(chip_info->monitor_data_v2, HEALTH_REPORT, HEALTH_REPORT_SHIELD_ESD);
         return -1;
     } else {
         esd_buf = 0xAA;
@@ -2807,6 +2921,7 @@ static struct oppo_touchpanel_operations goodix_ops = {
     .get_touch_direction         = goodix_get_touch_direction,
     .specific_resume_operate     = goodix_specific_resume_operate,
     .health_report               = goodix_get_health_info,
+    .health_report_v2            = goodix_get_health_info_v2,
     .enable_single_tap           = goodix_enable_single_tap,
 };
 /********* End of implementation of oppo_touchpanel_operations callbacks**********************/
@@ -5391,6 +5506,7 @@ static void goodix_auto_test(struct seq_file *s, void *chip_data, struct goodix_
     gtx8_put_test_result(gts_test);
 
 exit_finish:
+    tp_healthinfo_report(chip_info->monitor_data_v2, HEALTH_TEST_AUTO, &gts_test->error_count);
     seq_printf(s, "imageid = %lld, deviceid = %lld\n", p_testdata->TP_FW, gts_test->device_tp_fw);
     TPD_INFO("imageid= %lld, deviceid= %lld\n", p_testdata->TP_FW, gts_test->device_tp_fw);
     seq_printf(s, "%d error(s). %s\n", gts_test->error_count, gts_test->error_count ? "" : "All test passed.");
@@ -5457,6 +5573,7 @@ static int goodix_tp_probe(struct i2c_client *client, const struct i2c_device_id
 {
     struct chip_data_gt9886 *chip_info = NULL;
     struct touchpanel_data *ts = NULL;
+    u64 time_counter = 0;
     int ret = -1;
 
     TPD_INFO("%s is called\n", __func__);
@@ -5465,6 +5582,7 @@ static int goodix_tp_probe(struct i2c_client *client, const struct i2c_device_id
         TPD_INFO("TP driver have success loaded %d times, exit\n", tp_register_times);
         return -1;
     }
+    reset_healthinfo_time_counter(&time_counter);
 
     /* 1. Alloc chip_info */
     chip_info = kzalloc(sizeof(struct chip_data_gt9886), GFP_KERNEL);
@@ -5514,6 +5632,7 @@ static int goodix_tp_probe(struct i2c_client *client, const struct i2c_device_id
     }
     chip_info->kernel_grip_support = ts->kernel_grip_support;
     chip_info->detail_debug_info_support = of_property_read_bool(ts->dev->of_node, "goodix_detail_debug_info_support");
+    chip_info->monitor_data_v2 = &ts->monitor_data_v2;
 
     /* 8. create goodix tool node */
     gtx8_init_tool_node(ts);
@@ -5523,6 +5642,9 @@ static int goodix_tp_probe(struct i2c_client *client, const struct i2c_device_id
 
     goodix_esd_check_enable(chip_info, true);
 
+    if (ts->health_monitor_v2_support) {
+        tp_healthinfo_report(&ts->monitor_data_v2, HEALTH_PROBE, &time_counter);
+    }
     TPD_INFO("%s, probe normal end\n", __func__);
     return 0;
 

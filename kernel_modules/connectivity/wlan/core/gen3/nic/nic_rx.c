@@ -1411,6 +1411,36 @@ VOID nicRxProcessDataPacket(IN P_ADAPTER_T prAdapter, IN OUT P_SW_RFB_T prSwRfb)
 		}
 	}
 
+	/* Drop plain text during security connection */
+	if (!fgDrop && HAL_RX_STATUS_IS_CIPHER_MISMATCH(prRxStatus)
+		&& (prSwRfb->fgDataFrame == TRUE)) {
+		PUINT_8 pucData = NULL;
+		UINT_16 u2EtherType = 0;
+
+		DBGLOG(RSN, INFO,
+			"HAL_RX_STATUS_IS_CIPHER_MISMATCH\n");
+
+		nicRxFillRFB(prAdapter, prSwRfb);
+		pucData = (PUINT_8)prSwRfb->pvHeader;
+		if ((prSwRfb->u2PacketLen > ETHER_HEADER_LEN) && pucData) {
+			u2EtherType = (pucData[ETH_TYPE_LEN_OFFSET] << 8)
+					| (pucData[ETH_TYPE_LEN_OFFSET + 1]);
+			if ((u2EtherType == ETH_P_1X)
+#if CFG_SUPPORT_WAPI
+				|| (u2EtherType == ETH_WPI_1X)
+#endif
+			) {
+				fgDrop = FALSE;
+				DBGLOG(RSN, INFO,
+					"Don't drop eapol or wpi packet\n");
+			} else {
+				fgDrop = TRUE;
+				DBGLOG(RSN, INFO,
+					"Drop plain text during security connection\n");
+			}
+		}
+	}
+
 #if CFG_TCP_IP_CHKSUM_OFFLOAD || CFG_TCP_IP_CHKSUM_OFFLOAD_NDIS_60
 	if (fgDrop == FALSE) {
 		UINT_32 u4TcpUdpIpCksStatus;
@@ -3950,26 +3980,18 @@ WLAN_STATUS nicRxProcessActionFrame(IN P_ADAPTER_T prAdapter, IN P_SW_RFB_T prSw
 
 	case CATEGORY_PUBLIC_ACTION:
 	{
-		UINT_8 ucProcessed = 0;
 
-		if (IS_BMCAST_MAC_ADDR(prActFrame->aucDestAddr) ||
-		    EQUAL_MAC_ADDR(prActFrame->aucDestAddr, prAdapter->rWifiVar.aucMacAddress)) {
-			aisFuncValidateRxActionFrame(prAdapter, prSwRfb);
-			ucProcessed = 1;
-		}
+		aisFuncValidateRxActionFrame(prAdapter, prSwRfb);
+		ucProcessed = 1;
 #if CFG_ENABLE_WIFI_DIRECT
-		if (prAdapter->fgIsP2PRegistered &&
-		    (IS_BMCAST_MAC_ADDR(prActFrame->aucDestAddr) ||
-		     EQUAL_MAC_ADDR(prActFrame->aucDestAddr, prAdapter->rWifiVar.aucDeviceAddress))) {
+		if (prAdapter->fgIsP2PRegistered) {
 			rlmProcessPublicAction(prAdapter, prSwRfb);
 
 			p2pFuncValidateRxActionFrame(prAdapter, prSwRfb);
-			ucProcessed |= 2;
 		}
 #endif
-		if (!ucProcessed)
-			DBGLOG(RX, WARN, "Not processed public action frame, DA:%pM, Our: %pM\n",
-			       prActFrame->aucDestAddr, prAdapter->rWifiVar.aucMacAddress);
+		DBGLOG(RX, INFO, "Processed public action frame, DA:%pM, Our: %pM\n",
+			prActFrame->aucDestAddr, prAdapter->rWifiVar.aucMacAddress);
 		break;
 	}
 	case CATEGORY_HT_ACTION:

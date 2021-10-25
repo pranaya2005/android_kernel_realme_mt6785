@@ -662,12 +662,7 @@ static int mtk8250_probe(struct platform_device *pdev)
 
 #ifdef OPLUS_FEATURE_CHG_BASIC
 /* lizhijie@PSW.BSP.CHG.Basic, 2020/04/16, lzj Add for chargerid */
-#ifndef CONFIG_OPLUS_CHARGER_MTK6769
-/*Liu.Yong@BSP.CHG.Basic, 2020/12/25, Modify for 206AF power off uart issue.*/
 	if (boot_with_console() == false) {
-#else
-	if((boot_with_console() == false) || (strstr(saved_command_line, "mtk_printk_ctrl.disable_uart_gpio=1"))) {
-#endif /*CONFIG_OPLUS_CHARGER_MTK6769*/
 		serial_pinctrl = devm_pinctrl_get(&pdev->dev);
 		if (IS_ERR_OR_NULL(serial_pinctrl)) {
 			pr_err("%s: No serial_pinctrl config specified!\n", __func__);
@@ -688,14 +683,11 @@ static int mtk8250_probe(struct platform_device *pdev)
 				pinctrl_select_state(serial_pinctrl, tx_pinctrl_state_diable);
 			}
 		}
-#ifndef CONFIG_OPLUS_CHARGER_MTK6769
-/*Liu.Yong@BSP.CHG.Basic, 2020/12/25, Modify for 206AF power off uart issue.*/
 		if (!IS_ERR_OR_NULL(rx_pinctrl_state_diable)
 				|| !IS_ERR_OR_NULL(tx_pinctrl_state_diable)) {
 			pr_err("%s: boot with console false\n", __func__);
 			return -ENODEV;
 		}
-#endif
 	}
 #endif /*OPLUS_FEATURE_CHG_BASIC*/
 	spin_lock_init(&uart.port.lock);

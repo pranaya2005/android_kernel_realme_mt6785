@@ -1542,13 +1542,6 @@ long mtk_disp_mgr_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 		{
 			return _ioctl_get_display_caps(arg);
 		}
-	#ifdef OPLUS_BUG_STABILITY
-	/* Zhenzhen.Wu@ODM_WT.Tuning.Display.LCD, 2019/12/7, add for multi-lcms */
-	case DISP_IOCTL_GET_LCM_MODULE_INFO:
-		{
-			return _ioctl_get_lcm_module_info(arg);
-		}
-	#endif /* VENDOR_EDIT */
 	case DISP_IOCTL_GET_VSYNC_FPS:
 		{
 			return _ioctl_get_vsync(arg);
@@ -1627,6 +1620,13 @@ long mtk_disp_mgr_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 #endif
 		break;
 	}
+#ifdef OPLUS_BUG_STABILITY
+/* Shangwen.Zeng@WT.Tuning.Display, 2021/02/01, add for multi-lcms */
+	case DISP_IOCTL_GET_LCM_MODULE_INFO:
+	{
+		return _ioctl_get_lcm_module_info(arg);
+	}
+#endif
 	default:
 		DISPWARN("[session]ioctl not supported, 0x%08x\n",
 				cmd);

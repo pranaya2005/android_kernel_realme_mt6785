@@ -1320,9 +1320,10 @@ static INT32 consys_hw_vcn18_ctrl(MTK_WCN_BOOL enable)
 				regmap_update_bits(g_regmap,
 					PMIC_RG_LDO_VCN18_LP_ADDR,
 					PMIC_RG_LDO_VCN18_LP_MASK << PMIC_RG_LDO_VCN18_LP_SHIFT,
-					1 << PMIC_RG_LDO_VCN18_LP_SHIFT);
+					0 << PMIC_RG_LDO_VCN18_LP_SHIFT);
 			}
 #endif
+
 			/*Set VCN18_SW_EN as 1 and set votage as 1V8*/
 			if (reg_VCN18) {
 				regulator_set_voltage(reg_VCN18, 1800000, 1800000);
@@ -1339,7 +1340,7 @@ static INT32 consys_hw_vcn18_ctrl(MTK_WCN_BOOL enable)
 			KERNEL_pmic_ldo_vcn13_lp(SRCLKEN6, 0, 1, HW_OFF);
 			KERNEL_pmic_ldo_vcn13_lp(SRCLKEN5, 0, 1, HW_OFF);
 			KERNEL_pmic_ldo_vcn13_lp(SRCLKEN4, 0, 1, HW_OFF);
-			/* SW_LP =1 */
+			/* SW_LP =0 */
 			KERNEL_pmic_set_register_value(PMIC_RG_LDO_VCN13_LP, 0);
 #else
 			if (g_regmap) {
@@ -1354,7 +1355,7 @@ static INT32 consys_hw_vcn18_ctrl(MTK_WCN_BOOL enable)
 				regmap_update_bits(g_regmap,
 					PMIC_RG_LDO_VCN13_LP_ADDR,
 					PMIC_RG_LDO_VCN13_LP_MASK << PMIC_RG_LDO_VCN13_LP_SHIFT,
-					1 << PMIC_RG_LDO_VCN13_LP_SHIFT);
+					0 << PMIC_RG_LDO_VCN13_LP_SHIFT);
 			}
 #endif
 			if (reg_VCN13) {
@@ -1443,39 +1444,73 @@ static INT32 consys_hw_vcn28_ctrl(UINT32 enable)
 	return 0;
 }
 
+static INT32 consys_hw_set_vcn13_vcn18_lp_mode(INT8 lp_mode)
+{
+	if (consys_is_rc_mode_enable()) {
+		if (lp_mode == 1)
+			udelay(50);
+#if (!COMMON_KERNEL_PMIC_SUPPORT)
+		KERNEL_pmic_set_register_value(PMIC_RG_LDO_VCN18_LP, lp_mode);
+		KERNEL_pmic_set_register_value(PMIC_RG_LDO_VCN13_LP, lp_mode);
+#else
+		if (g_regmap) {
+			regmap_update_bits(g_regmap,
+				PMIC_RG_LDO_VCN18_LP_ADDR,
+				PMIC_RG_LDO_VCN18_LP_MASK << PMIC_RG_LDO_VCN18_LP_SHIFT,
+				lp_mode << PMIC_RG_LDO_VCN18_LP_SHIFT);
+			regmap_update_bits(g_regmap,
+				PMIC_RG_LDO_VCN13_LP_ADDR,
+				PMIC_RG_LDO_VCN13_LP_MASK << PMIC_RG_LDO_VCN13_LP_SHIFT,
+				lp_mode << PMIC_RG_LDO_VCN13_LP_SHIFT);
+		}
+#endif
+		if (lp_mode == 0)
+			udelay(50);
+	}
+	return 0;
+}
+
 static INT32 consys_hw_bt_vcn33_ctrl(UINT32 enable)
 {
 	if (enable) {
 #if CONSYS_PMIC_CTRL_ENABLE
+		/* Switch to ON mode to avoid OC */
+		consys_hw_set_vcn13_vcn18_lp_mode(0);
 #if (!COMMON_KERNEL_PMIC_SUPPORT)
-		if (consys_is_rc_mode_enable()) {
-			KERNEL_pmic_set_register_value(PMIC_RG_LDO_VCN18_LP, 0);
-			KERNEL_pmic_set_register_value(PMIC_RG_LDO_VCN13_LP, 0);
-			udelay(50);
-		}
 		/* Set VS2 to 1.4625V */
 		KERNEL_pmic_set_register_value(PMIC_RG_BUCK_VS2_VOSEL, 0x35);
-
 		/* request VS2 to 1.4625V by VS2 VOTER (use bit 4) */
 		KERNEL_pmic_set_register_value(PMIC_RG_BUCK_VS2_VOTER_EN_SET, 0x10);
-
 		/* Set VS2 sleep voltage to 1.375V */
-		KERNEL_pmic_set_register_value(PMIC_RG_BUCK_VS2_VOSEL_SLEEP, 0x2E);
-
-		/* Set VCN13 to 1.37 */
+		KERNEL_pmic_set_register_value(PMIC_RG_BUCK_VS2_VOSEL_SLEEP, 0x2e);
+		/* Set VCN13 to 1.37V */
 		KERNEL_pmic_set_register_value(PMIC_RG_VCN13_VOCAL, 0x7);
 #else
 		if (g_regmap) {
+			/* Set VS2 to 1.4625V */
+			regmap_update_bits(g_regmap,
+				PMIC_RG_BUCK_VS2_VOSEL_ADDR,
+				PMIC_RG_BUCK_VS2_VOSEL_MASK << PMIC_RG_BUCK_VS2_VOSEL_SHIFT,
+				0x35 << PMIC_RG_BUCK_VS2_VOSEL_SHIFT);
+			/* request VS2 to 1.4625V by VS2 VOTER (use bit 4) */
 			regmap_update_bits(g_regmap,
 				PMIC_RG_BUCK_VS2_VOTER_EN_SET_ADDR,
 				PMIC_RG_BUCK_VS2_VOTER_EN_SET_MASK << PMIC_RG_BUCK_VS2_VOTER_EN_SET_SHIFT,
 				0x10 << PMIC_RG_BUCK_VS2_VOTER_EN_SET_SHIFT);
+			/* Set VS2 sleep voltage to 1.375V */
+			regmap_update_bits(g_regmap,
+				PMIC_RG_BUCK_VS2_VOSEL_SLEEP_ADDR,
+				PMIC_RG_BUCK_VS2_VOSEL_SLEEP_MASK << PMIC_RG_BUCK_VS2_VOSEL_SLEEP_SHIFT,
+				0x2e << PMIC_RG_BUCK_VS2_VOSEL_SLEEP_SHIFT);
+			/* Set VCN13 to 1.37V */
 			regmap_update_bits(g_regmap,
 				PMIC_RG_VCN13_VOCAL_ADDR,
 				PMIC_RG_VCN13_VOCAL_MASK << PMIC_RG_VCN13_VOCAL_SHIFT,
-				0x2 << PMIC_RG_VCN13_VOCAL_SHIFT);
+				0x7 << PMIC_RG_VCN13_VOCAL_SHIFT);
 		}
 #endif
+		consys_hw_set_vcn13_vcn18_lp_mode(1);
+
 		if (consys_is_rc_mode_enable()) {
 			WMT_PLAT_PR_INFO("Turn on reg_VCN33_1_BT in RC mode\n");
 #if (!COMMON_KERNEL_PMIC_SUPPORT)
@@ -1532,8 +1567,8 @@ static INT32 consys_hw_bt_vcn33_ctrl(UINT32 enable)
 		WMT_PLAT_PR_DBG("WMT do BT PMIC on\n");
 	} else {
 		/*do BT PMIC off */
-		/*switch BT PALDO control from HW mode to SW mode:0x416[5]-->0x0 */
 #if CONSYS_PMIC_CTRL_ENABLE
+		consys_hw_set_vcn13_vcn18_lp_mode(0);
 #if (!COMMON_KERNEL_PMIC_SUPPORT)
 
 		if (consys_is_rc_mode_enable()) {
@@ -1545,22 +1580,29 @@ static INT32 consys_hw_bt_vcn33_ctrl(UINT32 enable)
 		KERNEL_pmic_set_register_value(PMIC_RG_VCN13_VOCAL, 0);
 		/* clear bit 4 of VS2 VOTER then VS2 can restore to 1.35V */
 		KERNEL_pmic_set_register_value(PMIC_RG_BUCK_VS2_VOTER_EN_CLR, 0x10);
-
-		/* Restore VS2 sleep voltage to 1.35V */
-		KERNEL_pmic_set_register_value(PMIC_RG_BUCK_VS2_VOSEL_SLEEP, 0x2C);
-
+		/* restore VS2 sleep voltage to 1.35V */
+		KERNEL_pmic_set_register_value(PMIC_RG_BUCK_VS2_VOSEL_SLEEP, 0x2c);
 #else
 		if (g_regmap) {
+			/* restore VCN13 to 1.3V */
 			regmap_update_bits(g_regmap,
 				PMIC_RG_VCN13_VOCAL_ADDR,
 				PMIC_RG_VCN13_VOCAL_MASK << PMIC_RG_VCN13_VOCAL_SHIFT,
 				0 << PMIC_RG_VCN13_VOCAL_SHIFT);
+			/* clear bit 4 of VS2 VOTER then VS2 can restore to 1.35V */
 			regmap_update_bits(g_regmap,
 				PMIC_RG_BUCK_VS2_VOTER_EN_CLR_ADDR,
 				PMIC_RG_BUCK_VS2_VOTER_EN_CLR_MASK << PMIC_RG_BUCK_VS2_VOTER_EN_CLR_SHIFT,
 				0x10 << PMIC_RG_BUCK_VS2_VOTER_EN_CLR_SHIFT);
+			/* restore VS2 sleep voltage to 1.35V */
+			regmap_update_bits(g_regmap,
+				PMIC_RG_BUCK_VS2_VOSEL_SLEEP_ADDR,
+				PMIC_RG_BUCK_VS2_VOSEL_SLEEP_MASK << PMIC_RG_BUCK_VS2_VOSEL_SLEEP_SHIFT,
+				0x2c << PMIC_RG_BUCK_VS2_VOSEL_SLEEP_SHIFT);
 		}
 #endif
+		consys_hw_set_vcn13_vcn18_lp_mode(1);
+
 		if (consys_is_rc_mode_enable()) {
 			udelay(50);
 			KERNEL_pmic_set_register_value(PMIC_RG_LDO_VCN18_LP, 1);
@@ -1723,10 +1765,7 @@ static INT32 consys_hw_wifi_vcn33_ctrl(UINT32 enable)
 
 static INT32 consys_hw_vcn_ctrl_after_idle(VOID)
 {
-	if (consys_is_rc_mode_enable()) {
-		KERNEL_pmic_set_register_value(PMIC_RG_LDO_VCN18_LP, 1);
-		KERNEL_pmic_set_register_value(PMIC_RG_LDO_VCN13_LP, 1);
-	}
+	consys_hw_set_vcn13_vcn18_lp_mode(1);
 	return 0;
 }
 

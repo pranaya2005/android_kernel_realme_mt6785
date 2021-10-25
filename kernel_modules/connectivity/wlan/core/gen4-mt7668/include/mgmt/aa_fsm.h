@@ -205,6 +205,7 @@ saaSendDisconnectMsgHandler(IN P_ADAPTER_T prAdapter, IN P_STA_RECORD_T prStaRec
 
 #if CFG_SUPPORT_CFG80211_AUTH
 VOID saaSendAuthAssoc(IN P_ADAPTER_T prAdapter, IN P_STA_RECORD_T prStaRec);
+void saaSendAuthSeq3(IN P_ADAPTER_T prAdapter, IN P_STA_RECORD_T prStaRec);
 #endif
 
 /*----------------------------------------------------------------------------*/

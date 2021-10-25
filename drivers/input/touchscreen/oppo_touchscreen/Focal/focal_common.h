@@ -88,6 +88,13 @@ enum {
     TYPE_SCAP_CB_WATERPROOF_DATA                = 0x06,
     TYPE_PANEL_DIFFER_DATA                      = 0x07,
     TYPE_SCAP_RAW_WATERPROOF_DATA               = 0x08,
+    TYPE_SHORT_DATA                             = 0x09,
+    TYPE_OPEN_DATA                              = 0x0A,
+    TYPE_CB_DATA                                = 0x0B,
+
+    TYPE_BLACK_CB_DATA                          = 0x10,
+    TYPE_BLACK_RAW_DATA                         = 0x11,
+    TYPE_BLACK_NOISE_DATA                       = 0x12,
 
     TYPE_FACTORY_NOISE_DATA                     = 0x15,            /*limit from panel factory*/
     TYPE_FACTORY_RAW_DATA                       = 0x16,
@@ -126,6 +133,7 @@ int fts_create_proc(struct touchpanel_data *ts, struct fts_proc_operations *syna
 
 
 
+int fts_create_proc_new(struct touchpanel_data *ts, struct fts_proc_operations *proc_ops);
 
 /*********PART3:Struct Area**********************/
 struct focal_debug_func
@@ -134,12 +142,15 @@ struct focal_debug_func
     bool (*get_esd_check_flag)(void *chip_data);
     void (*reset)(void *chip_data, int msecond);
     int  (*get_fw_version)(void *chip_data);
-    int  (*dump_reg_sate)(void *chip_data, char *buf);
+    int  (*dump_reg_sate)(void *chip_data, char *buf, int len);
     void (*set_grip_handle)  (void *chip_data, int para_num, char *buf);
+    void (*prc_enable)(void *chip_data, bool enable);
+    bool (*get_prc_flag)(void *chip_data);
 };
 
 /*********PART4:function declare*****************/
 int focal_create_sysfs(struct i2c_client * client);
+int focal_create_sysfs_new(struct touchpanel_data *ts);
 int focal_create_apk_debug_channel(struct touchpanel_data *ts);
 void ft_limit_read_std(struct seq_file *s, struct touchpanel_data *ts);
 

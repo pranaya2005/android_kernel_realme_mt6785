@@ -153,6 +153,7 @@ extern long DW9714AF_Ioctl(struct file *a_pstFile, unsigned int a_u4Command,
 extern int DW9714AF_Release(struct inode *a_pstInode, struct file *a_pstFile);
 extern int DW9714AF_GetFileName(unsigned char *pFileName);
 
+#ifdef CONFIG_MTK_LENS_DW9718TAF_SUPPORT
 #define DW9718TAF_SetI2Cclient DW9718TAF_SetI2Cclient_Main
 #define DW9718TAF_Ioctl DW9718TAF_Ioctl_Main
 #define DW9718TAF_Release DW9718TAF_Release_Main
@@ -163,6 +164,18 @@ extern long DW9718TAF_Ioctl(struct file *a_pstFile, unsigned int a_u4Command,
 			   unsigned long a_u4Param);
 extern int DW9718TAF_Release(struct inode *a_pstInode, struct file *a_pstFile);
 extern int DW9718TAF_GetFileName(unsigned char *pFileName);
+
+#define DW9718TAF_EVENC_S5KJN103_SetI2Cclient DW9718TAF_EVENC_S5KJN103_SetI2Cclient_Main
+#define DW9718TAF_EVENC_S5KJN103_Ioctl DW9718TAF_EVENC_S5KJN103_Ioctl_Main
+#define DW9718TAF_EVENC_S5KJN103_Release DW9718TAF_EVENC_S5KJN103_Release_Main
+#define DW9718TAF_EVENC_S5KJN103_GetFileName DW9718TAF_EVENC_S5KJN103_GetFileName_Main
+extern int DW9718TAF_EVENC_S5KJN103_SetI2Cclient(struct i2c_client *pstAF_I2Cclient,
+				 spinlock_t *pAF_SpinLock, int *pAF_Opened);
+extern long DW9718TAF_EVENC_S5KJN103_Ioctl(struct file *a_pstFile, unsigned int a_u4Command,
+			   unsigned long a_u4Param);
+extern int DW9718TAF_EVENC_S5KJN103_Release(struct inode *a_pstInode, struct file *a_pstFile);
+extern int DW9718TAF_EVENC_S5KJN103_GetFileName(unsigned char *pFileName);
+#endif
 
 /* Wenjun.Wu@Cam.Drv, 20200107, add for 19131 AF*/
 #define DW9800AF_SetI2Cclient DW9800AF_SetI2Cclient_Main
@@ -178,18 +191,6 @@ extern int DW9800AF_Release(struct inode *a_pstInode, struct file *a_pstFile);
 extern int DW9800AF_PowerDown(struct i2c_client *pstAF_I2Cclient,
 				int *pAF_Opened);
 extern int DW9800AF_GetFileName(unsigned char *pFileName);
-
-/* minyi@Cam.Drv, 20210316, add for pascali AF*/
-#define DW9718TAF_SetI2Cclient DW9718TAF_SetI2Cclient_Main
-#define DW9718TAF_Ioctl DW9718TAF_Ioctl_Main
-#define DW9718TAF_Release DW9718TAF_Release_Main
-#define DW9718TAF_PowerDown DW9718TAF_PowerDown_Main
-#define DW9718TAF_GetFileName DW9718TAF_GetFileName_Main
-extern int DW9718TAF_SetI2Cclient(struct i2c_client *pstAF_I2Cclient,spinlock_t *pAF_SpinLock, int *pAF_Opened);
-extern long DW9718TAF_Ioctl(struct file *a_pstFile, unsigned int a_u4Command,unsigned long a_u4Param);
-extern int DW9718TAF_Release(struct inode *a_pstInode, struct file *a_pstFile);
-extern int DW9718TAF_PowerDown(struct i2c_client *pstAF_I2Cclient,int *pAF_Opened);
-extern int DW9718TAF_GetFileName(unsigned char *pFileName);
 
 /* Shipei.Chen@Cam.Drv, 20200513,  s5kgm1st af Porting!*/
 #define B0954P65AF_SetI2Cclient B0954P65AF_SetI2Cclient_Main

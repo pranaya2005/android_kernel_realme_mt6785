@@ -48,7 +48,7 @@ enum {
         OHM_SVM_MON,
         OHM_RLIMIT_MON,
         OHM_ION_MON,
-		OHM_MEM_VMA_ALLOC_ERR,
+	OHM_MEM_VMA_ALLOC_ERR,
         OHM_TYPE_TOTAL
 };
 

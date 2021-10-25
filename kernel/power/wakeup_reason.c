@@ -27,7 +27,6 @@
 #include <linux/notifier.h>
 #include <linux/suspend.h>
 #include <linux/slab.h>
-#include "../../drivers/soc/oppo/oppo_wakelock_profiler/oppo_wakelock_profiler_mtk.h"
 /*
  * struct wakeup_irq_node - stores data and relationships for IRQs logged as
  * either base or nested wakeup reasons during suspend/resume flow.
@@ -70,6 +69,7 @@ static ktime_t curr_stime; /* monotonic boottime offset after last suspend */
 
 #ifdef OPLUS_FEATURE_POWERINFO_STANDBY
 //WuWeiZhong@BSP.Power.Basic, 2020/06/13, add for wakeup statics.
+#include "../../drivers/base/power/owakelock/oplus_wakelock_profiler_mtk.h"
 extern const char *wakeup_irq_name;
 #endif/*OPLUS_FEATURE_POWERINFO_STANDBY*/
 

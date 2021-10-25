@@ -2,7 +2,7 @@
 # Copyright (C) 2018-2020 Oplus. All rights reserved.
 
 config OPLUS_FEATURE_LOWMEM_DBG
-        bool "OPPO Low Memory debug"
+        bool "OPLUS Low Memory debug"
         default n
         help
           print memory usage when low mem occurs.

@@ -2720,6 +2720,12 @@ static int tscpu_thermal_probe(struct platform_device *dev)
 
 	if (err)
 		tscpu_warn("tscpu_init IRQ register fail\n");
+
+#ifdef CFG_THERM_MCU_LVTS
+	err = request_irq(thermal_mcu_irq_number,
+				lvts_tscpu_thermal_all_tc_interrupt_handler,
+				IRQF_TRIGGER_NONE, THERMAL_NAME, NULL);
+#endif
 #else
 	err = request_irq(THERM_CTRL_IRQ_BIT_ID,
 #if CFG_LVTS_DOMINATOR

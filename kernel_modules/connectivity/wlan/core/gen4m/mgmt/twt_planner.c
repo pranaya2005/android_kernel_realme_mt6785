@@ -496,6 +496,18 @@ twtPlannerAddAgrtTbl(
 				(uint8_t *) (prTWTAgrtUpdate),
 				NULL, 0);
 
+#if (CFG_TWT_SMART_STA == 1)
+	if (g_TwtSmartStaCtrl.fgTwtSmartStaReq == TRUE) {
+		g_TwtSmartStaCtrl.fgTwtSmartStaActivated = TRUE;
+		g_TwtSmartStaCtrl.ucFlowId = ucFlowId;
+		g_TwtSmartStaCtrl.ucBssIndex
+			= prBssInfo ? prBssInfo->ucBssIndex : 0;
+		g_TwtSmartStaCtrl.eState
+			= TWT_SMART_STA_STATE_SUCCESS;
+	}
+#endif
+
+
 	return rWlanStatus;
 }
 
@@ -540,7 +552,7 @@ twtPlannerResumeAgrtTbl(struct ADAPTER *prAdapter,
 	prTWTAgrtUpdate->u2PeerIdGrpId = (prStaRec) ?
 		CPU_TO_LE16(prStaRec->ucWlanIndex) : 1;
 	prTWTAgrtUpdate->ucAgrtSpDuration = rTWTParams.ucMinWakeDur;
-	prTWTAgrtUpdate->ucBssIndex = prBssInfo ? prBssInfo->ucBssIndex : 0;
+	prTWTAgrtUpdate->ucBssIndex = prBssInfo->ucBssIndex;
 	prTWTAgrtUpdate->u4AgrtSpStartTsfLow =
 		CPU_TO_LE32(rTWTParams.u8TWT & 0xFFFFFFFF);
 	prTWTAgrtUpdate->u4AgrtSpStartTsfHigh =
@@ -621,7 +633,7 @@ twtPlannerModifyAgrtTbl(struct ADAPTER *prAdapter,
 	prTWTAgrtUpdate->u4AgrtSpStartTsfHigh =
 		CPU_TO_LE32((uint32_t)(rTWTParams.u8TWT >> 32));
 	prTWTAgrtUpdate->ucGrpMemberCnt = 0;
-	prTWTAgrtUpdate->ucBssIndex = prBssInfo ? prBssInfo->ucBssIndex : 0;
+	prTWTAgrtUpdate->ucBssIndex = prBssInfo->ucBssIndex;
 
 	rWlanStatus = wlanSendSetQueryExtCmd(prAdapter,
 			CMD_ID_LAYER_0_EXT_MAGIC_NUM,
@@ -793,6 +805,18 @@ uint32_t twtPlannerReset(
 	/* Enable scan after TWT agrt reset */
 	prAdapter->fgEnOnlineScan = TRUE;
 
+#if (CFG_TWT_SMART_STA == 1)
+	g_TwtSmartStaCtrl.fgTwtSmartStaActivated = FALSE;
+	g_TwtSmartStaCtrl.fgTwtSmartStaReq = FALSE;
+	g_TwtSmartStaCtrl.fgTwtSmartStaTeardownReq = FALSE;
+	g_TwtSmartStaCtrl.ucBssIndex = 0;
+	g_TwtSmartStaCtrl.ucFlowId = 0;
+	g_TwtSmartStaCtrl.u4CurTp = 0;
+	g_TwtSmartStaCtrl.u4LastTp = 0;
+	g_TwtSmartStaCtrl.u4TwtSwitch == 0;
+	g_TwtSmartStaCtrl.eState = TWT_SMART_STA_STATE_IDLE;
+#endif
+
 	return rWlanStatus;
 }
 
@@ -801,7 +825,7 @@ uint64_t twtPlannerAdjustNextTWT(struct ADAPTER *prAdapter,
 	uint64_t u8NextTWTOrig)
 {
 	uint8_t ucAgrtTblIdx;
-	struct _TWT_PARAMS_T rTWTParams;
+	struct _TWT_PARAMS_T rTWTParams = {0x0};
 	uint64_t u8Diff;
 	uint32_t u4WakeIntvl;
 
@@ -872,6 +896,15 @@ void twtPlannerGetTsfDone(
 		struct _TWT_PARAMS_T *prTWTParams;
 		struct _TWT_FLOW_T *prTWTFlow = twtPlannerFlowFindById(prStaRec,
 					prGetTsfCtxt->ucTWTFlowId);
+
+		if (prTWTFlow == NULL) {
+			DBGLOG(TWT_PLANNER, ERROR, "prTWTFlow is NULL.\n");
+
+			kalMemFree(prGetTsfCtxt,
+				VIR_MEM_TYPE, sizeof(*prGetTsfCtxt));
+
+			return;
+		}
 
 		prGetTsfCtxt->rTWTParams.u8TWT =
 			u8CurTsf + TSF_OFFSET_FOR_AGRT_ADD;
@@ -1327,6 +1360,19 @@ void twtPlannerTeardownDone(
 
 	/* Enable SCAN after TWT agrt has been tear down */
 	prAdapter->fgEnOnlineScan = TRUE;
+
+#if (CFG_TWT_SMART_STA == 1)
+	g_TwtSmartStaCtrl.fgTwtSmartStaActivated = FALSE;
+	g_TwtSmartStaCtrl.fgTwtSmartStaReq = FALSE;
+	g_TwtSmartStaCtrl.fgTwtSmartStaTeardownReq = FALSE;
+	g_TwtSmartStaCtrl.ucBssIndex = 0;
+	g_TwtSmartStaCtrl.ucFlowId = 0;
+	g_TwtSmartStaCtrl.u4CurTp = 0;
+	g_TwtSmartStaCtrl.u4LastTp = 0;
+	g_TwtSmartStaCtrl.u4TwtSwitch == 0;
+	g_TwtSmartStaCtrl.eState = TWT_SMART_STA_STATE_IDLE;
+#endif
+
 }
 
 void twtPlannerRxInfoFrm(

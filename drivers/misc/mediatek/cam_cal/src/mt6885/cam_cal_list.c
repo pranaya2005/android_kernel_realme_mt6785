@@ -36,13 +36,19 @@ struct stCAM_CAL_LIST_STRUCT g_camCalList[] = {
 	{OV32A1Q_SENSOR_ID_20645, 0xA8, Common_read_region, MAX_EEPROM_SIZE_16K},
 	{HI846_SENSOR_ID_20645, 0xA2, Common_read_region, MAX_EEPROM_SIZE_16K},
 	{OV02B10_SENSOR_ID_20645, 0xA4, Common_read_region, MAX_EEPROM_SIZE_16K},
-	#else
+	/*zhangyang@Cam.Drv add for 19165 20201026*/
+	{IMX686_SENSOR_ID, 0xA0, Common_read_region, MAX_EEPROM_SIZE_16K},
+	{HI846_SENSOR_ID, 0xA0, Common_read_region, MAX_EEPROM_SIZE_16K},
+	{S5KGD1SP_SENSOR_ID, 0xA8, Common_read_region},
+        #else
 	/*Below is commom sensor */
-	{IMX586_SENSOR_ID, 0xA0, Common_read_region, MAX_EEPROM_SIZE_16K},
+	{IMX586_SENSOR_ID, 0xA0, Common_read_region, MAX_EEPROM_SIZE_16K,
+		BL24SA64_write_region},
 	{IMX576_SENSOR_ID, 0xA2, Common_read_region},
 	{IMX519_SENSOR_ID, 0xA0, Common_read_region},
 	{IMX319_SENSOR_ID, 0xA2, Common_read_region, MAX_EEPROM_SIZE_16K},
-	{S5K3M5SX_SENSOR_ID, 0xA0, Common_read_region, MAX_EEPROM_SIZE_16K},
+	{S5K3M5SX_SENSOR_ID, 0xA2, Common_read_region, MAX_EEPROM_SIZE_16K,
+		BL24SA64_write_region},
 	{IMX686_SENSOR_ID, 0xA0, Common_read_region, MAX_EEPROM_SIZE_16K},
 	{HI846_SENSOR_ID, 0xA0, Common_read_region, MAX_EEPROM_SIZE_16K},
 	{S5KGD1SP_SENSOR_ID, 0xA8, Common_read_region, MAX_EEPROM_SIZE_16K},
@@ -56,6 +62,8 @@ struct stCAM_CAL_LIST_STRUCT g_camCalList[] = {
 	#endif
 	{S5KJD1_SENSOR_ID, 0xB0, Common_read_region, DEFAULT_MAX_EEPROM_SIZE_8K,
 		DW9763_write_region},
+	{IMX481_SENSOR_ID, 0xA4, Common_read_region, DEFAULT_MAX_EEPROM_SIZE_8K,
+		BL24SA64_write_region},
 	/*  ADD before this line */
 	{0, 0, 0}       /*end of list */
 };

@@ -1428,7 +1428,7 @@ static INT32 consys_hw_bt_vcn33_ctrl(UINT32 enable)
 			/* SW_LP =0 */
 			KERNEL_pmic_set_register_value(PMIC_RG_LDO_VCN33_1_LP, 0);
 			if (reg_VCN33_1_BT)
-				regulator_set_voltage(reg_VCN33_1_BT, VCN33_1_VOL, VCN33_1_VOL);
+				regulator_set_voltage(reg_VCN33_1_BT, 3300000, 3300000);
 
 			udelay(50);
 			KERNEL_pmic_set_register_value(PMIC_RG_LDO_VCN18_LP, 1);

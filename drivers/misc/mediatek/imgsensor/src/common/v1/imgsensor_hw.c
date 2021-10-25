@@ -19,7 +19,7 @@
 
 #include "kd_camera_typedef.h"
 #include "kd_camera_feature.h"
-
+#include <soc/oplus/system/oppo_project.h>
 
 #include "imgsensor_hw.h"
 
@@ -57,13 +57,20 @@ enum IMGSENSOR_RETURN imgsensor_hw_init(struct IMGSENSOR_HW *phw)
 		#ifdef OPLUS_FEATURE_CAMERA_COMMON
 		if (pascal_project() == 4) {
 			pcust_pwr_cfg =imgsensor_custom_config;
-		} else if ((pascal_project() == 5) || (pascal_project() == 6) || (pascal_project() == 7)) {
+		} else if(pascal_project() == 5) {
 			pcust_pwr_cfg =imgsensor_custom_config_monetx;
-		} else if (pascal_project() == 8) {
-			pcust_pwr_cfg =imgsensor_custom_config_pascalC;
 		} else {
 			pcust_pwr_cfg = imgsensor_custom_config;
 		}
+		if (is_project(20761) || is_project(20762) || is_project(20764) || is_project(20766) || is_project(20767)) {
+			pcust_pwr_cfg =imgsensor_custom_config_even;
+		}
+                if (is_project(0x2167A) || is_project(0x2167B) || is_project(0x2167C) || is_project(0x2167D)) {
+                        pcust_pwr_cfg =imgsensor_custom_config_even;
+                }
+		if (is_project(0x216AF) || is_project(0x216B0) || is_project(0x216B1)) {
+                        pcust_pwr_cfg =imgsensor_custom_config_even;
+                }
 		#endif
 		while (pcust_pwr_cfg->sensor_idx != i &&
 		       pcust_pwr_cfg->sensor_idx != IMGSENSOR_SENSOR_IDX_NONE)
@@ -217,12 +224,17 @@ enum IMGSENSOR_RETURN imgsensor_hw_power(
 		ret = IMGSENSOR_RETURN_ERROR;
 		return ret;
 	}
-	imgsensor_hw_power_sequence(
-	    phw,
-	    sensor_idx,
-	    pwr_status,
-	    platform_power_sequence,
-	    str_index);
+
+	if (!is_project(20761) && !is_project(20762) && !is_project(20764) && !is_project(20766) && !is_project(20767) &&
+	    !is_project(0x2167A) && !is_project(0x2167B) && !is_project(0x2167C) && !is_project(0x2167D) &&
+	    !is_project(0x216AF) && !is_project(0x216B0) && !is_project(0x216B1)) {
+		imgsensor_hw_power_sequence(
+			phw,
+			sensor_idx,
+			pwr_status,
+			platform_power_sequence,
+			str_index);
+	}
 
 	imgsensor_hw_power_sequence(
 	    phw,

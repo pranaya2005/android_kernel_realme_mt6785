@@ -321,5 +321,5 @@ EXPORT_SYMBOL(cfi_failure_handler);
 void __cfi_check_fail(void *data, void *ptr)
 {
 	//handle_cfi_failure(ptr);
-	pr_err("__cfi_check_fail\n");
+	pr_info("__cfi_check_fail\n");
 }

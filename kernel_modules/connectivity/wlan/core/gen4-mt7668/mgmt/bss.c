@@ -136,6 +136,9 @@ APPEND_VAR_IE_ENTRY_T txBcnIETable[] = {
 #if (CFG_SUPPORT_DFS_MASTER == 1)
 	, {(ELEM_HDR_LEN + ELEM_MIN_LEN_CSA), NULL, rlmGenerateCsaIE}            /* 37 */
 #endif
+#if CFG_SUPPORT_WAC
+	, {0, rlmCalculateWAC_IELen, rlmGenerateWAC_IE}            /* 221 */
+#endif
 
 };
 
@@ -158,6 +161,9 @@ APPEND_VAR_IE_ENTRY_T txProbRspIETable[] = {
 #endif
 #if CFG_SUPPORT_MTK_SYNERGY
 	, {(ELEM_HDR_LEN + ELEM_MIN_LEN_MTK_OUI), NULL, rlmGenerateMTKOuiIE}	/* 221 */
+#endif
+#if CFG_SUPPORT_WAC
+	, {0, rlmCalculateWAC_IELen, rlmGenerateWAC_IE}            /* 221 */
 #endif
 
 };
@@ -421,6 +427,45 @@ bssCreateStaRecFromBssDesc(IN P_ADAPTER_T prAdapter,
 	return prStaRec;
 
 }				/* end of bssCreateStaRecFromBssDesc() */
+
+#if CFG_SUPPORT_CFG80211_AUTH
+/*---------------------------------------------------------------------------*/
+/*!
+ * @brief This function will update the STA_RECORD_T in the assoc process+ *
+ * @param[in] prAdapter              Pointer to the Adapter structure.
+ * @param[in] ucBssIndex             BSS Index.
+ * @param[in] prStaRec               Pointer to the STA_RECORD_T
+ *
+ * @retval   Pointer to STA_RECORD_T
+ */
+ /*---------------------------------------------------------------------------*/
+P_STA_RECORD_T bssUpdateStaRecFromCfgAssoc(IN P_ADAPTER_T prAdapter,
+			IN P_BSS_DESC_T prBssDesc,
+			IN P_STA_RECORD_T prStaRec)
+{
+	if ((prStaRec == NULL) || (prAdapter == NULL) || prBssDesc == NULL) {
+		/* Expect the prStaRec has been created in the auth process */
+		DBGLOG(BSS, ERROR, "Incorrect input val (%p:%p:%p)\n",
+		prStaRec, prBssDesc, prAdapter);
+		return NULL;
+	}
+
+	/* Only handle security setting now.
+	 * The Seccurity is carried in the mtk_cfg80211_assoc or
+	 * mtk_cfg80211_connect. So that, need to re-check the seting for
+	 * WEP/TKIP with 11n/ac/ax case.
+	 */
+	/* Check the security setting to decide the phy rate */
+	bssDetermineStaRecPhyTypeSet(prAdapter, prBssDesc, prStaRec);
+
+	/* Determine WMM related parameters for STA_REC */
+	mqmProcessScanResult(prAdapter, prBssDesc, prStaRec);
+
+	/* Update default Tx rate */
+	nicTxUpdateStaRecDefaultRate(prStaRec);
+	return prStaRec;
+}				/* end of bssCreateStaRecFromBssDesc() */
+#endif
 
 /*----------------------------------------------------------------------------*/
 /*!

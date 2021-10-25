@@ -223,7 +223,7 @@ static struct stCAM_CAL_CHECKSUM_STRUCT monetx_truly_main_s5kgm1sp_hecksum[MAX_I
 };
 
 static struct stCAM_CAL_DATAINFO_STRUCT monetx_ofilm_front_ov16a1q_eeprom_data __attribute((unused))={
-	.sensorID = MONETX_OFILM_FRONT_OV16A1Q_SENSOR_ID,
+	.sensorID = OV16A1Q_SENSOR_ID,
 	.deviceID = 2,
 	.dataLength = 0x1682,
 	.sensorVendorid = 0x00060094,

@@ -62,11 +62,13 @@ static int verify_chip_type(
 	return 0;
 }
 
+// when read one byte, a int(4 byte) buffer is needed.
+// or it will cause __stack_chk_fail issue.
 int sia81xx_regmap_read(
 	struct regmap *regmap,
 	unsigned int start_reg,
 	unsigned int reg_num,
-	char *buf)
+	void *buf)
 {
 	if(NULL == regmap) {
 		pr_warn("[ warn][%s] %s: NULL == regmap \r\n",
@@ -81,12 +83,8 @@ int sia81xx_regmap_read(
 	}
 
 	if(1 == reg_num) {
-		unsigned int val = 0;
-		int ret = regmap_read(regmap, start_reg, &val);
-		if (0 == ret)
-			*buf = (char)val;
-
-		return ret;
+		unsigned int *val = (unsigned int *)buf;
+		return regmap_read(regmap, start_reg, val);
 	}
 
 	return regmap_bulk_read(regmap, start_reg, buf, reg_num);
@@ -199,12 +197,12 @@ void sia81xx_regmap_remove(
  * sia81xx reg map opt functions
  ********************************************************************/
 int sia81xx_regmap_check_chip_id(
-	struct regmap *regmap, 
-	unsigned int chip_type) 
+	struct regmap *regmap,
+	unsigned int chip_type)
 {
 	if(NULL == regmap)
 		return -EPERM;
-	
+
 	if(0 != verify_chip_type(chip_type))
 		return -EPERM;
 
@@ -217,13 +215,13 @@ int sia81xx_regmap_check_chip_id(
 }
 
 void sia81xx_regmap_set_xfilter(
-	struct regmap *regmap, 
-	unsigned int chip_type, 
+	struct regmap *regmap,
+	unsigned int chip_type,
 	unsigned int val)
 {
 	if(NULL == regmap)
 		return ;
-	
+
 	if(0 != verify_chip_type(chip_type))
 		return ;
 
@@ -234,54 +232,11 @@ void sia81xx_regmap_set_xfilter(
 	return ;
 }
 
-void sia81xx_regmap_set_chip_on(
-	struct regmap *regmap,
-	unsigned int chip_type)
-{
-	if(NULL == regmap)
-		return ;
-
-	if(0 != verify_chip_type(chip_type))
-		return ;
-
-	if(NULL != reg_map_info_table[chip_type].opt->chip_on) {
-		reg_map_info_table[chip_type].opt->chip_on(regmap);
-	}
-}
-
-void sia81xx_regmap_set_chip_off(
-	struct regmap *regmap,
-	unsigned int chip_type)
-{
-	if(NULL == regmap)
-		return ;
-
-	if(0 != verify_chip_type(chip_type))
-		return ;
-
-	if(NULL != reg_map_info_table[chip_type].opt->chip_off) {
-		reg_map_info_table[chip_type].opt->chip_off(regmap);
-	}
-}
-
-bool sia81xx_regmap_get_chip_en(
-	struct regmap *regmap,
-	unsigned int chip_type)
-{
-	if(NULL == regmap)
-		return false;
-
-	if(0 != verify_chip_type(chip_type))
-		return false;
-
-	if(NULL != reg_map_info_table[chip_type].opt->get_chip_en) {
-		return reg_map_info_table[chip_type].opt->get_chip_en(regmap);
-	}
-
-	return false;
-}
-
 /********************************************************************
  * end - sia81xx reg map opt functions
  ********************************************************************/
+
+
+
+
 

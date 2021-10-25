@@ -980,6 +980,11 @@ struct ufs_hba {
 	struct ufs_transmission_status_t ufs_transmission_status;
 	struct device_attribute ufs_transmission_status_attr;
 #endif
+#ifdef OPLUS_FEATURE_STORAGE_TOOL
+/* hexiaosen@BSP.Storage.UFS 2020-08-13 add for ufs reset after ffu write buffer */
+	u8 set_host_blocked;
+	struct work_struct ffu_write_buffer_finished_work;
+#endif
 };
 
 /* MTK PATCH */

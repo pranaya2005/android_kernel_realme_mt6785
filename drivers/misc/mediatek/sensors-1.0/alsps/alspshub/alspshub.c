@@ -641,13 +641,13 @@ static int alshub_factory_get_cali(int32_t *offset)
 static int alshub_factory_set_cali(int32_t als_factor)
 {
 	int ret = 0;
-	int cfg_data[12] = {0};
+	int cfg_data = 0;
 	struct alspshub_ipi_data *obj = obj_ipi_data;
 
 	update_sensor_parameter();
 	obj->als_factor = als_factor;
-
-	sensor_cfg_to_hub(ID_LIGHT,(uint8_t *)cfg_data, sizeof(cfg_data));
+       cfg_data = als_factor;
+	sensor_cfg_to_hub(ID_LIGHT,(uint8_t *)&cfg_data, sizeof(cfg_data));
 
 	pr_err("als_factor = %d\n", obj->als_factor);
 	return ret;

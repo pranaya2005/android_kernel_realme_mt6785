@@ -48,11 +48,11 @@ struct GPIO_PINCTRL gpio_pinctrl_list_switch[
 
 #ifdef OPLUS_FEATURE_CAMERA_COMMON
 /*Henry.Chang@Cam.Drv, 20200727, add for 20131*/
-struct GPIO_PINCTRL gpio_pinctrl_list_ldo_enable[2] = {
-	{"pmic_chip_enable"},
-	{"pmic_chip_disable"}
+struct GPIO_PINCTRL gpio_pinctrl_list_ldo_enable[1] = {
+	{"pmic_chip_enable"}
 };
 #endif
+extern void gpio_dump_regs(void);
 
 static struct GPIO gpio_instance;
 
@@ -109,27 +109,14 @@ static enum IMGSENSOR_RETURN gpio_init(
 	if (is_project(20131) || is_project(20133)
 		|| is_project(20255) || is_project(20255)) {
 		if (gpio_pinctrl_list_ldo_enable[0].ppinctrl_lookup_names) {
-			pgpio->pinctrl_state_ldo_enable[0] = pinctrl_lookup_state(
+			pgpio->pinctrl_state_ldo_enable = pinctrl_lookup_state(
 				pgpio->ppinctrl,
 				gpio_pinctrl_list_ldo_enable[0].ppinctrl_lookup_names);
 		}
-		if (pgpio->pinctrl_state_ldo_enable [0]== NULL) {
+		if (pgpio->pinctrl_state_ldo_enable == NULL) {
 			PK_PR_ERR("%s : pinctrl err, %s\n", __func__,
 				gpio_pinctrl_list_ldo_enable[0].ppinctrl_lookup_names);
 			ret = IMGSENSOR_RETURN_ERROR;
-		}
-	} else if (is_project(20601) || is_project(20602) || is_project(20660)) {
-		for (i = 0; i < 2; i++) {
-			if (gpio_pinctrl_list_ldo_enable[i].ppinctrl_lookup_names) {
-			pgpio->pinctrl_state_ldo_enable [i]= pinctrl_lookup_state(
-				pgpio->ppinctrl,
-				gpio_pinctrl_list_ldo_enable[i].ppinctrl_lookup_names);
-			}
-			if (pgpio->pinctrl_state_ldo_enable [i]== NULL) {
-				PK_PR_ERR("%s : pinctrl err, %s\n", __func__,
-				gpio_pinctrl_list_ldo_enable[i].ppinctrl_lookup_names);
-				ret = IMGSENSOR_RETURN_ERROR;
-			}
 		}
 	}
 	#endif
@@ -234,7 +221,7 @@ static enum IMGSENSOR_RETURN gpio_set(
 			#ifdef SENSOR_PLATFORM_5G_H
 			//if ((pin == IMGSENSOR_HW_PIN_FAN53870_ENABLE) && is_project(OPPO_19040)) {
 			if (pin == IMGSENSOR_HW_PIN_PMIC_ENABLE) {
-				ppinctrl_state = pgpio->pinctrl_state_ldo_enable[gpio_state];
+				ppinctrl_state = pgpio->pinctrl_state_ldo_enable;
 			} else {
 				ppinctrl_state =
 					pgpio->ppinctrl_state_cam[sensor_idx][
@@ -247,7 +234,6 @@ static enum IMGSENSOR_RETURN gpio_set(
 			#endif
 		#endif
 	}
-
 	mutex_lock(pgpio->pgpio_mutex);
 
 	if (ppinctrl_state != NULL && !IS_ERR(ppinctrl_state))
@@ -261,12 +247,21 @@ static enum IMGSENSOR_RETURN gpio_set(
 	return IMGSENSOR_RETURN_SUCCESS;
 }
 
+static enum IMGSENSOR_RETURN gpio_dump(void *pintance)
+{
+	PK_DBG("[sensor_dump][gpio]\n");
+	gpio_dump_regs();
+	PK_DBG("[sensor_dump][gpio] finish\n");
+	return IMGSENSOR_RETURN_SUCCESS;
+}
+
 static struct IMGSENSOR_HW_DEVICE device = {
 	.id        = IMGSENSOR_HW_ID_GPIO,
 	.pinstance = (void *)&gpio_instance,
 	.init      = gpio_init,
 	.set       = gpio_set,
-	.release   = gpio_release
+	.release   = gpio_release,
+	.dump      = gpio_dump
 };
 
 enum IMGSENSOR_RETURN imgsensor_hw_gpio_open(

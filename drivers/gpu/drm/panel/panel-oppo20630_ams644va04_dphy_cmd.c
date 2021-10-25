@@ -41,8 +41,6 @@
 #include "../mediatek/mtk_corner_pattern/mtk_data_hw_roundedpattern_20630.h"
 #endif
 
-#include <mt-plat/mtk_boot_common.h>
-
 extern u32 flag_hbm;
 #ifdef VENDOR_EDIT
 #define RAMLESS_AOD_PAYLOAD_SIZE	100
@@ -55,7 +53,6 @@ extern int oplus_dc_enable;
 static unsigned int safe_mode = 2;
 extern unsigned long oppo_display_brightness;
 extern char send_cmd[RAMLESS_AOD_PAYLOAD_SIZE];
-extern void disp_aal_set_dre_en(int enable);
 //int oppo_seed_bright_to_alpha(int brightness);
 //extern unsigned int aod_light_mode;
 #endif
@@ -227,6 +224,12 @@ static struct LCM_setting_table lcm_aod_to_normal[] = {
 };
 
 struct LCM_setting_table lcm_seed_setting_20630[] = {
+        /* ELVSS Dim Setting */
+        {REGFLAG_CMD,3,{0xF0, 0x5A, 0x5A}},
+        {REGFLAG_CMD,2,{0xB0,0x1E}},
+        {REGFLAG_CMD,8,{0xB3,0x05, 0x05, 0x05, 0x05, 0x05, 0x05, 0x05}},
+        {REGFLAG_CMD,3,{0xF0, 0xA5, 0xA5}},
+
 	{REGFLAG_CMD,3,{0xF0, 0x5A, 0x5A}},
 	{REGFLAG_CMD,2,{0x80, 0x92}},
 	{REGFLAG_CMD,2,{0xB1, 0x00}},
@@ -237,6 +240,25 @@ struct LCM_setting_table lcm_seed_setting_20630[] = {
 	{REGFLAG_CMD,3,{0xF0, 0xA5, 0xA5}},
 
 	{REGFLAG_END_OF_TABLE, 0x00, {}}
+};
+
+struct LCM_setting_table lcm_seed_exit_setting[] = {
+	/* ELVSS Dim Setting */
+	{REGFLAG_CMD,3,{0xF0, 0x5A, 0x5A}},
+	{REGFLAG_CMD,2,{0xB0,0x1E}},
+	{REGFLAG_CMD,8,{0xB3,0x05, 0x05, 0x05, 0x05, 0x05, 0x05, 0x05}},
+	{REGFLAG_CMD,3,{0xF0, 0xA5, 0xA5}},
+
+        {REGFLAG_CMD,3,{0xF0, 0x5A, 0x5A}},
+        {REGFLAG_CMD,2,{0x80, 0x92}},
+        {REGFLAG_CMD,2,{0xB1, 0x00}},
+        {REGFLAG_CMD,3,{0xB0, 0x2B,0xB1}},
+        {REGFLAG_CMD,22,{0xB1,0xE0,0x00,0x06,0x10,0xFF,0x00,0x00,0x00,0xFF,0x2A,0xFF,0xE2,0xFF,0x00,0xEE,0xFF,0xF1,0x00,0xFF,0xFF,0xFF}},
+        {REGFLAG_CMD,3,{0xB0, 0x55, 0xB1}},
+        {REGFLAG_CMD,2,{0xB1, 0x80}},
+        {REGFLAG_CMD,3,{0xF0, 0xA5, 0xA5}},
+
+        {REGFLAG_END_OF_TABLE, 0x00, {}}
 };
 
 static struct LCM_setting_table lcm_aod_high_mode[] = {
@@ -1140,9 +1162,6 @@ static int lcm_setbacklight_cmdq(void *dsi, dcs_write_gce cb,
 
 	mapped_level = oplus_lcm_dc_backlight(dsi,cb,handle, level, 0);
 	esd_brightness = mapped_level;
-	if (get_boot_mode() == KERNEL_POWER_OFF_CHARGING_BOOT && level > 0) {
-		mapped_level = 2047;
-	}
 	bl_tb0[1] = mapped_level >> 8;
 	bl_tb0[2] = mapped_level & 0xFF;
 
@@ -1472,8 +1491,7 @@ static struct mtk_panel_params ext_params = {
 #endif
 	.oplus_panel_cv_switch = 1,
 	.oplus_lpx_ns_multiplier = 75,
-	.oplus_dc_then_hbm_on = 1,
-//	.oplus_no_reset_before_aod_enable = 1,
+	.oplus_no_reset_before_aod_enable = 1,
 };
 
 static struct mtk_panel_funcs ext_funcs = {
@@ -1499,7 +1517,7 @@ static struct mtk_panel_funcs ext_funcs = {
 	.doze_area_set = panel_doze_area_set,
 	.set_aod_light_mode = panel_set_aod_light_mode,
 	.esd_backlight_recovery = oplus_esd_backlight_check,
-	.set_dc_backlight = lcm_set_dc_backlight,
+//	.set_dc_backlight = lcm_set_dc_backlight,
 };
 #endif
 
@@ -1644,8 +1662,6 @@ static int lcm_probe(struct mipi_dsi_device *dsi)
 
 	ctx->hbm_en = false;
 	pr_info("%s samsung lcm+\n", __func__);
-
-	disp_aal_set_dre_en(1);
 
 	register_device_proc("lcd", "AMS644VA04_MTK04", "samsung4096");
 	pr_info("%s-\n", __func__);

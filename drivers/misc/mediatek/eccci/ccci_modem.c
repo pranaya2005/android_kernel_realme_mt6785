@@ -20,6 +20,7 @@
 #include <linux/slab.h>
 #include <linux/kobject.h>
 #include <linux/atomic.h>
+#include <linux/of.h>
 
 #include "ccci_config.h"
 #include "ccci_platform.h"
@@ -903,7 +904,7 @@ void ccci_md_config(struct ccci_modem *md)
 #if (MD_GENERATION >= 6293)
 	if (md->index == MD_SYS1) {
 		md->mem_layout.md_bank4_cacheable_total.base_md_view_phy =
-			0x40000000 + (224 * 1024 * 1024) +
+			0x40000000 + get_md_smem_cachable_offset(MD_SYS1) +
 			md->mem_layout.md_bank4_cacheable_total.base_ap_view_phy
 			- round_down(
 			md->mem_layout.md_bank4_cacheable_total.base_ap_view_phy
@@ -1371,6 +1372,54 @@ static void append_runtime_feature(char **p_rt_data,
 	}
 }
 
+struct ccci_tag_bootmode {
+	u32 size;
+	u32 tag;
+	u32 bootmode;
+	u32 boottype;
+};
+
+static unsigned int get_boot_mode_from_dts(void)
+{
+	struct device_node *np_chosen = NULL;
+	struct ccci_tag_bootmode *tag = NULL;
+	u32 bootmode = NORMAL_BOOT_ID;
+
+	np_chosen = of_find_node_by_path("/chosen");
+	if (!np_chosen) {
+		CCCI_ERROR_LOG(-1, TAG, "warning: not find node: '/chosen'\n");
+
+		np_chosen = of_find_node_by_path("/chosen@0");
+		if (!np_chosen) {
+			CCCI_ERROR_LOG(-1, TAG,
+				"[%s] error: not find node: '/chosen@0'\n",
+				__func__);
+			return NORMAL_BOOT_ID;
+		}
+	}
+
+	tag = (struct ccci_tag_bootmode *)
+			of_get_property(np_chosen, "atag,boot", NULL);
+	if (!tag) {
+		CCCI_ERROR_LOG(-1, TAG,
+			"[%s] error: not find tag: 'atag,boot';\n", __func__);
+		return NORMAL_BOOT_ID;
+	}
+
+	if (tag->bootmode == META_BOOT || tag->bootmode == ADVMETA_BOOT)
+		bootmode = META_BOOT_ID;
+
+	else if (tag->bootmode == FACTORY_BOOT ||
+			tag->bootmode == ATE_FACTORY_BOOT)
+		bootmode = FACTORY_BOOT_ID;
+
+	CCCI_NORMAL_LOG(-1, TAG,
+		"[%s] bootmode: 0x%x boottype: 0x%x; return: 0x%x\n",
+		__func__, tag->bootmode, tag->boottype, bootmode);
+
+	return bootmode;
+}
+
 /*
  *booting_start_id bit mapping:
  * |31---------16|15-----------8|7---------0|
@@ -1384,34 +1433,16 @@ static unsigned int get_booting_start_id(struct ccci_modem *md)
 	enum LOGGING_MODE mdlog_flag = MODE_IDLE;
 	u32 booting_start_id;
 
-	mdlog_flag = md->mdlg_mode & 0x0000ffff;
-	if (md->per_md_data.md_boot_mode != MD_BOOT_MODE_INVALID) {
-		if (md->per_md_data.md_boot_mode == MD_BOOT_MODE_META)
-			booting_start_id = ((char)mdlog_flag << 8
-								| META_BOOT_ID);
-		else if ((get_boot_mode() == FACTORY_BOOT ||
-				get_boot_mode() == ATE_FACTORY_BOOT))
-			booting_start_id = ((char)mdlog_flag << 8
-							| FACTORY_BOOT_ID);
-		else
-			booting_start_id = ((char)mdlog_flag << 8
-							| NORMAL_BOOT_ID);
-	} else {
-		if (is_meta_mode() || is_advanced_meta_mode())
-			booting_start_id = ((char)mdlog_flag << 8
-							| META_BOOT_ID);
-		else if ((get_boot_mode() == FACTORY_BOOT ||
-				get_boot_mode() == ATE_FACTORY_BOOT))
-			booting_start_id = ((char)mdlog_flag << 8
-							| FACTORY_BOOT_ID);
-		else
-			booting_start_id = ((char)mdlog_flag << 8
-							| NORMAL_BOOT_ID);
-	}
-	booting_start_id |= md->mdlg_mode & 0xffff0000;
+	mdlog_flag = (md->mdlg_mode & 0x0000ffff);
+
+	booting_start_id = (((char)mdlog_flag << 8)
+						| get_boot_mode_from_dts());
+
+	booting_start_id |= (md->mdlg_mode & 0xffff0000);
 
 	CCCI_BOOTUP_LOG(md->index, TAG,
 		"%s 0x%x\n", __func__, booting_start_id);
+
 	return booting_start_id;
 }
 
@@ -1648,12 +1679,15 @@ static void config_ap_side_feature(struct ccci_modem *md,
 	md_feature->feature_set[NVRAM_CACHE_SHARE_MEMORY].support_mask =
 		CCCI_FEATURE_NOT_SUPPORT;
 #endif
+
+/* This item is reserved,only SP use */
+#ifdef ENABLE_SECURITY_SHARE_MEMORY
 	md_feature->feature_set[SECURITY_SHARE_MEMORY].support_mask =
 		CCCI_FEATURE_MUST_SUPPORT;
-
-	/* This item is reserved */
+#else
 	md_feature->feature_set[SECURITY_SHARE_MEMORY].support_mask =
 		CCCI_FEATURE_NOT_SUPPORT;
+#endif
 
 #if (MD_GENERATION >= 6297)
 	md_feature->feature_set[MD_MEM_AP_VIEW_INF].support_mask =

@@ -204,6 +204,17 @@ struct OPT_BACKUP {
 	int value;
 };
 
+#define LCM_FPS_ARRAY_SIZE	32
+struct lcm_fps_ctx_t {
+	int is_inited;
+	struct mutex lock;
+	unsigned int dsi_mode;
+	unsigned int head_idx;
+	unsigned int num;
+	unsigned long long last_ns;
+	unsigned long long array[LCM_FPS_ARRAY_SIZE];
+};
+
 /* AOD */
 enum lcm_power_state {
 	LCM_OFF = 0,
@@ -280,7 +291,13 @@ struct display_primary_path_context {
 	cmdqBackupSlotHandle hrt_idx_id;
 	cmdqBackupSlotHandle trigger_record_slot;
 	/*ToDo: ARR whether need free these slot*/
-
+	/* #ifdef OPLUS_FEATURE_ONSCREENFINGERPRINT */
+	/*
+	* Ling.Guo@PSW.MM.Display.LCD.Stability, 2019/01/21,
+	* add for fingerprint notify frigger
+	*/
+	cmdqBackupSlotHandle fpd_fence;
+	/* #endif */ /* OPLUS_FEATURE_ONSCREENFINGERPRINT */
 	int is_primary_sec;
 	int primary_display_scenario;
 #ifdef CONFIG_MTK_DISPLAY_120HZ_SUPPORT
@@ -387,8 +404,6 @@ int primary_display_diagnose_oneshot(const char *func, int line);
 
 int primary_display_get_info(struct disp_session_info *info);
 int primary_display_capture_framebuffer(unsigned long pbuf);
-int primary_display_capture_framebuffer_ovl(unsigned long pbuf,
-					    unsigned int format);
 
 int primary_display_is_video_mode(void);
 int primary_is_sec(void);
@@ -442,7 +457,9 @@ int primary_display_get_lcm_refresh_rate(void);
 int _display_set_lcm_refresh_rate(int fps);
 void primary_display_idlemgr_kick(const char *source, int need_lock);
 void primary_display_idlemgr_enter_idle(int need_lock);
-void primary_display_update_present_fence(unsigned int fence_idx);
+void primary_display_update_present_fence(struct cmdqRecStruct *cmdq_handle,
+	unsigned int fence_idx);
+void primary_display_wakeup_pf_thread(void);
 void primary_display_switch_esd_mode(int mode);
 int primary_display_cmdq_set_reg(unsigned int addr, unsigned int val);
 int primary_display_vsync_switch(int method);
@@ -461,6 +478,22 @@ int primary_display_check_test(void);
 void _primary_path_switch_dst_lock(void);
 void _primary_path_switch_dst_unlock(void);
 
+/* #ifdef OPLUS_FEATURE_ONSCREENFINGERPRINT */
+/*
+* Ling.Guo@PSW.MM.Display.LCD.Feature, 2019/06/12,
+* add for get dimming layer hbm state
+*/
+int primary_display_set_lcm_hbm(bool en);
+int primary_display_hbm_wait(bool en);
+int notify_display_fpd(bool mode);
+/*
+* Ling.Guo@PSW.MM.Display.LCD.Stability, 2019/01/21,
+* add for fingerprint notify frigger
+*/
+void fpd_notify_check_trig(void);
+void fpd_notify(void);
+/* #endif */ /* OPLUS_FEATURE_ONSCREENFINGERPRINT */
+
 /* AOD */
 enum lcm_power_state primary_display_set_power_state(
 enum lcm_power_state new_state);
@@ -472,6 +505,10 @@ enum mtkfb_power_mode primary_display_check_power_mode(void);
 void debug_print_power_mode_check(enum mtkfb_power_mode prev,
 				  enum mtkfb_power_mode cur);
 bool primary_is_aod_supported(void);
+/* #ifdef OPLUS_FEATURE_AOD */
+/* Zhijun.Ye@PSW.MM.Display.LCD.Stability 2020/10/26, Add for aod */
+int primary_display_set_aod_mode_nolock(unsigned int mode);
+/* #endif */ /* OPLUS_FEATURE_AOD */
 
 /* legancy */
 struct LCM_PARAMS *DISP_GetLcmPara(void);
@@ -544,6 +581,12 @@ unsigned int primary_display_current_fps(enum arr_fps_type fps_type,
 bool disp_idle_check_rsz(void);
 int primary_display_is_directlink_mode(void);
 bool disp_input_has_yuv(void);
+
+extern struct lcm_fps_ctx_t lcm_fps_ctx;
+int lcm_fps_ctx_init(struct lcm_fps_ctx_t *fps_ctx);
+int lcm_fps_ctx_reset(struct lcm_fps_ctx_t *fps_ctx);
+int lcm_fps_ctx_update(struct lcm_fps_ctx_t *fps_ctx,
+		unsigned long long cur_ns);
 
 #ifdef CONFIG_MTK_HIGH_FRAME_RATE
 /**************function for DynFPS start************************/

@@ -2524,11 +2524,6 @@ static int mtkfb_probe(struct platform_device *pdev)
 	int init_state;
 	int r = 0;
 
-#ifdef CONFIG_MTK_IOMMU_V2
-	struct ion_client *ion_display_client = NULL;
-	struct ion_handle *ion_display_handle = NULL;
-	size_t temp_va = 0;
-#endif
 	/* struct platform_device *pdev; */
 
 	DISPMSG("%s name [%s]  = [%s][%p]\n", __func__,
@@ -2571,34 +2566,8 @@ static int mtkfb_probe(struct platform_device *pdev)
 
 	DISPMSG("%s: fb_pa = %pa\n", __func__, &fb_base);
 
-#ifdef CONFIG_MTK_IOMMU_V2
-	temp_va = (size_t)ioremap_wc(fb_base,
-		(fb_base + vramsize - fb_base));
-	fbdev->fb_va_base = (void *)temp_va;
-	ion_display_client = disp_ion_create("disp_fb0");
-	if (ion_display_client == NULL) {
-		DISPERR("%s: fail to create ion\n", __func__);
-		r = -1;
-		goto cleanup;
-	}
-
-	ion_display_handle = disp_ion_alloc(ion_display_client,
-		ION_HEAP_MULTIMEDIA_PA2MVA_MASK, fb_base,
-		(fb_base + vramsize - fb_base));
-	if (r != 0) {
-		DISPERR("%s: fail to allocate buffer\n", __func__);
-		r = -1;
-		goto cleanup;
-	}
-
-	disp_ion_get_mva(ion_display_client,
-		ion_display_handle,
-		&fb_pa, 0,
-		DISP_M4U_PORT_DISP_OVL0);
-#else
 	disp_hal_allocate_framebuffer(fb_base, (fb_base + vramsize - 1),
 		(unsigned long *)(&fbdev->fb_va_base), &fb_pa);
-#endif
 	fbdev->fb_pa_base = fb_base;
 
 	primary_display_set_frame_buffer_address(
@@ -2691,13 +2660,6 @@ static int mtkfb_probe(struct platform_device *pdev)
 	if (disp_helper_get_stage() != DISP_HELPER_STAGE_NORMAL)
 		primary_display_diagnose();
 
-
-	/* this function will get fb_heap base address to ion
-	 * for management frame buffer
-	 */
-#ifdef MTK_FB_ION_SUPPORT
-	ion_drv_create_FB_heap(mtkfb_get_fb_base(), mtkfb_get_fb_size());
-#endif
 	fbdev->state = MTKFB_ACTIVE;
 
 	if (!strcmp(mtkfb_find_lcm_driver(),
@@ -2707,18 +2669,19 @@ static int mtkfb_probe(struct platform_device *pdev)
 	}
 #ifdef OPLUS_BUG_STABILITY
 	//Hao.Liang@ODM_WT.MM.Display.Lcd, 2019/10/29, Add clk_change function
-	if (!strcmp(mtkfb_find_lcm_driver(),
-		"ilt9881h_txd_hdp_dsi_vdo_lcm_drv") ||!strcmp(mtkfb_find_lcm_driver(),
-		"ilt9881h_truly_hdp_dsi_vdo_lcm_drv") ||!strcmp(mtkfb_find_lcm_driver(),
-		"nt36525b_hlt_hdp_dsi_vdo_lcm_drv") ||!strcmp(mtkfb_find_lcm_driver(),
-		"nt36525b_hlt_psc_ac_boe_vdo") ||!strcmp(mtkfb_find_lcm_driver(),
-		"nt36525b_hlt_psc_ac_vdo") ||!strcmp(mtkfb_find_lcm_driver(),
-		"ilt9882n_txd_psc_ac_hdp_dsi_vdo_lcm")) {
+	if (!strcmp(mtkfb_find_lcm_driver(),"ilt9881h_txd_hdp_dsi_vdo_lcm_drv")
+      ||!strcmp(mtkfb_find_lcm_driver(),"ilt9881h_truly_hdp_dsi_vdo_lcm_drv")
+      ||!strcmp(mtkfb_find_lcm_driver(),"nt36525b_hlt_hdp_dsi_vdo_lcm_drv")
+      ||!strcmp(mtkfb_find_lcm_driver(),"nt36525b_hlt_psc_ac_boe_vdo")
+      ||!strcmp(mtkfb_find_lcm_driver(),"ilt9882n_truly_even_hdp_dsi_vdo_lcm")
+      ||!strcmp(mtkfb_find_lcm_driver(),"ilt7807s_hlt_even_hdp_dsi_vdo_lcm")
+      ||!strcmp(mtkfb_find_lcm_driver(),"nt36525b_hlt_even_boe_hdp_dsi_vdo_lcm")
+      ||!strcmp(mtkfb_find_lcm_driver(),"nt36525b_hlt_psc_ac_vdo")) {
 		register_ccci_sys_call_back(MD_SYS1,
 			MD_DISPLAY_DYNAMIC_MIPI, mipi_clk_change);
 	}
-#endif
 
+#endif
 	MSG_FUNC_LEAVE();
 	pr_info("disp driver(2) %s end\n", __func__);
 	return 0;
@@ -2776,18 +2739,18 @@ static void mtkfb_shutdown(struct platform_device *pdev)
 
 	if (primary_display_is_sleepd()) {
 		MTKFB_LOG("mtkfb has been power off\n");
-#ifdef OPLUS_BUG_STABILITY
-//Tongxing.Liu@ODM_WT.MM.Display.Lcd, 2019/11/26, display timing adaptation
+		#ifdef OPLUS_BUG_STABILITY
+		//Haiquan.Chen@ODM_WT.MM.Display.Lcd, 2021/02/02, display timing adaptation
 		primary_display_shutdown();
-#endif
+		#endif
 		return;
 	}
 	primary_display_set_power_mode(FB_SUSPEND);
 	primary_display_suspend();
-#ifdef OPLUS_BUG_STABILITY
-//Tongxing.Liu@ODM_WT.MM.Display.Lcd, 2019/11/26, display timing adaptation
+	#ifdef OPLUS_BUG_STABILITY
+	//Haiquan.Chen@ODM_WT.MM.Display.Lcd, 2021/02/02, display timing adaptation
 	primary_display_shutdown();
-#endif
+	#endif
 	MTKFB_LOG("[FB Driver] leave %s\n", __func__);
 }
 

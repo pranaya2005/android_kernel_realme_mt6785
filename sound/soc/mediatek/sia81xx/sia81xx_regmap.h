@@ -29,14 +29,11 @@ struct sia81xx_reg_default_val {
 struct sia81xx_opt_if {
 	int (*check_chip_id)(struct regmap *regmap);
 	void (*set_xfilter)(struct regmap *regmap, unsigned int val);
-	void (*chip_on)(struct regmap *regmap);
-	void (*chip_off)(struct regmap *regmap);
-	bool (*get_chip_en)(struct regmap *regmap);
 };
 
 
 int sia81xx_regmap_read(struct regmap *regmap,
-	unsigned int start_reg, unsigned int reg_num, char *buf);
+	unsigned int start_reg, unsigned int reg_num, void *buf);
 int sia81xx_regmap_write(struct regmap *regmap,
 	unsigned int start_reg, unsigned int reg_num, const char *buf);
 void sia81xx_regmap_defaults(struct regmap *regmap,
@@ -51,12 +48,7 @@ int sia81xx_regmap_check_chip_id(struct regmap *regmap,
 	unsigned int chip_type);
 void sia81xx_regmap_set_xfilter(struct regmap *regmap,
 	unsigned int chip_type, unsigned int val);
-void sia81xx_regmap_set_chip_on(struct regmap *regmap,
-	unsigned int chip_type);
-void sia81xx_regmap_set_chip_off(struct regmap *regmap,
-	unsigned int chip_type);
-bool sia81xx_regmap_get_chip_en(struct regmap *regmap,
-	unsigned int chip_type);
+
 
 #endif /* _SIA81XX_REGMAP_H */
 

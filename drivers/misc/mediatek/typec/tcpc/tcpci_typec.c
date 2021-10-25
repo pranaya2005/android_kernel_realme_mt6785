@@ -416,14 +416,9 @@ static inline int typec_norp_src_attached_entry(struct tcpc_device *tcpc_dev)
 	if (!tcpc_dev->typec_power_ctrl) {
 		if (get_boot_mode() == KERNEL_POWER_OFF_CHARGING_BOOT ||
 			get_boot_mode() == LOW_POWER_OFF_CHARGING_BOOT)
-#ifndef VENDOR_EDIT
-/* LiYue@BSP.CHG.Basic, 2019/09/27, Delete for WD */
+
 		typec_check_water_status(tcpc_dev);
 		tcpci_set_usbid_polling(tcpc_dev, false);
-#else
-		if (typec_check_water_status(tcpc_dev))
-			return 0;
-#endif
 	}
 #else
 	if (!tcpc_dev->typec_power_ctrl && typec_check_water_status(tcpc_dev))
@@ -568,7 +563,10 @@ static inline void typec_unattached_cc_entry(struct tcpc_device *tcpc_dev)
 	    tcpc_dev->typec_state == typec_unattachwait_pe)
 		tcpc_typec_handle_ctd(tcpc_dev, TCPC_CABLE_TYPE_NONE);
 #endif /* CONFIG_CABLE_TYPE_DETECTION */
-
+	#ifdef OPLUS_FEATURE_CHG_BASIC
+	//add by tongfeng
+	tcpc_dev->typec_role = tcpc_dev->typec_role_new;
+	#endif
 	switch (tcpc_dev->typec_role) {
 	case TYPEC_ROLE_SNK:
 		TYPEC_NEW_STATE(typec_unattached_snk);
@@ -2745,18 +2743,29 @@ int tcpc_typec_change_role(
 		TYPEC_INFO("Wrong TypeC-Role: %d\r\n", typec_role);
 		return -EINVAL;
 	}
-
-	if (tcpc_dev->typec_role == typec_role) {
+	#ifdef OPLUS_FEATURE_CHG_BASIC
+	//add by tongfeng
+	if (tcpc_dev->typec_role_new == typec_role) {
+	#endif
 		TYPEC_INFO("typec_new_role: %s is the same\r\n",
 			typec_role_name[typec_role]);
 
 		return 0;
 	}
-	tcpc_dev->typec_role = typec_role;
-
+	#ifdef OPLUS_FEATURE_CHG_BASIC
+	//add by tongfeng
+	tcpc_dev->typec_role_new = typec_role;
+	#endif
 	TYPEC_INFO("typec_new_role: %s\r\n", typec_role_name[typec_role]);
-
+	#ifdef OPLUS_FEATURE_CHG_BASIC
+	//add by tongfeng
+	if (tcpc_dev->typec_attach_old == TYPEC_UNATTACHED)
+		return tcpc_typec_error_recovery(tcpc_dev);
+	else
+		return 0;
+	#else
 	return tcpc_typec_error_recovery(tcpc_dev);
+	#endif
 }
 
 #ifdef CONFIG_TYPEC_CAP_POWER_OFF_CHARGE
@@ -2815,6 +2824,10 @@ int tcpc_typec_init(struct tcpc_device *tcpc_dev, uint8_t typec_role)
 	TYPEC_INFO("typec_init: %s\r\n", typec_role_name[typec_role]);
 
 	tcpc_dev->typec_role = typec_role;
+	#ifdef OPLUS_FEATURE_CHG_BASIC
+	//add by tongfeng
+	tcpc_dev->typec_role_new = typec_role;
+	#endif
 	tcpc_dev->typec_attach_new = TYPEC_UNATTACHED;
 	tcpc_dev->typec_attach_old = TYPEC_UNATTACHED;
 

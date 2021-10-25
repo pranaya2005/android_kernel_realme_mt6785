@@ -22,7 +22,6 @@
 #include <linux/uaccess.h>
 #include <linux/fs.h>
 #include <soc/oplus/system/oppo_project.h>
-
 /*#include <asm/atomic.h>*/
 
 #include "kd_camera_typedef.h"
@@ -52,7 +51,7 @@ enum OV8856_VERSION {
 	OV8856R1A
 };
 
-static enum OV8856_VERSION ov8856version = OV8856R1A;
+enum OV8856_VERSION ov8856version = OV8856R1A;
 
 static DEFINE_SPINLOCK(imgsensor_drv_lock);
 
@@ -1401,18 +1400,16 @@ static kal_uint32 streaming_control(kal_bool enable)
 	return ERROR_NONE;
 }
 
-static kal_uint32 check_board() // sala/salaA=1 nemo/sarter=2
+static kal_uint32 check_board()
 {
 	kal_uint32 res = 0;
-	if (is_project(20682)) 
-		res = 1;
-	else if (is_project(19661))
-		res = 2;
-	else
+	if (is_project(20730)||is_project(20731)||is_project(20732)) {
 		res = 0;
+	} else {
+		res = 1;
+	}
 	return res;
 }
-
 /*************************************************************************
  * FUNCTION
  *	get_imgsensor_id
@@ -1443,7 +1440,7 @@ static kal_uint32 get_imgsensor_id(UINT32 *sensor_id)
 		do {
 			*sensor_id = ((read_cmos_sensor(0x300B) << 8) | read_cmos_sensor(0x300C));
 			if (*sensor_id == OV8856_SENSOR_ID) {
-				if(check_board()==2){
+				if (check_board()) {
 					*sensor_id = imgsensor_info.sensor_id;
 					if ((read_cmos_sensor(0x302A)) == 0xB1) {
 						ov8856version = OV8856R2A;
@@ -1456,11 +1453,12 @@ static kal_uint32 get_imgsensor_id(UINT32 *sensor_id)
 						}
 						#endif  //OPLUS_FEATURE_CAMERA_COMMON
 						printk("OV8856 get_imgsensor_id success: 0x%x\n", *sensor_id);
+
 						return ERROR_NONE;
 					}
-				} else{
-						*sensor_id = 0xFFFFFFFF;
-						printk("ov8856 check board fail(20682)\n");
+				} else {
+					*sensor_id = 0xFFFFFFFF;
+					printk("ov8856 check board fail(20730)\n");
 				}
 			}
 			retry--;
@@ -1513,8 +1511,8 @@ static kal_uint32 open(void)
 			sensor_id = (
 		   (read_cmos_sensor(0x300B) << 8) | read_cmos_sensor(0x300C));
 
-			if (sensor_id == OV8856_SENSOR_ID) {
-				sensor_id = imgsensor_info.sensor_id;
+			if (sensor_id == imgsensor_info.sensor_id) {
+
 				pr_debug("i2c write id: 0x%x, sensor id: 0x%x\n",
 					imgsensor.i2c_write_id, sensor_id);
 				break;

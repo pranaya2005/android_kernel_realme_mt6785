@@ -50,6 +50,13 @@
                 <sensitive_level>Level</sensitive_level>
                 <debounce_en>Enable</debounce_en>
             </eint0>
+            <eint7>
+                <varName>IRQ_NFC</varName>
+                <debounce_time>0</debounce_time>
+                <polarity>High</polarity>
+                <sensitive_level>Edge</sensitive_level>
+                <debounce_en>Disable</debounce_en>
+            </eint7>
             <eint21>
                 <varName>TOUCH</varName>
                 <debounce_time>0</debounce_time>
@@ -157,17 +164,19 @@
                 <inpull_en>true</inpull_en>
                 <inpull_selhigh>false</inpull_selhigh>
                 <def_dir>OUT</def_dir>
-                <out_high>false</out_high>
+                <out_high>true</out_high>
+                <varName0>GPIO_NFC_FIRM_PIN</varName0>
                 <smt>true</smt>
                 <ies>true</ies>
             </gpio6>
             <gpio7>
-                <eint_mode>false</eint_mode>
+                <eint_mode>true</eint_mode>
                 <def_mode>0</def_mode>
-                <inpull_en>true</inpull_en>
+                <inpull_en>false</inpull_en>
                 <inpull_selhigh>false</inpull_selhigh>
-                <def_dir>OUT</def_dir>
+                <def_dir>IN</def_dir>
                 <out_high>false</out_high>
+                <varName0>GPIO_NFC_EINT_PIN</varName0>
                 <smt>true</smt>
                 <ies>true</ies>
             </gpio7>
@@ -219,7 +228,6 @@
                 <inpull_selhigh>true</inpull_selhigh>
                 <def_dir>IN</def_dir>
                 <out_high>false</out_high>
-                <varName0>GPIO_NFC_EINT_PIN</varName0>
                 <smt>false</smt>
                 <ies>true</ies>
             </gpio12>
@@ -230,7 +238,6 @@
                 <inpull_selhigh>false</inpull_selhigh>
                 <def_dir>IN</def_dir>
                 <out_high>false</out_high>
-                <varName0>GPIO_NFC_VENB_PIN</varName0>
                 <smt>false</smt>
                 <ies>true</ies>
             </gpio13>
@@ -261,8 +268,9 @@
                 <def_mode>0</def_mode>
                 <inpull_en>true</inpull_en>
                 <inpull_selhigh>false</inpull_selhigh>
-                <def_dir>IN</def_dir>
+                <def_dir>OUT</def_dir>
                 <out_high>false</out_high>
+                <varName0>GPIO_NFC_VENB_PIN</varName0>
                 <smt>false</smt>
                 <ies>true</ies>
             </gpio16>
@@ -467,41 +475,45 @@
             </gpio35>
             <gpio36>
                 <eint_mode>false</eint_mode>
-                <def_mode>4</def_mode>
-                <inpull_en>true</inpull_en>
-                <inpull_selhigh>true</inpull_selhigh>
-                <def_dir>IN</def_dir>
+                <def_mode>1</def_mode>
+                <inpull_en>false</inpull_en>
+                <inpull_selhigh>false</inpull_selhigh>
+                <def_dir>OUT</def_dir>
                 <out_high>false</out_high>
+                <varName0>GPIO_SPI3_CK_PIN</varName0>
                 <smt>false</smt>
                 <ies>true</ies>
             </gpio36>
             <gpio37>
                 <eint_mode>false</eint_mode>
-                <def_mode>4</def_mode>
+                <def_mode>1</def_mode>
                 <inpull_en>false</inpull_en>
                 <inpull_selhigh>false</inpull_selhigh>
-                <def_dir>IN</def_dir>
+                <def_dir>OUT</def_dir>
                 <out_high>false</out_high>
+                <varName0>GPIO_SPI3_CS_PIN</varName0>
                 <smt>false</smt>
                 <ies>true</ies>
             </gpio37>
             <gpio38>
                 <eint_mode>false</eint_mode>
-                <def_mode>4</def_mode>
+                <def_mode>1</def_mode>
                 <inpull_en>true</inpull_en>
                 <inpull_selhigh>true</inpull_selhigh>
                 <def_dir>IN</def_dir>
                 <out_high>false</out_high>
+                <varName0>GPIO_SPI3_MISO_PIN</varName0>
                 <smt>false</smt>
                 <ies>true</ies>
             </gpio38>
             <gpio39>
                 <eint_mode>false</eint_mode>
-                <def_mode>4</def_mode>
-                <inpull_en>false</inpull_en>
+                <def_mode>1</def_mode>
+                <inpull_en>true</inpull_en>
                 <inpull_selhigh>false</inpull_selhigh>
-                <def_dir>IN</def_dir>
+                <def_dir>OUT</def_dir>
                 <out_high>false</out_high>
+                <varName0>GPIO_SPI3_MOSI_PIN</varName0>
                 <smt>false</smt>
                 <ies>true</ies>
             </gpio39>
@@ -1212,11 +1224,12 @@
             </gpio107>
             <gpio108>
                 <eint_mode>false</eint_mode>
-                <def_mode>7</def_mode>
-                <inpull_en>true</inpull_en>
+                <def_mode>1</def_mode>
+                <inpull_en>false</inpull_en>
                 <inpull_selhigh>false</inpull_selhigh>
-                <def_dir>IN</def_dir>
+                <def_dir>OUT</def_dir>
                 <out_high>false</out_high>
+                <varName0>GPIO_CAMERA_1_AVDD_PIN</varName0>
                 <smt>false</smt>
                 <ies>true</ies>
             </gpio108>
@@ -1449,10 +1462,11 @@
             <gpio130>
                 <eint_mode>false</eint_mode>
                 <def_mode>1</def_mode>
-                <inpull_en>true</inpull_en>
+                <inpull_en>false</inpull_en>
                 <inpull_selhigh>false</inpull_selhigh>
-                <def_dir>IN</def_dir>
+                <def_dir>OUT</def_dir>
                 <out_high>false</out_high>
+                <varName0>GPIO_CAMERA_3_CMRST_PIN</varName0>
                 <smt>false</smt>
                 <ies>true</ies>
             </gpio130>
@@ -1461,9 +1475,9 @@
                 <def_mode>1</def_mode>
                 <inpull_en>false</inpull_en>
                 <inpull_selhigh>false</inpull_selhigh>
-                <def_dir>IN</def_dir>
+                <def_dir>OUT</def_dir>
                 <out_high>false</out_high>
-                <varName0>GPIO_CMVSYNC</varName0>
+                <varName0>GPIO_CAMERA_4_CMRST_PIN</varName0>
                 <smt>false</smt>
                 <ies>true</ies>
             </gpio131>
@@ -1479,12 +1493,12 @@
             </gpio132>
             <gpio133>
                 <eint_mode>false</eint_mode>
-                <def_mode>0</def_mode>
-                <inpull_en>true</inpull_en>
+                <def_mode>1</def_mode>
+                <inpull_en>false</inpull_en>
                 <inpull_selhigh>false</inpull_selhigh>
                 <def_dir>OUT</def_dir>
                 <out_high>false</out_high>
-                <varName0>GPIO_CAMERA_2_CMPDN_PIN</varName0>
+                <varName0>GPIO_CAMERA_0_AVDD1_PIN</varName0>
                 <smt>false</smt>
                 <ies>true</ies>
             </gpio133>
@@ -1495,17 +1509,17 @@
                 <inpull_selhigh>false</inpull_selhigh>
                 <def_dir>OUT</def_dir>
                 <out_high>false</out_high>
-                <varName0>GPIO_CAMERA_2_CMRST_PIN</varName0>
                 <smt>false</smt>
                 <ies>true</ies>
             </gpio134>
             <gpio135>
                 <eint_mode>false</eint_mode>
-                <def_mode>0</def_mode>
-                <inpull_en>true</inpull_en>
+                <def_mode>1</def_mode>
+                <inpull_en>false</inpull_en>
                 <inpull_selhigh>false</inpull_selhigh>
                 <def_dir>OUT</def_dir>
                 <out_high>false</out_high>
+                <varName0>GPIO_CAMERA_0_AVDD_PIN</varName0>
                 <smt>false</smt>
                 <ies>true</ies>
             </gpio135>
@@ -1514,19 +1528,20 @@
                 <def_mode>1</def_mode>
                 <inpull_en>false</inpull_en>
                 <inpull_selhigh>false</inpull_selhigh>
-                <def_dir>IN</def_dir>
+                <def_dir>OUT</def_dir>
                 <out_high>false</out_high>
-                <varName0>GPIO_CAMERA_2_CMMCLK_PIN</varName0>
+                <varName0>GPIO_CAMERA_CMMCLK3_PIN</varName0>
                 <smt>false</smt>
                 <ies>true</ies>
             </gpio136>
             <gpio137>
                 <eint_mode>false</eint_mode>
-                <def_mode>0</def_mode>
-                <inpull_en>true</inpull_en>
+                <def_mode>1</def_mode>
+                <inpull_en>false</inpull_en>
                 <inpull_selhigh>false</inpull_selhigh>
                 <def_dir>OUT</def_dir>
                 <out_high>false</out_high>
+                <varName0>GPIO_CAMERA_CMMCLK4_PIN</varName0>
                 <smt>false</smt>
                 <ies>true</ies>
             </gpio137>
@@ -1586,65 +1601,67 @@
             </gpio142>
             <gpio143>
                 <eint_mode>false</eint_mode>
-                <def_mode>0</def_mode>
-                <inpull_en>true</inpull_en>
+                <def_mode>1</def_mode>
+                <inpull_en>false</inpull_en>
                 <inpull_selhigh>false</inpull_selhigh>
                 <def_dir>OUT</def_dir>
                 <out_high>false</out_high>
-                <varName0>GPIO_CAMERA_CMRST_PIN</varName0>
+                <varName0>GPIO_CAMERA_1_CMRST_PIN</varName0>
                 <smt>false</smt>
                 <ies>true</ies>
             </gpio143>
             <gpio144>
                 <eint_mode>false</eint_mode>
-                <def_mode>0</def_mode>
-                <inpull_en>true</inpull_en>
+                <def_mode>1</def_mode>
+                <inpull_en>false</inpull_en>
                 <inpull_selhigh>false</inpull_selhigh>
                 <def_dir>OUT</def_dir>
                 <out_high>false</out_high>
-                <varName0>GPIO_CAMERA_CMRST1_PIN</varName0>
+                <varName0>GPIO_CAMERA_0_CMRST_PIN</varName0>
                 <smt>false</smt>
                 <ies>true</ies>
             </gpio144>
             <gpio145>
                 <eint_mode>false</eint_mode>
-                <def_mode>0</def_mode>
-                <inpull_en>true</inpull_en>
+                <def_mode>1</def_mode>
+                <inpull_en>false</inpull_en>
                 <inpull_selhigh>false</inpull_selhigh>
                 <def_dir>OUT</def_dir>
                 <out_high>false</out_high>
+                <varName0>GPIO_CAMERA_2_CMRST_PIN</varName0>
                 <smt>false</smt>
                 <ies>true</ies>
             </gpio145>
             <gpio146>
                 <eint_mode>false</eint_mode>
-                <def_mode>0</def_mode>
-                <inpull_en>true</inpull_en>
+                <def_mode>1</def_mode>
+                <inpull_en>false</inpull_en>
                 <inpull_selhigh>false</inpull_selhigh>
                 <def_dir>OUT</def_dir>
                 <out_high>false</out_high>
-                <varName0>GPIO_CAMERA_CMPDN_PIN</varName0>
+                <varName0>GPIO_CAMERA_2_DVDD_PIN</varName0>
                 <smt>false</smt>
                 <ies>true</ies>
             </gpio146>
             <gpio147>
                 <eint_mode>false</eint_mode>
-                <def_mode>0</def_mode>
-                <inpull_en>true</inpull_en>
+                <def_mode>1</def_mode>
+                <inpull_en>false</inpull_en>
                 <inpull_selhigh>false</inpull_selhigh>
                 <def_dir>OUT</def_dir>
                 <out_high>false</out_high>
-                <varName0>GPIO_CAMERA_CMPDN1_PIN</varName0>
+                <varName0>GPIO_CAMERA_0_DVDD_PIN</varName0>
                 <smt>false</smt>
                 <ies>true</ies>
             </gpio147>
             <gpio148>
                 <eint_mode>false</eint_mode>
-                <def_mode>0</def_mode>
-                <inpull_en>true</inpull_en>
+                <def_mode>1</def_mode>
+                <inpull_en>false</inpull_en>
                 <inpull_selhigh>false</inpull_selhigh>
                 <def_dir>OUT</def_dir>
                 <out_high>false</out_high>
+                <varName0>GPIO_CAMERA_2_AVDD_PIN</varName0>
                 <smt>false</smt>
                 <ies>true</ies>
             </gpio148>
@@ -1653,7 +1670,7 @@
                 <def_mode>1</def_mode>
                 <inpull_en>false</inpull_en>
                 <inpull_selhigh>false</inpull_selhigh>
-                <def_dir>IN</def_dir>
+                <def_dir>OUT</def_dir>
                 <out_high>false</out_high>
                 <varName0>GPIO_CAMERA_CMMCLK0_PIN</varName0>
                 <smt>false</smt>
@@ -1664,7 +1681,7 @@
                 <def_mode>1</def_mode>
                 <inpull_en>false</inpull_en>
                 <inpull_selhigh>false</inpull_selhigh>
-                <def_dir>IN</def_dir>
+                <def_dir>OUT</def_dir>
                 <out_high>false</out_high>
                 <varName0>GPIO_CAMERA_CMMCLK1_PIN</varName0>
                 <smt>false</smt>
@@ -1675,8 +1692,9 @@
                 <def_mode>1</def_mode>
                 <inpull_en>false</inpull_en>
                 <inpull_selhigh>false</inpull_selhigh>
-                <def_dir>IN</def_dir>
+                <def_dir>OUT</def_dir>
                 <out_high>false</out_high>
+                <varName0>GPIO_CAMERA_CMMCLK2_PIN</varName0>
                 <smt>false</smt>
                 <ies>true</ies>
             </gpio151>
@@ -2422,14 +2440,19 @@
             </i2c_bus9>
             <device5>
                 <varName>CAMERA_MAIN_TWO</varName>
-                <channel>I2C_CHANNEL_2</channel>
+                <channel>I2C_CHANNEL_8</channel>
                 <address>0x10</address>
             </device5>
             <device6>
                 <varName>CAMERA_MAIN_TWO_EEPROM</varName>
-                <channel>I2C_CHANNEL_2</channel>
+                <channel>I2C_CHANNEL_8</channel>
                 <address>0x51</address>
             </device6>
+            <device7>
+                <varName>CAMERA_SUB_TWO</varName>
+                <channel>I2C_CHANNEL_8</channel>
+                <address>0x53</address>
+            </device7>
             <device9>
                 <varName>BQ27411_GAUGE</varName>
                 <channel>I2C_CHANNEL_7</channel>
@@ -2448,7 +2471,7 @@
             <device12>
                 <varName>CAMERA_SUB_EEPROM</varName>
                 <channel>I2C_CHANNEL_4</channel>
-                <address>0x51</address>
+                <address>0x54</address>
             </device12>
             <device14>
                 <varName>SUBPMIC</varName>
@@ -2470,6 +2493,11 @@
                 <channel>I2C_CHANNEL_5</channel>
                 <address>0x64</address>
             </device17>
+            <device18>
+                <varName>TFA98XX</varName>
+                <channel>I2C_CHANNEL_6</channel>
+                <address>0x35</address>
+            </device18>
             <device19>
                 <varName>I2C_LCD_BIAS</varName>
                 <channel>I2C_CHANNEL_6</channel>
@@ -2483,42 +2511,42 @@
             <device21>
                 <varName>EXT_BUCK_VMDDR</varName>
                 <channel>I2C_CHANNEL_6</channel>
-                <address>0x51</address>
+                <address>0x57</address>
             </device21>
             <device24>
                 <varName>CAMERA_MAIN</varName>
-                <channel>I2C_CHANNEL_8</channel>
-                <address>0x1A</address>
+                <channel>I2C_CHANNEL_2</channel>
+                <address>0x1C</address>
             </device24>
             <device25>
                 <varName>CAMERA_MAIN_EEPROM</varName>
-                <channel>I2C_CHANNEL_8</channel>
-                <address>0x50</address>
+                <channel>I2C_CHANNEL_2</channel>
+                <address>0x59</address>
             </device25>
             <device26>
                 <varName>CAMERA_MAIN_AF</varName>
-                <channel>I2C_CHANNEL_8</channel>
+                <channel>I2C_CHANNEL_2</channel>
                 <address>0x72</address>
             </device26>
             <device27>
                 <varName>CAMERA_MAIN_TWO_AF</varName>
-                <channel>I2C_CHANNEL_2</channel>
+                <channel>I2C_CHANNEL_8</channel>
                 <address>0x0C</address>
             </device27>
             <device29>
                 <varName>CAMERA_MAIN_THREE</varName>
-                <channel>I2C_CHANNEL_9</channel>
-                <address>0x10</address>
+                <channel>I2C_CHANNEL_4</channel>
+                <address>0x13</address>
             </device29>
             <device30>
                 <varName>CAMERA_MAIN_THREE_EEPROM</varName>
                 <channel>I2C_CHANNEL_9</channel>
-                <address>0x51</address>
+                <address>0x67</address>
             </device30>
             <device31>
                 <varName>CAMERA_MAIN_THREE_AF</varName>
                 <channel>I2C_CHANNEL_9</channel>
-                <address>0x0C</address>
+                <address>0x0D</address>
             </device31>
         </module>
         <module name="md1_eint">
@@ -2543,8 +2571,8 @@
                 <varName0>MAIN_CAMERA_POWER_IO</varName0>
                 <varName1>SUB_CAMERA_POWER_IO</varName1>
                 <varName2>MAIN_CAMERA_2_POWER_IO</varName2>
-                <varName3>MAIN_CAMERA_POWER_AF</varName3>
-                <varName4>MAIN_CAMERA_2_POWER_AF</varName4>
+                <varName3>SUB_CAMERA_2_POWER_IO</varName3>
+                <varName4>MAIN_CAMERA_3_POWER_IO</varName4>
             </pmic0>
             <pmic1>
                 <ldoVar>VTP</ldoVar>

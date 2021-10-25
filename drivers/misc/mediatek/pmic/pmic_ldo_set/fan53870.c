@@ -188,11 +188,16 @@ int fan53870_cam_ldo_set_voltage(unsigned int LDO_NUM, int set_mv)
         case 1:
             if (set_mv == 1050) {
                 reg_value = 0x83;    /*1.056V*/
-            } else if (set_mv == 1200) {
-                reg_value =0x95;    /*1.200V*/
-            } else if (set_mv == 1100) {
-                reg_value = 0x89;
-            } else {
+            }
+            else if(set_mv == 1100)
+            {
+                reg_value = 0x89; /*1.104V*/
+            }
+            else if (set_mv == 1200)
+            {
+                reg_value =0x95;
+            }
+            else {
                 reg_value = 0x80;    /*1.032V*/
             }
 
@@ -210,7 +215,15 @@ int fan53870_cam_ldo_set_voltage(unsigned int LDO_NUM, int set_mv)
                 goto out;
         break;
         case 2:
-            reg_value =0x95;    /*1.200V*/
+            if (set_mv == 1100)
+            {
+                reg_value == 0x89;
+            }
+            else
+            {
+                reg_value =0x95;    /*1.200V*/
+            }
+
             ret = regmap_write(pchip->regmap, FAN53870_LDO2_VOUT_REG, reg_value);
             pr_err("Writing 0x%02x to 0x%02x \n", reg_value, FAN53870_LDO2_VOUT_REG);
             if (ret < 0)
@@ -430,7 +443,6 @@ static int fan53870_pmic_probe(struct i2c_client *client,
     int access_time = 3;
 
     pr_err("%s Enter\n", __func__);
-
     if (client->dev.of_node) {
         pdata = devm_kzalloc(&client->dev,
             sizeof(struct fan53870_platform_data), GFP_KERNEL);
@@ -490,7 +502,6 @@ static int fan53870_pmic_probe(struct i2c_client *client,
         pr_info("%s set fan53870 ldo5 alway on 3.3v\n", __func__);
         fan53870_cam_ldo_set_voltage(5, 3300);
     }
-
     pr_err("%s : ret:%d product_id:%d probe done\n", __func__, ret, product_id);
     return 0;
 error_enable:

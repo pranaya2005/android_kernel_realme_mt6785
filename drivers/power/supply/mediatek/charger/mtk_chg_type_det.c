@@ -64,7 +64,7 @@
 #include "mtk_charger_intf.h"
 
 
-#ifdef CONFIG_OPLUS_CHARGER_MTK6769
+#if defined (CONFIG_OPLUS_CHARGER_MTK6769) || defined (CONFIG_OPLUS_CHARGER_MTK6768) || defined (CONFIG_OPLUS_CHARGER_MTK6769R)
 //add by lukaili notify fuelgauge for other charger
 extern void oplus_gauge_set_event(int event);
 extern void fg_charger_in_handler(void);
@@ -76,7 +76,7 @@ bool is_fuelgauge_apply(void)
 }
 #endif
 
-#ifndef CONFIG_OPLUS_CHARGER_MTK6769
+#if !defined (CONFIG_OPLUS_CHARGER_MTK6769) && !defined (CONFIG_OPLUS_CHARGER_MTK6768) || defined (CONFIG_OPLUS_CHARGER_MTK6769R)
 //add by lukaili notify fuelgauge for other charger
 #ifndef CONFIG_OPLUS_CHARGER_MTK6771
 extern void oplus_gauge_set_event(int event);
@@ -241,7 +241,7 @@ static int mt_charger_online(struct mt_charger *mtk_chg)
 /* Power Supply Functions */
 #ifdef VENDOR_EDIT
 #if defined(CONFIG_OPLUS_CHARGER_MTK6769) || defined(CONFIG_OPLUS_CHARGER_MT6370_TYPEC) \
-			|| defined(CONFIG_OPLUS_CHARGER_MTK6771)
+			|| defined(CONFIG_OPLUS_CHARGER_MTK6771) || defined(CONFIG_OPLUS_CHARGER_MTK6768) || defined (CONFIG_OPLUS_CHARGER_MTK6769R)
 bool pmic_chrdet_status(void);
 #else /*CONFIG_OPLUS_CHARGER_MTK6769*/
 /* LiYue@BSP.CHG.Basic, 2019/09/04 Add for charging */
@@ -265,7 +265,7 @@ static int mt_charger_get_property(struct power_supply *psy,
 				|| get_boot_mode() == LOW_POWER_OFF_CHARGING_BOOT)
 				&& (val->intval == 0)) {
 #if defined(CONFIG_OPLUS_CHARGER_MTK6769) || defined(CONFIG_OPLUS_CHARGER_MT6370_TYPEC) \
-				 || defined(CONFIG_OPLUS_CHARGER_MTK6771)
+				 || defined(CONFIG_OPLUS_CHARGER_MTK6771) || defined(CONFIG_OPLUS_CHARGER_MTK6768) || defined (CONFIG_OPLUS_CHARGER_MTK6769R)
 			val->intval = pmic_chrdet_status();
 #else /*CONFIG_OPLUS_CHARGER_MTK6769*/
 			val->intval = mt6360_get_vbus_status();
@@ -320,9 +320,13 @@ static int mt_charger_set_property(struct power_supply *psy,
 	#endif
 #ifdef VENDOR_EDIT
 /* LiYue@BSP.CHG.Basic, 2019/09/04 Add for charging */
-	static struct power_supply *battery_psy = NULL;
-	if (!battery_psy) {
-		battery_psy = power_supply_get_by_name("battery");
+	static struct power_supply *ac_psy = NULL;
+	static struct power_supply *usb_psy = NULL;
+	if (!ac_psy) {
+		ac_psy = power_supply_get_by_name("ac");
+	}
+	if (!usb_psy) {
+		usb_psy = power_supply_get_by_name("usb");
 	}
 #endif /*VENDOR_EDIT*/
 	pr_info("%s\n", __func__);
@@ -360,8 +364,10 @@ static int mt_charger_set_property(struct power_supply *psy,
 #endif
 #ifdef VENDOR_EDIT
 /* LiYue@BSP.CHG.Basic, 2019/09/04 Add for charging */
-		if (battery_psy)
-			power_supply_changed(battery_psy);
+		if (ac_psy)
+			power_supply_changed(ac_psy);
+		if (usb_psy)
+			power_supply_changed(usb_psy);
 		oplus_chg_wake_update_work();
 #endif
 		break;
@@ -375,13 +381,7 @@ static int mt_charger_set_property(struct power_supply *psy,
 	if (!cti->ignore_usb) {
 		/* usb */
 		if ((mtk_chg->chg_type == STANDARD_HOST) ||
-			(mtk_chg->chg_type == CHARGING_HOST) ||
-#ifndef VENDOR_EDIT
-/* LiYue@BSP.CHG.Basic, 2019/12/08, add for usb wakelock */
-			(mtk_chg->chg_type == NONSTANDARD_CHARGER)) {
-#else
-			((mtk_chg->chg_type == NONSTANDARD_CHARGER) && oplus_get_chg_unwakelock() == 0)) {
-#endif
+			(mtk_chg->chg_type == CHARGING_HOST)) {
 			mt_usb_connect();
 			#ifdef CONFIG_EXTCON_USB_CHG
 			info->vbus_state = 1;
@@ -989,9 +989,20 @@ static void notify_charger_status(bool cur_charger_exist)
 }
 #endif
 
+#ifdef OPLUS_FEATURE_CHG_BASIC
+//Qiao.Hu@BSP.BaseDrv.CHG.Basic, 2018/01/12, add for fast chargering.
+extern bool oplus_vooc_get_fastchg_started(void);
+#endif /*OPLUS_FEATURE_CHG_BASIC*/
 bool pmic_chrdet_status(void)
 {
-	if (upmu_is_chr_det()){
+#ifdef OPLUS_FEATURE_CHG_BASIC
+//Qiao.Hu@BSP.BaseDrv.CHG.Basic, 2018/01/12, add for fast chargering.
+	if (oplus_vooc_get_fastchg_started()) {
+		notify_charger_status(true);
+		return true;
+	}
+#endif /*OPLUS_FEATURE_CHG_BASIC*/
+	if (upmu_is_chr_det()) {
 #ifndef VENDOR_EDIT
 //Qiao.Hu@BSP.BaseDrv.CHG.Basic, 2017/12/13, add for otg operation, to mislead to charger status.
 		return true;

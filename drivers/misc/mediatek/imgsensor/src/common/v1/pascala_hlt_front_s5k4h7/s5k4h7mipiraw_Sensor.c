@@ -38,7 +38,7 @@
 #include <linux/uaccess.h>
 #include <linux/fs.h>
 #include <linux/atomic.h>
-#include <soc/oppo/oppo_project.h>
+
 #include "kd_imgsensor.h"
 #include "kd_imgsensor_define.h"
 #include "kd_imgsensor_errcode.h"
@@ -1101,19 +1101,6 @@ static void slim_video_setting(void)
 	#endif
 }
 
-static kal_uint32 pascali_project(void)
-{
-	kal_uint32 version_value;
-	kal_uint32 res = 0;
-	version_value = get_Operator_Version();
-	if (version_value == 177 || version_value == 178) {
-		res = 0;
-	} else {
-		res = 1;
-	}
-
-	return res;
-}
 
 /*************************************************************************
  * FUNCTION
@@ -1148,7 +1135,6 @@ static kal_uint32 get_imgsensor_id(UINT32 *sensor_id)
 			read_cmos_sensor(0x0000));
 		printk("pascala_hlt_front_s5k4h7 get_umgsensor_id: 0x%x\n",*sensor_id );
 		if (*sensor_id == S5K4H7_SENSOR_ID) {
-			if (pascali_project()) {
 			*sensor_id = imgsensor_info.sensor_id;
 /* Shipei.Chen@Cam.Drv, 20200409, sensor porting for 206A1*/
 #ifndef VENDOR_EDIT
@@ -1173,10 +1159,6 @@ static kal_uint32 get_imgsensor_id(UINT32 *sensor_id)
 				imgsensor.i2c_write_id, *sensor_id,
 				imgsensor_info.module_id);
 			break;
-		  	} else {
-				*sensor_id = 0xFFFFFFFF;
-				printk("s5k4h7 check board fail(pascal i)\n");
-			}
 		}
 		LOG_INF("Read sensor id fail, id: 0x%x,0x%x\n",
 			imgsensor.i2c_write_id, *sensor_id);

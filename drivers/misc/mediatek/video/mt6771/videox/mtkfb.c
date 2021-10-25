@@ -103,6 +103,8 @@ extern bool oplus_display_backlight_ic_support;
 /*Jian.zhou@MM.Display.LCD.Machine, 2019/09/18, add for himax ic of 18311*/
 extern bool oplus_display_lcm_id_check_support;
 extern int oplus_mtkfb_custom_data_init(struct platform_device *pdev);
+/* Zhijun.Ye@MM.Display.LCD.Stability 2020/11/16, Add for dc backlight*/
+unsigned int oplus_backlight_backup = 0;
 #endif /* OPLUS_BUG_STABILITY */
 
 /* #ifdef OPLUS_FEATURE_AOD */
@@ -119,6 +121,13 @@ static DEFINE_MUTEX(fb_pow_mod_lock);
 */
 void notify_suspend_to_tp(struct fb_info *info, enum mtkfb_aod_power_mode aod_pm);
 /* #endif */ /* OPLUS_FEATURE_AOD */
+
+/* #ifdef OPLUS_FEATURE_ONSCREENFINGERPRINT */
+/* Zhijun.Ye@MM.Display.LCD.Machine, 2020/10/26, add for fingerprint */
+extern bool ds_rec_fpd;
+extern bool doze_rec_fpd;
+extern bool oplus_display_aod_ramless_support;
+/* #endif */ /* OPLUS_FEATURE_ONSCREENFINGERPRINT */
 
 /* macro definiton */
 #define ALIGN_TO(x, n)  (((x) + ((n) - 1)) & ~((n) - 1))
@@ -403,6 +412,11 @@ int mtkfb_set_backlight_level(unsigned int level)
 	MTKFB_FUNC();
 	DISPDBG("%s:%d Start\n",
 		__func__, level);
+
+	#ifdef OPLUS_BUG_STABILITY
+	/* Zhijun.Ye@MM.Display.LCD.Stability 2020/11/16, Add for dc backlight*/
+	oplus_backlight_backup = level;
+	#endif /* OPLUS_BUG_STABILITY */
 	primary_display_setbacklight(level);
 	DISPDBG("%s End\n", __func__);
 	return 0;
@@ -1170,9 +1184,26 @@ static int mtkfb_ioctl(struct fb_info *info, unsigned int cmd,
 			 * LCM(low power mode). Then DOZE_SUSPEND to
 			 * power off dispsys.
 			 */
+			/* #ifdef OPLUS_FEATURE_ONSCREENFINGERPRINT */
+			/*
+			* Ling.Guo@PSW.MM.Display.LCD.Stability, 2019/01/21,
+			* add for fingerprint notify frigger
+			*/
+			if(oplus_display_aod_ramless_support) {
+				DISPCHECK("AOD power mode DOZE_SUSPEND skip\n");
+				return 0;
+			}
+
+			if (ds_rec_fpd || doze_rec_fpd) {
+				DISPCHECK("AOD power mode DOZE_SUSPEND skip\n");
+				ds_rec_fpd = false;
+				doze_rec_fpd = false;
+				return 0;
+			}
+
 			/* #ifdef OPLUS_FEATURE_AOD */
 			/* YongPeng.Yi@PSW.MM.Display.LCD.Stability, 2018/10/09,  add for aod feature */
-			mutex_lock(&fb_pow_mod_lock);
+			mutex_unlock(&fb_pow_mod_lock);
 			/* #endif */ /* OPLUS_FEATURE_AOD */
 			if (primary_display_is_sleepd() &&
 			    primary_display_get_lcm_power_state()) {
@@ -1293,7 +1324,9 @@ static int mtkfb_ioctl(struct fb_info *info, unsigned int cmd,
 
 		dprec_logger_start(DPREC_LOGGER_WDMA_DUMP, 0, 0);
 		ret = primary_display_capture_framebuffer_ovl(
-					(unsigned long)src_pbuf, UFMT_BGRA8888);
+					(unsigned long)src_pbuf,
+					fbsize,
+					UFMT_BGRA8888);
 		if (ret < 0)
 			DDPPR_ERR("primary display capture framebuffer failed!\n");
 		dprec_logger_done(DPREC_LOGGER_WDMA_DUMP, 0, 0);
@@ -1350,7 +1383,9 @@ static int mtkfb_ioctl(struct fb_info *info, unsigned int cmd,
 		}
 
 		ret = primary_display_capture_framebuffer_ovl(
-					(unsigned long)src_pbuf, format);
+					(unsigned long)src_pbuf,
+					fbsize,
+					format);
 		if (ret < 0)
 			DDPPR_ERR("primary display capture framebuffer failed\n");
 
@@ -2648,7 +2683,7 @@ static int mtkfb_probe(struct platform_device *pdev)
 
 	/* #ifdef OPLUS_FEATURE_AOD */
 	/* Zhijun.Ye@MM.Display.LCD.Machine, 2020/10/26, add for aod */
-	if (oplus_display_aod_support) {
+	if (oplus_display_aod_support || oplus_display_aod_ramless_support) {
 		disp_helper_set_option(DISP_OPT_AOD, 1);
 	}
 	/* #endif */ /* OPLUS_FEATURE_AOD */
@@ -2678,31 +2713,9 @@ static int mtkfb_probe(struct platform_device *pdev)
 
 	DISPMSG("%s: fb_pa = %pa\n", __func__, &fb_base);
 
-#ifdef CONFIG_MTK_IOMMU
-	temp_va = (size_t)ioremap_nocache(fb_base, vramsize);
-	fbdev->fb_va_base = (void *)temp_va;
-	ion_display_client = disp_ion_create("disp_fb0");
-	if (ion_display_client == NULL) {
-		DDPPR_ERR("%s: fail to create ion\n", __func__);
-		ret = -1;
-		goto cleanup;
-	}
-
-	ion_display_handle = disp_ion_alloc(ion_display_client,
-					    ION_HEAP_MULTIMEDIA_MAP_MVA_MASK,
-					    temp_va, vramsize);
-	if (ret) {
-		DDPPR_ERR("%s: fail to allocate buffer\n", __func__);
-		ret = -1;
-		goto cleanup;
-	}
-
-	disp_ion_get_mva(ion_display_client, ion_display_handle,
-			 (unsigned int *)&fb_mva, DISP_M4U_PORT_DISP_OVL0);
-#else
 	disp_hal_allocate_framebuffer(fb_base, (fb_base + vramsize - 1),
 				(unsigned long *)(&fbdev->fb_va_base), &fb_mva);
-#endif
+
 	fbdev->fb_pa_base = fb_base;
 
 	primary_display_set_frame_buffer_address((unsigned long)
@@ -2795,14 +2808,6 @@ static int mtkfb_probe(struct platform_device *pdev)
 	if (disp_helper_get_stage() != DISP_HELPER_STAGE_NORMAL)
 		primary_display_diagnose();
 
-	/*
-	 * this function will get fb_heap base address to ion
-	 * for management frame buffer
-	 */
-#ifdef MTK_FB_ION_SUPPORT /* FIXME: remove when ION ready */
-	ion_drv_create_FB_heap(mtkfb_get_fb_base(),
-			mtkfb_get_fb_size() - DAL_GetLayerSize());
-#endif
 	fbdev->state = MTKFB_ACTIVE;
 
 	#ifndef OPLUS_BUG_STABILITY

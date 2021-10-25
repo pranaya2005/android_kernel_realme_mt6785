@@ -45,7 +45,6 @@
 	chosen: chosen {
 		bootargs = "console=tty0 console=ttyS0,921600n1 root=/dev/ram \
 vmalloc=400M slub_debug=OFZPU swiotlb=noforce \
-initcall_debug=1 \
 firmware_class.path=/vendor/firmware \
 page_owner=on loop.max_part=7";
 		kaslr-seed = <0 0>;
@@ -3247,7 +3246,9 @@ page_owner=on loop.max_part=7";
 #if defined(CONFIG_MTK_SEC_VIDEO_PATH_SUPPORT)
 			<&gce_mbox 4 0 CMDQ_THR_PRIO_4>,
 			<&gce_mbox 6 0 CMDQ_THR_PRIO_3>,
-			<&gce_mbox_sec 8 0 CMDQ_THR_PRIO_3>;
+			<&gce_mbox_sec 8 0 CMDQ_THR_PRIO_3>,
+			<&gce_mbox_sec 9 0 CMDQ_THR_PRIO_3>,
+			<&gce_mbox_sec 9 0 CMDQ_THR_PRIO_3>;
 #else
 			<&gce_mbox 4 0 CMDQ_THR_PRIO_4>,
 			<&gce_mbox 6 0 CMDQ_THR_PRIO_3>;
@@ -3261,7 +3262,9 @@ page_owner=on loop.max_part=7";
 #if defined(CONFIG_MTK_SEC_VIDEO_PATH_SUPPORT)
 			"CLIENT_SUB_CFG0",
 			"CLIENT_DSI_CFG0",
-			"CLIENT_SEC_CFG0";
+			"CLIENT_SEC_CFG0",
+			"CLIENT_SEC_CFG1",
+			"CLIENT_SEC_CFG2";
 #else
 			"CLIENT_SUB_CFG0",
 			"CLIENT_DSI_CFG0";
@@ -3610,7 +3613,7 @@ page_owner=on loop.max_part=7";
 		larb0 = <8 7 8 8>;
 		larb1 = <7 8 8 9 8>;
 		larb2 = <7 7 8 8 8>;
-		larb4 = <3 7 4 7 7 7 7 7 7 6 7 4>;
+		larb4 = <3 7 4 7 7 7 7 7 7 6 4 7>;
 		larb7 = <7 8 8 8 7 7 7 7 7 7 7 7 8>;
 		larb9 = <7 7 7 7 7 7 8 8 8 8 7 7 8 9 8 6 6 7
 			7 7 7 7 7 7 8 8 8 8 7>;
@@ -4708,7 +4711,7 @@ page_owner=on loop.max_part=7";
 
 		mboxes = <&gce_mbox 7 0 CMDQ_THR_PRIO_1>,
 			<&gce_mbox 12 0 CMDQ_THR_PRIO_1>,
-			<&gce_mbox_sec 9 0 CMDQ_THR_PRIO_1>;
+			<&gce_mbox_sec 12 0 CMDQ_THR_PRIO_1>;
 		gce-event-names = "venc_eof",
 			"venc_cmdq_pause_done",
 			"venc_mb_done",
@@ -4756,7 +4759,7 @@ page_owner=on loop.max_part=7";
 	vdec@16000000 {
 		compatible = "mediatek,mt6853-vcodec-dec";
 		reg = <0 0x1602f000 0 0x1000>,		/* VDEC_SYS */
-			 <0 0x16027000 0 0x400>,		/* VDEC_VLD */
+			 <0 0x16020000 0 0x400>,		/* VDEC_VLD */
 			 <0 0x16025000 0 0x1000>;		/* VDEC_MISC */
 #ifdef CONFIG_MTK_IOMMU_V2
 		iommus = <&iommu0 M4U_PORT_L4_VDEC_MC_EXT>;
@@ -5973,7 +5976,7 @@ page_owner=on loop.max_part=7";
 	//#ifdef VENDOR_EDIT
 	/* Dingtong.Liu@BSP.Secure.Basic, 2020/08/24, Add for seucre common driver*/
 	oplus_secure_common:oplus_secure_common {
-		compatible = "oppo,secure_common";
+		compatible = "oplus,secure_common";
 	};
 	//#endif //VENDOR_EDIT
 
@@ -6177,14 +6180,6 @@ page_owner=on loop.max_part=7";
 	//#endif //OPLUS_FEATURE_FINGERPRINT
 };
 
-//#ifdef VENDOR_EDIT
-//Baoquan.Lai@BSP.CHG.Basic, 2019/09/19, Modify for gpio128
-&mt6360_ldo{
-	ldo3{
-		regulator-always-on;
-	};
-};
-//#endif
 #ifdef CONFIG_MFD_MT6360_PMU
 &mt6360_pmic {
 	buck2 {

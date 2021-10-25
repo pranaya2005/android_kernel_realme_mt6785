@@ -18,7 +18,6 @@
 struct alsps_context *alsps_context_obj /* = NULL*/;
 struct platform_device *pltfm_dev;
 int last_als_report_data = -1;
-static int als_cali_data = 0;
 
 /* AAL default delay timer(nano seconds)*/
 #define AAL_DELAY 200000000
@@ -634,14 +633,6 @@ static ssize_t als_show_devnum(struct device *dev,
 {
 	return snprintf(buf, PAGE_SIZE, "%d\n", 0);
 }
-
-static ssize_t als_show_cali(struct device *dev,
-			       struct device_attribute *attr, char *buf)
-{
-
-	return snprintf(buf, PAGE_SIZE, "%d\n", als_cali_data);
-}
-
 static ssize_t als_store_cali(struct device *dev,
 	struct device_attribute *attr, const char *buf, size_t count)
 {
@@ -653,7 +644,6 @@ static ssize_t als_store_cali(struct device *dev,
 	if (!cali_buf)
 		return -ENOMEM;
 	memcpy(cali_buf, buf, count);
-	als_cali_data = *(int *)cali_buf;
 
 	mutex_lock(&alsps_context_obj->alsps_op_mutex);
 	cxt = alsps_context_obj;
@@ -1025,7 +1015,7 @@ DEVICE_ATTR(alsactive, 0644, als_show_active, als_store_active);
 DEVICE_ATTR(alsbatch, 0644, als_show_batch, als_store_batch);
 DEVICE_ATTR(alsflush, 0644, als_show_flush, als_store_flush);
 DEVICE_ATTR(alsdevnum, 0644, als_show_devnum, NULL);
-DEVICE_ATTR(alscali, 0644, als_show_cali, als_store_cali);
+DEVICE_ATTR(alscali, 0644, NULL, als_store_cali);
 DEVICE_ATTR(psactive, 0644, ps_show_active, ps_store_active);
 DEVICE_ATTR(psbatch, 0644, ps_show_batch, ps_store_batch);
 DEVICE_ATTR(psflush, 0644, ps_show_flush, ps_store_flush);

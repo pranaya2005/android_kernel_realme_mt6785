@@ -64,7 +64,7 @@
 #define LOG_TAG "[+silead_fp-] "
 
 #define BSP_SIL_IRQ_ASYNC  /* IRQ use asynchrous mode. */
-static struct fp_dev_touch_info fp_tpinfo;
+static struct fp_underscreen_info fp_tpinfo;
 static unsigned int lasttouchmode = 0;
 struct silfp_data *g_fp_dev = NULL;
 
@@ -592,7 +592,7 @@ static int silfp_irq_status(struct silfp_data *fp_dev)
     return -1;
 }
 
-static int silfp_opticalfp_irq_handler(struct fp_dev_touch_info *tp_info)
+static int silfp_opticalfp_irq_handler(struct fp_underscreen_info *tp_info)
 {
 
     fp_tpinfo = *tp_info;
@@ -1197,7 +1197,7 @@ silfp_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
     return retval;
 }
 
-int  silfp_touch_event_handler(struct fp_dev_touch_info* tp_info)
+int  silfp_touch_event_handler(struct fp_underscreen_info *tp_info)
 {
     static uint8_t lasttouchmode = 0;
 

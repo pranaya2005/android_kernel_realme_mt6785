@@ -77,6 +77,11 @@ int mm_fb_kevent_send_to_user(struct mm_kevent_packet *userinfo) {
 	struct mm_kevent_packet *packet;
 	int pid;
 
+	if (!mm_netlink_fd) {
+		printk(KERN_ERR "mm_netlink_fd is null, error return\n");
+		return MM_KEVENT_BAD_VALUE;
+	}
+
 	/* protect payload too long problem*/
 	if (userinfo->len >= MAX_PAYLOAD_DATASIZE) {
 		printk(KERN_ERR "mm_kevent payload_length out of range\n");
@@ -213,7 +218,9 @@ int __init mm_fb_kevent_module_init(void) {
 }
 
 void __exit mm_fb_kevent_module_exit(void) {
-	sock_release(mm_netlink_fd->sk_socket);
+	if (mm_netlink_fd) {
+		sock_release(mm_netlink_fd->sk_socket);
+	}
 	printk("mm_kevent exit\n");
 }
 

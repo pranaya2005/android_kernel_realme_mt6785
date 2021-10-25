@@ -2212,7 +2212,7 @@ static int syna_tcm_set_game_mode(struct syna_tcm_data *tcm_info, bool enable)
             return retval;
         }
 
-        noise_length = 0x30;//0x0A;
+        noise_length = 0x0A;
 
         retval = syna_tcm_set_dynamic_config(tcm_info, DC_NOISE_LENGTH, noise_length);
         if (retval < 0) {

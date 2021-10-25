@@ -1468,6 +1468,17 @@ static int nvt_reset_gpio_control(void *chip_data, bool enable)
     return 0;
 }
 
+static int nvt_cs_gpio_control(void *chip_data, bool enable)
+{
+    struct chip_data_nt36672c *chip_info = (struct chip_data_nt36672c *)chip_data;
+    if (gpio_is_valid(chip_info->hw_res->cs_gpio)) {
+        TPD_INFO("%s: set cs state %d\n", __func__, enable);
+        gpio_set_value(chip_info->hw_res->cs_gpio, enable);
+    }
+
+    return 0;
+}
+
 static u8 nvt_trigger_reason(void *chip_data, int gesture_enable, int is_suspended)
 {
     if ((gesture_enable == 1) && is_suspended) {
@@ -2808,7 +2819,7 @@ static int32_t nvt_polling_hand_shake_status(struct chip_data_nt36672c *chip_inf
 {
     uint8_t buf[8] = {0};
     int32_t i = 0;
-    const int32_t retry = 60;
+    const int32_t retry = 50;
 
     for (i = 0; i < retry; i++) {
         //---set xdata index to EVENT BUF ADDR---
@@ -4084,6 +4095,7 @@ static struct oppo_touchpanel_operations nvt_ops = {
     .black_screen_test          = nvt_black_screen_test,
     .esd_handle                 = nvt_esd_handle,
     .reset_gpio_control         = nvt_reset_gpio_control,
+    .cs_gpio_control            = nvt_cs_gpio_control,
     .set_touch_direction        = nvt_set_touch_direction,
     .get_touch_direction        = nvt_get_touch_direction,
     .tp_irq_throw_away          = nvt_irq_throw_away,
@@ -5775,7 +5787,6 @@ int __maybe_unused nvt_tp_probe(struct spi_device *client)
     /* 4. file_operations callbacks binding */
     ts->ts_ops = &nvt_ops;
     nt36672c_parse_dts(chip_info, client);
-
     /* 5. register common touch device*/
     ret = register_common_touch_device(ts);
     if (ret < 0) {
@@ -5804,6 +5815,12 @@ int __maybe_unused nvt_tp_probe(struct spi_device *client)
 #ifdef CONFIG_OPPO_TP_APK
     nova_init_oppo_apk_op(ts);
 #endif // end of CONFIG_OPPO_TP_APK
+
+    if (ts->cs_gpio_need_pull) {
+        nvt_cs_gpio_control(chip_info,true);
+       // TPD_INFO("cs_gpio need pull up \n");
+    }
+
 
     // update fw in probe
 #ifdef CONFIG_TOUCHPANEL_MTK_PLATFORM

@@ -409,6 +409,17 @@ VOID rlmReviseMaxBw(
 	PUINT_8 pucS1,
 	PUINT_8 pucPrimaryCh);
 
+#if CFG_SUPPORT_WAC
+UINT_32 rlmCalculateWAC_IELen(
+	IN P_ADAPTER_T prAdapter,
+	IN UINT_8 ucBssIdx,
+	IN P_STA_RECORD_T prStaRec);
+
+VOID rlmGenerateWAC_IE(
+	IN P_ADAPTER_T prAdapter,
+	IN P_MSDU_INFO_T prMsduInfo);
+#endif
+
 /*******************************************************************************
 *                              F U N C T I O N S
 ********************************************************************************

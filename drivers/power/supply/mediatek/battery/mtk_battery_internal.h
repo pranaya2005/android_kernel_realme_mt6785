@@ -59,7 +59,7 @@
 #endif
 #define AVGVBAT_ARRAY_SIZE 30
 #define INIT_VOLTAGE 3450
-#define BATTERY_SHUTDOWN_TEMPERATURE 60
+#define BATTERY_SHUTDOWN_TEMPERATURE 90
 
 /* ============================================================ */
 /* typedef and Struct*/
@@ -217,6 +217,7 @@ enum Fg_daemon_cmds {
 	FG_DAEMON_CMD_DUMP_LOG,
 	FG_DAEMON_CMD_SEND_DATA,
 	FG_DAEMON_CMD_COMMUNICATION_INT,
+	FG_DAEMON_CMD_SET_BATTERY_CAPACITY,
 
 	FG_DAEMON_CMD_FROM_USER_NUMBER
 };
@@ -305,6 +306,11 @@ struct fgd_cmd_param_t_7 {
 	int input;
 	int output;
 	int status;
+};
+
+struct fgd_cmd_param_t_8 {
+	int size;
+	int data[512];
 };
 
 enum daemon_cmd_int_data {
@@ -714,6 +720,10 @@ struct mtk_battery {
 /*custom related*/
 	int battery_id;
 
+/*fcc*/
+	int prev_batt_fcc;
+	int prev_batt_remaining_capacity;
+
 /*simulator log*/
 	struct simulator_log log;
 
@@ -887,6 +897,10 @@ extern struct fuel_gauge_custom_data fg_cust_data;
 extern struct fuel_gauge_table_custom_data fg_table_cust_data;
 extern struct gauge_hw_status FG_status;
 extern struct FUELGAUGE_TEMPERATURE Fg_Temperature_Table[];
+#ifdef CONFIG_OPLUS_CHARGER_MTK6853
+/*Baoquan.Lai@BSP.CHG.Basic 2020/11/06 add for 0.1 precision battery temp*/
+extern struct FUELGAUGE_TEMPERATURE Fg_Temperature_01_Precision_Table[];
+#endif
 
 extern int wakeup_fg_algo_cmd(unsigned int flow_state, int cmd, int para1);
 extern int wakeup_fg_algo(unsigned int flow_state);
@@ -905,6 +919,7 @@ extern int get_shutdown_cond_flag(void);
 /* mtk_battery.c */
 extern bool is_battery_init_done(void);
 extern int force_get_tbat(bool update);
+extern int force_get_tbat_internal(bool update);
 extern int bat_get_debug_level(void);
 extern bool is_kernel_power_off_charging(void);
 extern bool is_fg_disabled(void);

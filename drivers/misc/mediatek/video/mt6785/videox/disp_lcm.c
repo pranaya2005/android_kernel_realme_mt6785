@@ -32,6 +32,22 @@ extern bool __attribute((weak)) oplus_flag_lcd_off;
 //Jiantao.Liu@ODM_WT.MM.Display.Lcd, 2020/07/08, LCD backlight switch 11bit to 12bit
 extern bool __attribute((weak)) oplus_display_twelvebits_support;
 #endif
+/* #ifdef OPLUS_FEATURE_AOD */
+/*
+* Yongpeng.Yi@PSW.MM.Display.LCD.Stability, 2017/07/25,
+* add for lcd status flag
+*/
+extern bool oplus_flag_lcd_off;
+extern bool oplus_display_aod_support;
+extern bool oplus_display_hbm_support;
+/* #endif */ /* OPLUS_FEATURE_AOD */
+extern int __attribute__((weak)) tp_gesture_enable_flag(void)
+{
+	printk("ERROR: black gesture is invalid\n");
+	return 0;
+};
+/* MingQiang.Guo@PSW.BSP.TP.Function, 2017/12/30, Add for TP gesture*/
+extern int tp_gesture_enable_flag(void);
 
 /* This macro and arrya is designed for multiple LCM support */
 /* for multiple LCM, we should assign I/F Port id in lcm driver, */
@@ -1454,6 +1470,13 @@ int disp_lcm_resume(struct disp_lcm_handle *plcm)
 		oplus_flag_lcd_off = false;
 #endif
 
+		#ifdef OPLUS_BUG_STABILITY
+		/*
+		* Yongpeng.Yi@PSW.MM.Display.LCD.Stability, 2017/07/25,
+		* add for lcd status flag
+		*/
+		oplus_flag_lcd_off = false;
+		#endif /* OPLUS_BUG_STABILITY */
 		return 0;
 	}
 	DISP_PR_ERR("lcm_drv is null\n");
@@ -1467,12 +1490,33 @@ int disp_lcm_aod(struct disp_lcm_handle *plcm, int enter)
 	DISPMSG("%s, enter:%d\n", __func__, enter);
 	if (_is_lcm_inited(plcm)) {
 		lcm_drv = plcm->drv;
+
+		/* #ifdef OPLUS_FEATURE_AOD */
+		/*
+		* Ling.Guo@PSW.MM.Display.LCD.Stability, 2019/01/15,
+		* add for aod
+		*/
+		if (oplus_display_aod_support) {
+			if (lcm_drv->resume_power)
+				lcm_drv->resume_power();
+		}
+		/* #endif */ /* OPLUS_FEATURE_AOD */
 		if (lcm_drv->aod) {
 			lcm_drv->aod(enter);
 		} else {
 			DISP_PR_ERR("FATAL ERROR, lcm_drv->aod is null\n");
 			return -1;
 		}
+
+		/* #ifdef OPLUS_FEATURE_AOD */
+		/*
+		* Ling.Guo@PSW.MM.Display.LCD.Stability, 2019/01/15,
+		* add for lcd status flag
+		*/
+		if (oplus_display_aod_support) {
+			oplus_flag_lcd_off = false;
+		}
+		/* #endif */ /* OPLUS_FEATURE_AOD */
 		return 0;
 	}
 
@@ -1641,9 +1685,14 @@ int disp_lcm_set_backlight(struct disp_lcm_handle *plcm,
 		#ifdef OPLUS_BUG_STABILITY
 			/* Liyan@ODM.HQ.Multimedia.LCM 2019/09/19 modified for backlight remapping */
 			esd_recovery_backlight_level = level; /* restore backlight level for esd recovery */
+		if(!oplus_display_hbm_support){
 			level_remap = backlight_remapping_into_tddic_reg(plcm, level);
 			DISPCHECK("%s: level_remap, level = %d, %d\n", __func__, level_remap, level);
 			lcm_drv->set_backlight_cmdq(handle, level_remap);
+		}else{
+			lcm_drv->set_backlight_cmdq(handle, level);
+			DISPCHECK("%s: no remap, level = %d\n", __func__, level);
+		}
 		#else
 			lcm_drv->set_backlight_cmdq(handle, level);
 		#endif
@@ -1811,8 +1860,228 @@ int disp_lcm_oplus_set_lcm_cabc_cmd(struct disp_lcm_handle *plcm, void *handle, 
 	DISP_PR_ERR("lcm_drv is null\n");
 	return -1;
 }
-#endif
 
+/*
+* liping-m@PSW.MM.Display.LCD.Stability, 2018/07/20,
+* add power seq api for ulps
+*/
+int disp_lcm_poweron_before_ulps(struct disp_lcm_handle *plcm)
+{
+	struct LCM_DRIVER *lcm_drv = NULL;
+
+	DISPFUNC();
+	if (_is_lcm_inited(plcm)) {
+		lcm_drv = plcm->drv;
+		if (lcm_drv->poweron_before_ulps) {
+			lcm_drv->poweron_before_ulps();
+		} else {
+			DISP_PR_ERR("FATAL ERROR, lcm_drv->poweron_before_ulps is null\n");
+			return -1;
+		}
+		return 0;
+	}
+	DISP_PR_ERR("lcm_drv is null\n");
+	return -1;
+}
+
+int disp_lcm_poweroff_after_ulps(struct disp_lcm_handle *plcm)
+{
+	struct LCM_DRIVER *lcm_drv = NULL;
+
+	DISPFUNC();
+	if (_is_lcm_inited(plcm)) {
+		lcm_drv = plcm->drv;
+		if (lcm_drv->poweroff_after_ulps) {
+			/* if ((0 == tp_gesture_enable_flag()) || (1 == display_esd_recovery_lcm())) { */
+			if (0 == tp_gesture_enable_flag()) {
+				lcm_drv->poweroff_after_ulps();
+			}
+		} else {
+			DISP_PR_ERR("FATAL ERROR, lcm_drv->poweroff_after_ulps is null\n");
+			return -1;
+		}
+		return 0;
+	}
+	DISP_PR_ERR("lcm_drv is null\n");
+	return -1;
+}
+#endif /* OPLUS_BUG_STABILITY */
+/* #ifdef OPLUS_FEATURE_AOD */
+/*
+* Yongpeng.Yi@PSW.MM.Display.LCD.Feature, 2018/09/26,
+* add for Aod feature
+*/
+int disp_lcm_aod_doze_resume(struct disp_lcm_handle *plcm)
+{
+	struct LCM_DRIVER *lcm_drv = NULL;
+
+	DISPFUNC();
+	if (_is_lcm_inited(plcm)) {
+		lcm_drv = plcm->drv;
+
+		if (lcm_drv->resume_power)
+			lcm_drv->resume_power();
+
+
+		if (lcm_drv->aod_doze_resume) {
+			lcm_drv->aod_doze_resume();
+		} else {
+			DISP_PR_ERR("FATAL ERROR, lcm_drv->resume is null\n");
+			return -1;
+		}
+		oplus_flag_lcd_off = false;
+		return 0;
+	}
+	DISP_PR_ERR("lcm_drv is null\n");
+	return -1;
+}
+
+/* #ifdef OPLUS_FEATURE_ONSCREENFINGERPRINT */
+/*
+* Yongpeng.Yi@PSW.MM.Display.LCD.Stability, 2018/01/16,
+* add for samsung lcd hbm node
+*/
+int disp_lcm_set_hbm(struct disp_lcm_handle *plcm, void *handle, unsigned int hbm_level)
+{
+	struct LCM_DRIVER *lcm_drv = NULL;
+
+	DISPFUNC();
+	if (_is_lcm_inited(plcm)) {
+		lcm_drv = plcm->drv;
+		if (lcm_drv->set_hbm_mode_cmdq) {
+			lcm_drv->set_hbm_mode_cmdq(handle, hbm_level);
+		} else {
+			DISP_PR_ERR("FATAL ERROR, lcm_drv->disp_lcm_set_hbm is null\n");
+			return -1;
+		}
+		return 0;
+	}
+	DISP_PR_ERR("lcm_drv is null\n");
+	return -1;
+}
+
+int disp_lcm_get_hbm_state(struct disp_lcm_handle *plcm)
+{
+	if (!disp_helper_get_option(DISP_OPT_LCM_HBM)) {
+		DISP_PR_INFO("! DISP_OPT_LCM_HBM\n");
+		return -1;
+	}
+
+	if (!_is_lcm_inited(plcm)) {
+		DISP_PR_INFO("lcm_drv is null\n");
+		return -1;
+	}
+
+	if (!plcm->drv->get_hbm_state) {
+		DISP_PR_INFO("FATAL ERROR, lcm_drv->get_hbm_state is null\n");
+		return -1;
+	}
+
+		DISP_PR_INFO("plcm->drv->get_hbm_state\n");
+	return plcm->drv->get_hbm_state();
+}
+
+int disp_lcm_get_hbm_wait(struct disp_lcm_handle *plcm)
+{
+	if (!disp_helper_get_option(DISP_OPT_LCM_HBM))
+		return -1;
+
+	if (!_is_lcm_inited(plcm)) {
+		DISP_PR_INFO("lcm_drv is null\n");
+		return -1;
+	}
+
+	if (!plcm->drv->get_hbm_wait) {
+		DISP_PR_INFO("FATAL ERROR, lcm_drv->get_hbm_wait is null\n");
+		return -1;
+	}
+
+	return plcm->drv->get_hbm_wait();
+}
+
+int disp_lcm_set_hbm_wait(bool wait, struct disp_lcm_handle *plcm)
+{
+	if (!disp_helper_get_option(DISP_OPT_LCM_HBM))
+		return -1;
+
+	if (!_is_lcm_inited(plcm)) {
+		DISP_PR_INFO("lcm_drv is null\n");
+		return -1;
+	}
+
+	if (!plcm->drv->set_hbm_wait) {
+		DISP_PR_INFO("FATAL ERROR, lcm_drv->set_hbm_wait is null\n");
+		return -1;
+	}
+
+	plcm->drv->set_hbm_wait(wait);
+	return 0;
+}
+
+/* YongPeng.Yi@PSW.MM.Display.LCD.Stability, 2019/11/07, add for 19151 hbm set */
+int disp_lcm_set_hbm_wait_ramless(bool wait, struct disp_lcm_handle *plcm, void *qhandle)
+{
+	if (!_is_lcm_inited(plcm)) {
+		DISP_PR_ERR("lcm_drv is null\n");
+		return -1;
+	}
+
+	if (!plcm->drv->set_hbm_wait_ramless) {
+		DISP_PR_ERR("FATAL ERROR, lcm_drv->set_hbm_wait_ramless is null\n");
+		return -1;
+	}
+
+	plcm->drv->set_hbm_wait_ramless(wait, qhandle);
+
+	return 0;
+}
+
+extern bool oplus_display_aod_ramless_support;
+int mtk_disp_lcm_set_hbm(bool en, struct disp_lcm_handle *plcm, void *qhandle)
+{
+	if (!_is_lcm_inited(plcm)) {
+		DISP_PR_ERR("lcm_drv is null\n");
+		return -1;
+	}
+	/* #ifdef OPLUS_FEATURE_RAMLESS_AOD */
+	/* YongPeng.Yi@PSW.MM.Display.LCD.Stability, 2020/01/29, add for ramless aod hbm */
+	if (oplus_display_aod_ramless_support) {
+		if (!disp_lcm_is_video_mode(plcm)) {
+			DISPCHECK("%s disp is cmd Ramless set hbm [%d]\n", __func__, en);
+		}
+	}
+	/* #endif */ /* OPLUS_FEATURE_RAMLESS_AOD */
+
+	if (!plcm->drv->set_hbm_cmdq) {
+		DISP_PR_ERR("FATAL ERROR, lcm_drv->set_hbm_cmdq is null\n");
+		return -1;
+	}
+
+	plcm->drv->set_hbm_cmdq(en, qhandle);
+
+	return 0;
+}
+
+unsigned int disp_lcm_get_hbm_time(bool en, struct disp_lcm_handle *plcm)
+{
+	unsigned int time = 0;
+
+	if (!disp_helper_get_option(DISP_OPT_LCM_HBM))
+		return -1;
+
+	if (!_is_lcm_inited(plcm)) {
+		DISP_PR_INFO("lcm_drv is null\n");
+		return -1;
+	}
+
+	if (en)
+		time = plcm->params->hbm_en_time;
+	else
+		time = plcm->params->hbm_dis_time;
+
+	return time;
+}
+/* #endif */ /* OPLUS_FEATURE_ONSCREENFINGERPRINT */
 int disp_lcm_is_partial_support(struct disp_lcm_handle *plcm)
 {
 	struct LCM_DRIVER *lcm_drv = NULL;
@@ -2050,4 +2319,25 @@ done:
 /*-------------------DynFPS end-----------------------------*/
 #endif
 
+/*-------------------HBM start-----------------------------*/
+int disp_lcm_set_hbm_ramless(bool en, struct disp_lcm_handle *plcm, void *qhandle)
+{
+	if (!disp_helper_get_option(DISP_OPT_LCM_HBM))
+		return -1;
+
+	if (!_is_lcm_inited(plcm)) {
+		DISP_PR_INFO("lcm_drv is null\n");
+		return -1;
+	}
+
+	if (!plcm->drv->set_hbm_cmdq) {
+		DISP_PR_INFO("FATAL ERROR, lcm_drv->set_hbm_cmdq is null\n");
+		return -1;
+	}
+
+	plcm->drv->set_hbm_cmdq(en, qhandle);
+
+	return 0;
+}
+/*-------------------HBM End-----------------------------*/
 

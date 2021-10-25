@@ -232,6 +232,8 @@ struct fts_ts_data {
     struct touchpanel_data *ts;
     struct monitor_data_v2 *monitor_data_v2;
     bool high_resolution_support;
+    u8 edge_mode;
+    u8 grip_level;
 };
 
 

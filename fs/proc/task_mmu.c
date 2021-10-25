@@ -858,7 +858,7 @@ static int show_smap(struct seq_file *m, void *v)
 
 	smap_gather_stats(vma, &mss);
 
-	#ifdef VENDOR_EDIT //yixue.ge@bsp.drv modify for android.bg get pss too slow
+	#ifdef OPLUS_FEATURE_PERFORMANCE //modify for android.bg get pss too slow
 	if (strcmp(current->comm, "android.bg") == 0) {
 		if ((unsigned long)(mss.pss >> (10 + PSS_SHIFT)) > 0) {
 			seq_printf(m,
@@ -878,7 +878,7 @@ static int show_smap(struct seq_file *m, void *v)
 		m_cache_vma(m, vma);
 		return 0;
 	}
-	#endif /*VENDOR_EDIT*/
+	#endif /*OPLUS_FEATURE_PERFORMANCE*/
 
 	show_map_vma(m, vma);
 	if (vma_get_anon_name(vma)) {
@@ -1665,11 +1665,11 @@ static ssize_t pagemap_read(struct file *file, char __user *buf,
 
 	src = *ppos;
 	svpfn = src / PM_ENTRY_BYTES;
-	start_vaddr = svpfn << PAGE_SHIFT;
+	start_vaddr = untagged_addr(svpfn << PAGE_SHIFT);
 	end_vaddr = mm->task_size;
 
 	/* watch out for wraparound */
-	if (svpfn > mm->task_size >> PAGE_SHIFT)
+	if (start_vaddr > mm->task_size)
 		start_vaddr = end_vaddr;
 
 	/*

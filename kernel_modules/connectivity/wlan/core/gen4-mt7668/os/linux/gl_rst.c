@@ -182,7 +182,7 @@ VOID glResetTrigger(P_ADAPTER_T prAdapter)
 	void (*btmtk_usb_toggle_rst_pin)(void);
 
 	/* Call POR(Power On Reset) off->on API provided by BT driver */
-	btmtk_usb_toggle_rst_pin = (void *)kallsyms_lookup_name("btmtk_usb_toggle_rst_pin");
+	btmtk_usb_toggle_rst_pin = (void *)kal_kallsyms_lookup_name("btmtk_usb_toggle_rst_pin");
 
 	if (!btmtk_usb_toggle_rst_pin) {
 		DBGLOG(HAL, ERROR, "btmtk_usb_toggle_rst_pin() is not found\n");
@@ -224,7 +224,7 @@ VOID glResetTrigger(P_ADAPTER_T prAdapter)
 	resetInit();
 
 	/* check bt module */
-	bt_func = (p_bt_fun_type) kallsyms_lookup_name(bt_func_name);
+	bt_func = (p_bt_fun_type) kal_kallsyms_lookup_name(bt_func_name);
 	if (bt_func) {
 		BOOLEAN is_coredump = (~(prAdapter->fgIsChipNoAck)) & 0x1;
 
@@ -361,7 +361,7 @@ void removeWlanSelf(struct work_struct *work)
 	DBGLOG(INIT, STATE, "[RST] RSTP2pDestroyWirelessDevice end\n");
 
 	/* notify bt wifi remove end */
-	bt_func = (p_bt_fun_type) kallsyms_lookup_name(bt_func_name);
+	bt_func = (p_bt_fun_type) kal_kallsyms_lookup_name(bt_func_name);
 	if (bt_func) {
 
 		DBGLOG(INIT, STATE, "[RST] notify bt remove...\n");
@@ -586,7 +586,7 @@ INT_32 pmu_toggle(struct rst_struct *data)
 	ASSERT(data);
 
 	/* stop mtk sdio clk */
-	sdio_func = (p_sdio_fun_type) kallsyms_lookup_name(sdio_func_name);
+	sdio_func = (p_sdio_fun_type) kal_kallsyms_lookup_name(sdio_func_name);
 	if (sdio_func) {
 		sdio_func(0);
 		DBGLOG(INIT, STATE, "[RST] stop sdio clk\n");

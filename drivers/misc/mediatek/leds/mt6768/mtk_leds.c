@@ -846,7 +846,8 @@ int mt_mt65xx_led_set_cust(struct cust_mt65xx_led *cust, int level)
 	case MT65XX_LED_MODE_CUST_LCM:
 		if (strcmp(cust->name, "lcd-backlight") == 0)
 			bl_brightness_hal = level;
-		LEDS_DEBUG("%s backlight control by LCM\n", __func__);
+		/* Bin.Su@MM.Display.LCD.Machine, 2021/04/27, remove LEDS_DEBUG in this case */
+		/*LEDS_DEBUG("%s backlight control by LCM\n", __func__);*/
 		/* warning for this API revork */
 		return ((cust_brightness_set) (cust->data)) (level, bl_div_hal);
 
@@ -876,12 +877,6 @@ void mt_mt65xx_led_work(struct work_struct *work)
 	mt_mt65xx_led_set_cust(&led_data->cust, led_data->level);
 	mutex_unlock(&leds_mutex);
 }
-
-#ifdef OPLUS_BUG_STABILITY
-//Tongxing.Liu@ODM_WT.MM.Display.LCD, 2021/01/25, add LCD gamma control
-extern int primary_display_set_gamma_mode(unsigned int level);
-int gamma_flag = 1;
-#endif
 
 void mt_mt65xx_led_set(struct led_classdev *led_cdev, enum led_brightness level)
 {
@@ -931,19 +926,6 @@ void mt_mt65xx_led_set(struct led_classdev *led_cdev, enum led_brightness level)
 	if (oplus_silence_mode) {
 		printk("%s oplus_silence_mode is %ld, set backlight to 0\n", __func__, oplus_silence_mode);
 		level = 0;
-	}
-//Zhenzhen.Wu@ODM_WT.MM.Display.Lcd, 2020/8/13, dynamic gamma control for lowest light
-	pr_debug("%s gamma=%d\n", __func__, level);
-	if (2 == level) {
-		if (1 == gamma_flag) {
-			primary_display_set_gamma_mode(1);
-			gamma_flag = 0;
-		}
-	} else if (level > 2) {
-		if (0 == gamma_flag) {
-			primary_display_set_gamma_mode(0);
-			gamma_flag = 1;
-		}
 	}
 	disp_aal_notify_backlight_changed(level);
 	#endif /* OPLUS_FEATURE_MULTIBITS_BL */

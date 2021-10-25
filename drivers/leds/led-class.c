@@ -32,6 +32,9 @@ static struct class *leds_class;
 */
 #if defined(DRM_OPLUS_DISPLAY_NODES)
 extern unsigned long oppo_display_brightness;
+/*Jian.Zhou@MM.Display.LCD.Stability, 2020/11/25 ,compatible drm and common*/
+#else
+extern unsigned long oplus_display_brightness;
 #endif
 //#endif
 
@@ -112,6 +115,10 @@ unlock:
 #if defined(DRM_OPLUS_DISPLAY_NODES)
 	if (strncmp(led_cdev->name, "lcd-backlight", 13) == 0)
 		oppo_display_brightness = state;
+/*Jian.Zhou@MM.Display.LCD.Stability, 2020/11/25 ,compatible drm and common*/
+#else
+	if (strncmp(led_cdev->name, "lcd-backlight", 13) == 0)
+		oplus_display_brightness = state;
 #endif
 //#endif
 

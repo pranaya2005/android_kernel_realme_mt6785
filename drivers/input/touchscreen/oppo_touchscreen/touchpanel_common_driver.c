@@ -249,6 +249,10 @@ void operate_mode_switch(struct touchpanel_data *ts)
             ts->ts_ops->tp_refresh_switch(ts->chip_data, ts->lcd_fps);
         }
 
+        if (ts->fw_grip_support && ts->ts_ops->tp_set_grip_level) {
+            ts->ts_ops->tp_set_grip_level(ts->chip_data, ts->grip_level);
+        }
+
         ts->ts_ops->mode_switch(ts->chip_data, MODE_NORMAL, true);
     }
 }
@@ -1010,12 +1014,20 @@ static void tp_config_handle(struct touchpanel_data *ts)
 
 static void health_monitor_handle(struct touchpanel_data *ts)
 {
-    if (!ts->ts_ops->health_report) {
-        TPD_INFO("not support ts->debug_info_ops->health_report callback\n");
-        return;
+    if (ts->health_monitor_v2_support) {
+        if (!ts->ts_ops->health_report_v2) {
+            TPD_INFO("not support ts->debug_info_ops->health_report_v2 callback\n");
+            return;
+        }
+        ts->ts_ops->health_report_v2(ts->chip_data, &ts->monitor_data_v2);
+    } else {
+        if (!ts->ts_ops->health_report) {
+            TPD_INFO("not support ts->debug_info_ops->health_report callback\n");
+            return;
+        }
+        if (ts->health_monitor_support || tp_debug)
+            ts->ts_ops->health_report(ts->chip_data, &ts->monitor_data);
     }
-    if (ts->health_monitor_support || tp_debug)
-        ts->ts_ops->health_report(ts->chip_data, &ts->monitor_data);
 }
 
 static void tp_face_detect_handle(struct touchpanel_data *ts)
@@ -1454,7 +1466,7 @@ int tp_gesture_enable_flag(void)
 
     return (g_tp->gesture_enable > 0) ? LCD_POWER_ON : LCD_POWER_OFF;
 }
-
+EXPORT_SYMBOL(tp_gesture_enable_flag);
 /*
 *Interface for lcd to control reset pin
 */
@@ -1472,6 +1484,25 @@ int tp_control_reset_gpio(bool enable)
 
     return 0;
 }
+
+
+int tp_control_cs_gpio(bool enable)
+{
+    if(!g_tp){
+        return 0;
+    }
+
+    if (gpio_is_valid(g_tp->hw_res.cs_gpio)) {
+        if (g_tp->ts_ops->cs_gpio_control) {
+            g_tp->ts_ops->cs_gpio_control(g_tp->chip_data, enable);
+        }
+    }
+
+    return 0;
+}
+
+EXPORT_SYMBOL(tp_control_cs_gpio);
+
 
 /*
  * check_touchirq_triggered--used for stop system going sleep when touch irq is triggered
@@ -2228,7 +2259,9 @@ static ssize_t proc_dir_control_write(struct file *file, const char __user *buff
     if (ts->ts_ops->set_touch_direction) {
         ts->ts_ops->set_touch_direction(ts->chip_data, temp);
     }
-    ts->monitor_data_v2.direction = temp;
+    if (ts->health_monitor_v2_support) {
+        ts->monitor_data_v2.direction = temp;
+    }
 #ifdef CONFIG_TOUCHPANEL_ALGORITHM
     set_algorithm_direction(ts,temp);
 #endif
@@ -3182,6 +3215,76 @@ static const struct file_operations proc_optimized_time_fops = {
     .owner = THIS_MODULE,
 };
 
+static int calibrate_fops_read_func(struct seq_file *s, void *v)
+{
+    struct touchpanel_data *ts = s->private;
+
+    if (!ts->ts_ops->calibrate) {
+        TPD_INFO("[TP]no calibration, need back virtual calibration result");
+        seq_printf(s, "0 error, calibration and verify success\n");
+        return 0;
+    }
+
+    disable_irq_nosync(ts->irq);
+    mutex_lock(&ts->mutex);
+    if (!ts->touch_count) {
+        ts->ts_ops->calibrate(s, ts->chip_data);
+    } else {
+        seq_printf(s, "1 error, release touch on the screen, now has %d touch\n", ts->touch_count);
+    }
+    mutex_unlock(&ts->mutex);
+    enable_irq(ts->irq);
+
+    return 0;
+}
+
+static int proc_calibrate_fops_open(struct inode *inode, struct file *file)
+{
+    return single_open(file, calibrate_fops_read_func, PDE_DATA(inode));
+}
+
+static const struct file_operations proc_calibrate_fops = {
+    .owner = THIS_MODULE,
+    .open  = proc_calibrate_fops_open,
+    .read  = seq_read,
+    .release = single_release,
+};
+
+static int cal_status_read_func(struct seq_file *s, void *v)
+{
+    bool cal_needed = false;
+    struct touchpanel_data *ts = s->private;
+
+    if (!ts->ts_ops->get_cal_status) {
+        TPD_INFO("[TP]no calibration status, need back virtual calibration status");
+        seq_printf(s, "0 error, calibration data is ok\n");
+        return 0;
+    }
+
+    mutex_lock(&ts->mutex);
+    cal_needed = ts->ts_ops->get_cal_status(s, ts->chip_data);
+    if (cal_needed) {
+        seq_printf(s, "1 error, need do calibration\n");
+    } else {
+        seq_printf(s, "0 error, calibration data is ok\n");
+    }
+    mutex_unlock(&ts->mutex);
+
+    return 0;
+}
+
+static int proc_cal_status_fops_open(struct inode *inode, struct file *file)
+{
+    return single_open(file, cal_status_read_func, PDE_DATA(inode));
+}
+
+static const struct file_operations proc_cal_status_fops = {
+    .owner = THIS_MODULE,
+    .open  = proc_cal_status_fops_open,
+    .read  = seq_read,
+    .release = single_release,
+};
+
 static ssize_t proc_curved_size_read(struct file *file, char __user *user_buf, size_t count, loff_t *ppos)
 {
     int ret = 0;
@@ -3201,6 +3304,159 @@ static const struct file_operations proc_curved_size_fops = {
     .read  = proc_curved_size_read,
     .open  = simple_open,
     .owner = THIS_MODULE,
+};
+
+//proc/touchpanel/kernel_grip_handle
+static ssize_t proc_kernel_grip_write(struct file *file, const char __user *buffer, size_t count, loff_t *ppos)
+{
+    int value = -1;
+    char buf[PAGESIZE] = {0};
+    struct touchpanel_data *ts = PDE_DATA(file_inode(file));
+
+    if (count > PAGESIZE) {
+        TPD_INFO("%s:count > PAGESIZE\n", __func__);
+        return count;
+    }
+
+    if (!ts) {
+        TPD_INFO("%s: ts is NULL\n", __func__);
+        return count;
+    }
+
+    if (!ts->ts_ops)
+        return count;
+
+    if (!ts->ts_ops->tp_set_grip_level) {
+        TPD_INFO("not support tp_set_grip_level callback\n");
+        return count;
+    }
+
+    if (copy_from_user(buf, buffer, count)) {
+        TPD_INFO("%s: read proc input error.\n", __func__);
+        return count;
+    }
+
+    if ((value = touch_get_key_value(buf, "grip_disable_level"))  >= 0) {
+        ts->grip_level |= 1 << value;
+        TPD_INFO("change grip_disable_level to %d.\n", value);
+    } else if ((value = touch_get_key_value(buf, "grip_enable_level"))  >= 0) {
+        ts->grip_level &= ~(1 << value);
+        TPD_INFO("change grip_enable_level to %d.\n", value);
+    } else {
+        return count;
+    }
+
+    TPD_INFO("%s: grip_level:=0x%x\n", __func__, ts->grip_level);
+
+    if (!ts->is_suspended) {
+        mutex_lock(&ts->mutex);
+        ts->ts_ops->tp_set_grip_level(ts->chip_data, ts->grip_level);
+        mutex_unlock(&ts->mutex);
+    } else {
+        TPD_INFO("%s: grip_level is_suspended.\n", __func__);
+    }
+
+    return count;
+}
+
+static ssize_t proc_kernel_grip_read(struct file *file, char __user *user_buf, size_t count, loff_t *ppos)
+{
+    int ret = 0;
+    char page[PAGESIZE] = {0};
+    struct touchpanel_data *ts = PDE_DATA(file_inode(file));
+
+    if (!ts) {
+        snprintf(page, PAGESIZE - 1, "%d\n", -1); //no support
+    } else {
+        snprintf(page, PAGESIZE - 1, "%d\n", ts->grip_level); //support
+    }
+    ret = simple_read_from_buffer(user_buf, count, ppos, page, strlen(page));
+    return ret;
+}
+
+static const struct file_operations proc_kernel_grip_fops = {
+    .write = proc_kernel_grip_write,
+    .read  = proc_kernel_grip_read,
+    .open  = simple_open,
+    .owner = THIS_MODULE,
+};
+
+
+//proc/touchpanel/kernel_grip_default_para
+static int tp_grip_default_para_read(struct seq_file *s, void *v)
+{
+    int ret = 0;
+    struct touchpanel_data *ts = s->private;
+    const struct firmware *fw = NULL;
+
+    char *p_node = NULL;
+    char *grip_config_name = NULL;
+    char *postfix = "_sys_edge_touch_config";
+    uint8_t copy_len = 0;
+
+    TPD_INFO("%s:s->size:%d,s->count:%d\n", __func__, s->size,
+        s->count);
+
+    if (!ts)
+        return 0;
+
+    grip_config_name = kzalloc(MAX_FW_NAME_LENGTH, GFP_KERNEL);
+    if(grip_config_name == NULL) {
+        TPD_INFO("grip_config_name kzalloc error!\n");
+        return 0;
+    }
+    p_node = strstr(ts->panel_data.fw_name, ".");
+    if(p_node == NULL) {
+        TPD_INFO("p_node strstr error!\n");
+        kfree(grip_config_name);
+        return 0;
+    }
+    copy_len = p_node - ts->panel_data.fw_name;
+    memcpy(grip_config_name, ts->panel_data.fw_name, copy_len);
+    strlcat(grip_config_name, postfix, MAX_FW_NAME_LENGTH);
+    strlcat(grip_config_name, p_node, MAX_FW_NAME_LENGTH);
+    TPD_INFO("grip_config_name is %s\n", grip_config_name);
+
+    ret = request_firmware(&fw, grip_config_name, ts->dev);
+    if (ret < 0) {
+        TPD_INFO("Request firmware failed - %s (%d)\n", grip_config_name, ret);
+        seq_printf(s, "Request failed, Check the path %s\n",grip_config_name);
+        kfree(grip_config_name);
+        return 0;
+    }
+    TPD_INFO("%s Request ok,size is:%d\n", grip_config_name, fw->size);
+
+    //mutex_lock(&ts->mutex);
+    /*the result data is big than one page, so do twice.*/
+    if (s->size <= (fw->size)) {
+        s->count = s->size;
+        //mutex_unlock(&ts->mutex);
+        goto EXIT;
+    }
+
+    if (fw) {
+        if (fw->size) {
+            seq_write(s, fw->data, fw->size);
+            TPD_INFO("%s:seq_write data ok\n", __func__);
+        }
+    }
+
+EXIT:
+    release_firmware(fw);
+    kfree(grip_config_name);
+    return ret;
+}
+
+static int tp_grip_default_para_open(struct inode *inode, struct file *file)
+{
+    return single_open(file, tp_grip_default_para_read, PDE_DATA(inode));
+}
+
+static const struct file_operations tp_grip_default_para_fops = {
+    .owner = THIS_MODULE,
+    .open  = tp_grip_default_para_open,
+    .read  = seq_read,
+    .release = single_release,
 };
 
 
@@ -3940,7 +4196,29 @@ static int init_touchpanel_proc(struct touchpanel_data *ts)
             TPD_INFO("%s: Couldn't create proc entry, %d\n", __func__, __LINE__);
         }
     }
+/*samsung ic need to calibration if fw changed  start*/
+    if (ts->auto_test_need_cal_support) {
+        prEntry_tmp = proc_create_data("calibration", 0666, prEntry_tp, &proc_calibrate_fops, ts);
+        if (prEntry_tmp == NULL) {
+            ret = -ENOMEM;
+            TPD_INFO("%s: Couldn't create proc entry, %d\n", __func__, __LINE__);
+        }
 
+        prEntry_tmp = proc_create_data("calibration_status", 0666, prEntry_tp, &proc_cal_status_fops, ts);
+        if (prEntry_tmp == NULL) {
+            ret = -ENOMEM;
+            TPD_INFO("%s: Couldn't create proc entry, %d\n", __func__, __LINE__);
+        }
+    }
+/*samsung ic need to calibration if fw changed  end*/
+
+    if (ts->kernel_grip_support) {
+        prEntry_tmp = proc_create_data("kernel_grip_default_para", 0664, prEntry_tp, &tp_grip_default_para_fops, ts);
+        if (prEntry_tmp == NULL) {
+            ret = -ENOMEM;
+            TPD_INFO("%s: Couldn't create proc entry, %d\n", __func__, __LINE__);
+        }
+    }
 #ifdef CONFIG_OPPO_TP_APK
     // proc/touchpanel/touch_apk. Add the new test node for debug and apk. By zhangping 20190402 start
     prEntry_tmp = proc_create_data("touch_apk", 0666,
@@ -3964,6 +4242,12 @@ static int init_touchpanel_proc(struct touchpanel_data *ts)
     //create kernel grip proc file
     if (ts->kernel_grip_support) {
         init_kernel_grip_proc(ts->prEntry_tp, ts->grip_info);
+    } else if (ts->fw_grip_support) {
+        prEntry_tmp = proc_create_data("kernel_grip_handle", 0666, prEntry_tp, &proc_kernel_grip_fops, ts);
+        if (prEntry_tmp == NULL) {
+            ret = -ENOMEM;
+            TPD_INFO("%s: Couldn't create kernel grip proc entry, %d\n", __func__, __LINE__);
+        }
     }
 
     return ret;
@@ -5445,6 +5729,7 @@ static int init_parse_dts(struct device *dev, struct touchpanel_data *ts)
     ts->external_touch_support  = of_property_read_bool(np, "external_touch_support");
     ts->kernel_grip_support     = of_property_read_bool(np, "kernel_grip_support");
     ts->kernel_grip_support_special = of_property_read_bool(np, "kernel_grip_support_special");
+    ts->fw_grip_support     = of_property_read_bool(np, "fw_grip_support");
     ts->spuri_fp_touch.lcd_trigger_fp_check = of_property_read_bool(np, "lcd_trigger_fp_check");
     ts->health_monitor_support = of_property_read_bool(np, "health_monitor_support");
     ts->health_monitor_v2_support = of_property_read_bool(np, "health_monitor_v2_support");
@@ -5465,8 +5750,9 @@ static int init_parse_dts(struct device *dev, struct touchpanel_data *ts)
     ts->irq_need_dev_resume_ok =  of_property_read_bool(np, "irq_need_dev_resume_ok");
     ts->report_rate_white_list_support = of_property_read_bool(np, "report_rate_white_list_support");
     ts->lcd_tp_refresh_support = of_property_read_bool(np, "lcd_tp_refresh_support");
-
+    ts->auto_test_need_cal_support = of_property_read_bool(np, "auto_test_need_cal_support");
     ts->smooth_level_support = of_property_read_bool(np, "smooth_level_support");
+    ts->cs_gpio_need_pull = of_property_read_bool(np, "cs_gpio_need_pull");
     rc = of_property_read_u32(np, "smooth_level", &val);
     if (rc) {
         TPD_INFO("smooth_level not specified\n");
@@ -5510,6 +5796,17 @@ static int init_parse_dts(struct device *dev, struct touchpanel_data *ts)
 
     TPD_INFO("%s : irq_gpio = %d, irq_flags = 0x%x, reset_gpio = %d\n",
              __func__, ts->hw_res.irq_gpio, ts->irq_flags, ts->hw_res.reset_gpio);
+
+
+     //cs gpio
+    ts->hw_res.cs_gpio = of_get_named_gpio(np, "cs-gpio", 0);
+    if (gpio_is_valid(ts->hw_res.cs_gpio)) {
+       rc = gpio_request(ts->hw_res.cs_gpio, "cs-gpio");
+       if (rc)
+           TPD_INFO("unable to request gpio [%d]\n", ts->hw_res.cs_gpio);
+    } else {
+        TPD_INFO("ts->cs-gpio not specified\n");
+    }
 
     // tp type gpio
     ts->hw_res.id1_gpio = of_get_named_gpio(np, "id1-gpio", 0);

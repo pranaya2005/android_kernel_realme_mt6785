@@ -302,10 +302,10 @@ struct panel_info {
     tp_dev  tp_type;
     int    vid_len;                                 /*Length of tp name show in  test apk*/
     u32    project_id;
-    uint32_t    platform_support_project[10];
-    uint32_t    platform_support_project_dir[10];
-    char  *platform_support_commandline[10];
-    char  *platform_support_external_name[10];
+    uint32_t    platform_support_project[20];
+    uint32_t    platform_support_project_dir[20];
+    char  *platform_support_commandline[20];
+    char  *platform_support_external_name[20];
     int    project_num;
     struct firmware_headfile firmware_headfile;     /*firmware headfile for noflash ic*/
     struct manufacture_info manufacture_info;       /*touchpanel device info*/
@@ -319,6 +319,7 @@ struct hw_resource {
 
     int irq_gpio;                                   /*irq GPIO num*/
     int reset_gpio;                                 /*Reset GPIO*/
+    int cs_gpio;                                    /*Cs GPIO*/
 
     int enable2v8_gpio;                             /*vdd_2v8 enable GPIO*/
     int enable1v8_gpio;                             /*vcc_1v8 enable GPIO*/
@@ -706,6 +707,7 @@ struct touchpanel_data {
     bool external_touch_support;                        /*external key used for touch point report*/
     bool kernel_grip_support;                           /*using grip function in kernel touch driver*/
     bool kernel_grip_support_special;                   /*only for findX Q*/
+    bool fw_grip_support;                               /*fw grip enable or disable support*/
     bool new_set_irq_wake_support;                           /*if call enable_irq_wake, can not call disable_irq_nosync*/
     bool screenoff_fingerprint_info_support;            /*screen off fingerprint info coordinates need*/
 
@@ -731,6 +733,8 @@ struct touchpanel_data {
     bool fw_update_in_probe_with_headfile;
     bool lcd_tp_refresh_support;                       /*lcd nofity tp refresh fps switch*/
     bool optimized_show_support;                       /*support to show total optimized time*/
+    bool auto_test_need_cal_support;                       /*multiple panel consistency if contains samsung ic to calivation*/
+
     uint32_t single_optimized_time;                    /*single touch optimized time*/
     uint32_t total_operate_times;                      /*record total touch down and up count*/
     struct firmware                 *firmware_in_dts;
@@ -779,6 +783,7 @@ struct touchpanel_data {
     bool resume_finished;                               /* whether tp resume finished */
     int noise_level;                                     /*save ps status, ps near = 1, ps far = 0*/
     int lcd_fps;                                         /*save lcd refresh*/
+    int grip_level;                                         /*grip level*/
 
 #if defined(TPD_USE_EINT)
     struct hrtimer         timer;                       /*using polling instead of IRQ*/
@@ -853,6 +858,7 @@ struct touchpanel_data {
     bool smooth_level_array_support;
     bool smooth_level_charging_array_support;
     bool sensitive_level_array_support;
+    bool cs_gpio_need_pull;
     u32 smooth_level_array[SMOOTH_LEVEL_NUM];
     u32 smooth_level_charging_array[SMOOTH_LEVEL_NUM];
     u32 sensitive_level_array[SENSITIVE_LEVEL_NUM];
@@ -894,6 +900,7 @@ struct oppo_touchpanel_operations {
     fw_update_state (*fw_update) (void *chip_data, const struct firmware *fw, bool force);    /*return 0 normal; return -1:update failed;*/
     int  (*power_control)        (void *chip_data, bool enable);                              /*return 0:success;other:abnormal, need to jump out*/
     int  (*reset_gpio_control)   (void *chip_data, bool enable);                              /*used for reset gpio*/
+    int  (*cs_gpio_control)      (void *chip_data, bool enable);                              /*used for cs gpio*/
     u8   (*trigger_reason)       (void *chip_data, int gesture_enable, int is_suspended);     /*clear innterrupt reg && detect irq trigger reason*/
     u32  (*u32_trigger_reason)   (void *chip_data, int gesture_enable, int is_suspended);
     u8   (*get_keycode)          (void *chip_data);                                           /*get touch-key code*/
@@ -915,6 +922,7 @@ struct oppo_touchpanel_operations {
     int  (*async_work)           (void *chip_info);                                           /*async work*/
     int  (*get_face_state)       (void *chip_info);                                          /*get face detect state*/
     void (*health_report)        (void *chip_data, struct monitor_data *mon_data);            /*data logger get*/
+    void (*health_report_v2)     (void *chip_data, struct monitor_data_v2 *mon_data_v2);            /*data logger get*/
     void (*bootup_test)          (void *chip_data, const struct firmware *fw, struct monitor_data *mon_data, struct hw_resource *hw_res);   /*boot_up test*/
     void (*get_gesture_coord)    (void *chip_data, uint32_t gesture_type);
     void (*enable_fingerprint)   (void *chip_data, uint32_t enable);
@@ -934,10 +942,14 @@ struct oppo_touchpanel_operations {
     void (*rate_white_list_ctrl) (void *chip_data, int value);
     int  (*smooth_lv_set)       (void *chip_data, int level);
     int  (*sensitive_lv_set)       (void *chip_data, int level);
+    void    (*calibrate)    (struct seq_file *s, void *chip_data);
+    bool    (*get_cal_status)  (struct seq_file *s, void *chip_data);
 #ifdef CONFIG_TOUCHPANEL_ALGORITHM
     int  (*special_points_report)     (void *chip_data, struct point_info *points, int max_num);
 #endif
     int  (*tp_refresh_switch)         (void *chip_data, int fps);
+    int  (*tp_set_grip_level)         (void *chip_data, int level);
+
 };
 
 struct aging_test_proc_operations {

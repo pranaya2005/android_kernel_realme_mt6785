@@ -1492,7 +1492,7 @@ static int fts_noise_autotest(struct fts_ts_data *ts_data, bool *test_result)
             }
         }
     } else {
-        TPD_INFO("fts_raw_data_P || fts_raw_data_N is null \n");
+        FTS_TEST_SAVE_ERR("fts_raw_data_P || fts_raw_data_N is null \n");
         result = false;
     }
 
@@ -1514,10 +1514,10 @@ restore_reg:
 test_err:
     if (result) {
         *test_result = true;
-        FTS_TEST_SAVE_INFO("------Noise Test PASS\n");
+        FTS_TEST_SAVE_ERR("------Noise Test PASS\n");
     } else {
         * test_result = false;
-        FTS_TEST_SAVE_INFO("------Noise Test NG\n");
+        FTS_TEST_SAVE_ERR("------Noise Test NG\n");
     }
 
     FTS_TEST_FUNC_EXIT();
@@ -1671,10 +1671,10 @@ restore_reg:
 test_err:
     if (result) {
         *test_result = true;
-        FTS_TEST_SAVE_INFO("------Rawdata Test PASS\n");
+        FTS_TEST_SAVE_ERR("------Rawdata Test PASS\n");
     } else {
         *test_result = false;
-        FTS_TEST_SAVE_INFO("------Rawdata Test NG\n");
+        FTS_TEST_SAVE_ERR("------Rawdata Test NG\n");
     }
 
     FTS_TEST_FUNC_EXIT();
@@ -1781,7 +1781,7 @@ static int fts_uniformity_autotest(struct fts_ts_data *ts_data, bool *test_resul
 test_err:
     if (result && result2) {
         *test_result = true;
-        FTS_TEST_SAVE_INFO("------Rawdata Uniformity Test PASS\n");
+        FTS_TEST_SAVE_ERR("------Rawdata Uniformity Test PASS\n");
     } else {
         *test_result = false;
         FTS_TEST_SAVE_ERR("------Rawdata Uniformity Test NG\n");
@@ -1905,7 +1905,7 @@ restore_reg:
 test_err:
     if (tmp_result && tmp2_result) {
         *test_result = true;
-        FTS_TEST_SAVE_INFO("------Scap CB (normal && waterproof) Test PASS\n");
+        FTS_TEST_SAVE_ERR("------Scap CB (normal && waterproof) Test PASS\n");
     } else {
         *test_result = false;
         if (tmp_result)
@@ -2020,10 +2020,10 @@ static int fts_scap_rawdata_autotest(struct fts_ts_data *ts_data, bool *test_res
 test_err:
     if (tmp_result && tmp2_result) {
         *test_result = true;
-        FTS_TEST_SAVE_INFO("------SCAP Rawdata Test PASS\n");
+        FTS_TEST_SAVE_ERR("------SCAP Rawdata Test PASS\n");
     } else {
         *test_result = false;
-        FTS_TEST_SAVE_INFO("------SCAP Rawdata Test NG\n");
+        FTS_TEST_SAVE_ERR("------SCAP Rawdata Test NG\n");
     }
 
     FTS_TEST_FUNC_EXIT();
@@ -2107,17 +2107,17 @@ test_err:
     ret = fts_test_write_reg(FACTROY_REG_SHORT_DELAY, stall_value);
 
     if (is_weak_short_gnd && is_weak_short_mut) {
-        TPD_INFO("gnd and mutual weak short! \n");
+        FTS_TEST_SAVE_ERR("gnd and mutual weak short! \n");
     } else if (is_weak_short_gnd) {
-        TPD_INFO("gnd weak short! \n");
+        FTS_TEST_SAVE_ERR("gnd weak short! \n");
     } else if (is_weak_short_mut) {
-        TPD_INFO("mutual weak short! \n");
+        FTS_TEST_SAVE_ERR("mutual weak short! \n");
     } else {
-        TPD_INFO("no short! \n");
+        FTS_TEST_SAVE_ERR("no short! \n");
     }
 
     if (tmp_result) {
-        FTS_TEST_SAVE_INFO("------Short test PASS\n");
+        FTS_TEST_SAVE_ERR("------Short test PASS\n");
         * test_result = true;
     } else {
         FTS_TEST_SAVE_ERR("------Short Test NG\n");

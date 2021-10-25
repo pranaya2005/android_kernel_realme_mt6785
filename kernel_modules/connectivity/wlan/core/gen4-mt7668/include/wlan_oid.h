@@ -115,9 +115,15 @@
 #define PARAM_PACKET_FILTER_PROMISCUOUS         0x00000020
 #define PARAM_PACKET_FILTER_ALL_LOCAL           0x00000080
 #if CFG_ENABLE_WIFI_DIRECT_CFG_80211
+#if CFG_SUPPORT_SOFTAP_WPA3
+#define PARAM_PACKET_FILTER_P2P_MASK             0xF0000000
+#else
 #define PARAM_PACKET_FILTER_P2P_MASK             0xC0000000
+#endif
 #define PARAM_PACKET_FILTER_PROBE_REQ           0x80000000
 #define PARAM_PACKET_FILTER_ACTION_FRAME      0x40000000
+#define PARAM_PACKET_FILTER_AUTH				0x20000000
+#define PARAM_PACKET_FILTER_ASSOC_REQ			0x10000000
 #endif
 
 #if CFG_SLT_SUPPORT
@@ -195,6 +201,8 @@ typedef enum _ENUM_PARAM_AUTH_MODE_T {
 	AUTH_MODE_WPA_NONE,	/*!< For Ad hoc */
 	AUTH_MODE_WPA2,
 	AUTH_MODE_WPA2_PSK,
+	AUTH_MODE_WPA2_FT,	/* Fast Bss Transition for 802.1x */
+	AUTH_MODE_WPA2_FT_PSK,	/* Fast Bss Transition for WPA2 PSK */
 #if CFG_SUPPORT_CFG80211_AUTH
 	AUTH_MODE_WPA2_SAE,
 #endif
@@ -2510,6 +2518,14 @@ wlanoidQueryStatisticsForLinux(IN P_ADAPTER_T prAdapter,
 
 #endif
 
+/*----------------------------------------------------------------------------*/
+/* query chip temperature information from firmware                           */
+/*----------------------------------------------------------------------------*/
+WLAN_STATUS
+wlanoidQueryTemperature(IN P_ADAPTER_T prAdapter,
+			  IN PVOID pvQueryBuffer, IN UINT_32 u4QueryBufferLen,
+			  OUT PUINT_32 pu4QueryInfoLen);
+
 WLAN_STATUS
 wlanoidQueryMediaStreamMode(IN P_ADAPTER_T prAdapter,
 			    IN PVOID pvQueryBuffer, IN UINT_32 u4QueryBufferLen, OUT PUINT_32 pu4QueryInfoLen);
@@ -2703,6 +2719,12 @@ WLAN_STATUS
 wlanoidSetCountryCode(IN P_ADAPTER_T prAdapter,
 		      IN PVOID pvSetBuffer, IN UINT_32 u4SetBufferLen, OUT PUINT_32 pu4SetInfoLen);
 
+WLAN_STATUS
+wlanoidSet5gEnable(IN P_ADAPTER_T prAdapter,
+		      IN PVOID pvSetBuffer,
+		      IN UINT_32 u4SetBufferLen,
+		      OUT PUINT_32 pu4SetInfoLen);
+
 WLAN_STATUS wlanSendMemDumpCmd(IN P_ADAPTER_T prAdapter, IN PVOID pvQueryBuffer, IN UINT_32 u4QueryBufferLen);
 
 #if CFG_SLT_SUPPORT
@@ -2875,6 +2897,13 @@ wlanoidNotifyFwSuspend(IN P_ADAPTER_T prAdapter,
 				IN PVOID pvSetBuffer,
 				IN UINT_32 u4SetBufferLen,
 				OUT PUINT_32 pu4SetInfoLen);
+
+WLAN_STATUS
+wlanoidPacketKeepAlive(IN P_ADAPTER_T prAdapter,
+		IN PVOID pvSetBuffer,
+		IN UINT_32 u4SetBufferLen,
+		OUT PUINT_32 pu4SetInfoLen);
+
 #if CFG_SUPPORT_DBDC
 WLAN_STATUS
 wlanoidSetDbdcEnable(
@@ -2946,5 +2975,10 @@ wlanoidConfigRoaming(IN P_ADAPTER_T prAdapter,
 *                              F U N C T I O N S
 ********************************************************************************
 */
+WLAN_STATUS
+wlanoidAbortScan(IN P_ADAPTER_T prAdapter,
+			 IN PVOID pvQueryBuffer,
+			 IN UINT_32 u4QueryBufferLen,
+			 OUT PUINT_32 pu4QueryInfoLen);
 
 #endif /* _WLAN_OID_H */

@@ -272,7 +272,11 @@ page_owner=on loop.max_part=7";
 		#size-cells = <2>;
 		ranges;
 		suspend-method = "s2idle";
-		irq-remain = <&edge_keypad &edge_mdwdt>;
+		irq-remain = <&edge_keypad &edge_mdwdt>,
+			     <&level_vpu_core0 &level_vpu_core1>,
+			     <&level_mali0 &level_mali1>,
+			     <&level_mali2 &level_mali3 &level_mali4>,
+			     <&level_mtk_mdla &level_edma0>;
 		resource-ctrl = <&bus26m &infra &syspll>,
 				<&dram_s0 &dram_s1>;
 		constraints = <&rc_bus26m &rc_syspll &rc_dram>;
@@ -290,6 +294,42 @@ page_owner=on loop.max_part=7";
 			edge_mdwdt: edge_mdwdt {
 				target = <&mddriver>;
 				value = <1 0 0 0x02000000>;
+			};
+			level_vpu_core0: level_vpu_core0 {
+				target = <&vpu_core0>;
+				value = <0 0 0 0>;
+			};
+			level_vpu_core1: level_vpu_core1 {
+				target = <&vpu_core1>;
+				value = <0 0 0 0>;
+			};
+			level_mali0: level_mali0 {
+				target = <&mali>;
+				value = <0 0 0 0>;
+			};
+			level_mali1: level_mali1 {
+				target = <&mali>;
+				value = <0 1 0 0>;
+			};
+			level_mali2: level_mali2 {
+				target = <&mali>;
+				value = <0 2 0 0>;
+			};
+			level_mali3: level_mali3 {
+				target = <&mali>;
+				value = <0 3 0 0>;
+			};
+			level_mali4: level_mali4 {
+				target = <&mali>;
+				value = <0 4 0 0>;
+			};
+			level_mtk_mdla: level_mtk_mdla {
+				target = <&mtk_mdla>;
+				value = <0 0 0 0>;
+			};
+			level_edma0: level_edma0 {
+				target = <&edma0>;
+				value = <0 0 0 0>;
 			};
 		};
 		resource-ctrl-list {
@@ -776,8 +816,9 @@ page_owner=on loop.max_part=7";
 
 	pwrap: pwrap@10026000 {
 		compatible = "mediatek,mt6873-pwrap";
-		reg = <0 0x10026000 0 0x1000>;
-		reg-names = "pwrap";
+		reg = <0 0x10026000 0 0x1000>,
+		<0 0x10028000 0 0x1000>;
+		reg-names = "pwrap","spi_mst";
 		interrupts = <GIC_SPI 220 IRQ_TYPE_LEVEL_HIGH>;
 	#ifdef CONFIG_FPGA_EARLY_PORTING
 		clocks = <&clk26m>, <&clk26m>, <&clk26m>, <&clk26m>;
@@ -2336,7 +2377,7 @@ page_owner=on loop.max_part=7";
 		io-channel-names = "thermistor-ch2";
 	};
 
-	mali@13000000 {
+	mali: mali@13000000 {
 		compatible = "mediatek,mali", "arm,mali-valhall";
 		reg = <0 0x13000000 0 0x4000>;
 		interrupts =
@@ -3521,7 +3562,8 @@ page_owner=on loop.max_part=7";
 		reg = <0 0x16000000 0 0x1000>,		/* VDEC_SYS */
 			 <0 0x16020000 0 0x1000>,		/* VDEC_VLD */
 			 <0 0x16025000 0 0x4000>,		/* VDEC_MISC */
-			 <0 0x16010000 0 0x7000>, /* VDEC_LAT_MISC */
+			 <0 0x16010000 0 0x1000>, /* VDEC_LAT_MISC */
+			 <0 0x16011000 0 0x400>, /* VDEC_LAT_VLD */
 			 <0 0x16004000 0 0x1000>; /* VDEC_RACING_CTRL */
 #ifdef CONFIG_MTK_IOMMU_V2
 		iommus = <&iommu0 M4U_PORT_L4_VDEC_MC_EXT>;
@@ -3800,7 +3842,8 @@ page_owner=on loop.max_part=7";
 			"MTK_DRM_OPT_HBM",
 			"MTK_DRM_OPT_VDS_PATH_SWITCH",
 			"MTK_DRM_OPT_LAYER_REC",
-			"MTK_DRM_OPT_CLEAR_LAYER";
+			"MTK_DRM_OPT_CLEAR_LAYER",
+			"MTK_DRM_OPT_SF_PF";
 
 		helper-value = <0>, /*MTK_DRM_OPT_STAGE*/
 			<1>, /*MTK_DRM_OPT_USE_CMDQ*/
@@ -3839,7 +3882,8 @@ page_owner=on loop.max_part=7";
 			<0>, /*MTK_DRM_OPT_HBM*/
 			<0>, /*MTK_DRM_OPT_VDS_PATH_SWITCH*/
 			<0>, /*MTK_DRM_OPT_LAYER_REC*/
-			<1>; /*MTK_DRM_OPT_CLEAR_LAYER*/
+			<1>, /*MTK_DRM_OPT_CLEAR_LAYER*/
+			<1>; /*MTK_DRM_OPT_SF_PF*/
 	};
 
 	disp_pwm: disp_pwm0@1100e000 {
@@ -6184,6 +6228,20 @@ page_owner=on loop.max_part=7";
 		vsys_watt = <5000000>;
 	};
 
+//#ifdef VENDOR_EDIT /* LaiBaoquan@BSP.CHG.Basic, 2019/9/27, Add for phy_tuning */
+        phy_tuning: phy_tuning {
+                compatible = "mediatek,phy_tuning";
+                u2_vrt_ref = <7>;
+                u2_term_ref = <7>;
+                u2_enhance = <2>;
+
+                host_u2_vrt_ref = <6>;
+                host_u2_term_ref = <6>;
+                host_u2_enhance = <1>;
+
+        };
+//#endif
+
 	pd_adapter: pd_adapter {
 		compatible = "mediatek,pd_adapter";
 		adapter_name = "pd_adapter";
@@ -6423,7 +6481,10 @@ page_owner=on loop.max_part=7";
 		compatible = "mediatek,speaker_amp";
 		#sound-dai-cells = <0>;
 		reg = <0x34>;
-		status = "okay";
+		#ifdef OPLUS_BUG_COMPATIBILITY
+		# Jingjing.Jiang@PSW.MULTIMEDIA.AUDIODRIVER.MACHINE,2020/11/28 delete for 19131 poweron speed
+		//status = "okay";
+		#endif /* OPLUS_BUG_COMPATIBILITY */
 	};
 };
 

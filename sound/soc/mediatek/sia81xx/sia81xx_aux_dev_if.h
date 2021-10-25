@@ -22,21 +22,21 @@ unsigned int soc_sia81xx_get_codec_conf_num(
 	struct platform_device *pdev);
 
 int soc_sia81xx_init(
-	struct platform_device *pdev, 
-	struct snd_soc_aux_dev *aux_dev, 
-	u32 aux_num, 
-	struct snd_soc_codec_conf *codec_conf, 
+	struct platform_device *pdev,
+	struct snd_soc_aux_dev *aux_dev,
+	u32 aux_num,
+	struct snd_soc_codec_conf *codec_conf,
 	u32 conf_num);
 
 int soc_aux_init_only_sia81xx(
-	struct platform_device *pdev, 
+	struct platform_device *pdev,
 	struct snd_soc_card *card);
 
-#ifdef VENDOR_EDIT
+#ifdef OPLUS_BUG_COMPATIBILITY
 /* Wenyang.Fan@PSW.MULTIMEDIA.AUDIODRIVER.MACHINE,2020/06/16, Add for adjust codec & Sia PA sequence */
 extern void sia81xx_start(void);
 extern void sia81xx_stop(void);
-#endif /* VENDOR_EDIT */
+#endif /* OPLUS_BUG_COMPATIBILITY */
 
 #endif /* _SIA81XX_AUX_DEV_IF_H */
 

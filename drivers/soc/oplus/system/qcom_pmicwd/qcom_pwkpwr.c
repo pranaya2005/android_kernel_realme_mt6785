@@ -12,13 +12,8 @@
 #include <linux/of.h>
 #include <soc/oplus/system/oplus_project.h>
 #include <linux/debugfs.h>
-#include <linux/version.h>
-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(5, 4, 0))
-#include <soc/oplus/system/qcom_pmicwd.h>
-#else
 #include <linux/regmap.h>
 #include <linux/input/qpnp-power-on.h>
-#endif
 
 #define QPNP_PON_KPDPWR_S1_TIMER(pon)		((pon)->base + 0x40)
 #define QPNP_PON_KPDPWR_S2_TIMER(pon)		((pon)->base + 0x41)

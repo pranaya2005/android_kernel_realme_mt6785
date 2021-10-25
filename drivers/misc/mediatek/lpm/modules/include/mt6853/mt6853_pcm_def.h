@@ -212,6 +212,27 @@ enum SPM_WAKE_SRC_LIST {
 	WAKE_SRC_STA1_PCIE_IRQ = (1U << 31)
 };
 
+#ifdef OPLUS_FEATURE_POWERINFO_STANDBY
+//yunqing.zeng@bsp.power.basic 2019-11-30 Modify for statistics of deepsleep r13 blocker.
+struct r13_blocker_detail_info {
+	u32 bitinfo;
+	char *name;
+	u64 count;
+	u64 duration;
+};
+
+struct mt6885_sleep_static_info {
+	u64 kernel_sleep_duration;
+	u64 deep_sleep_duration;
+	u64 deep_sleep_count;
+	u64 ndeep_sleep_duration;
+	u64 ndeep_sleep_count;
+};
+void record_suspend_r13_count_clear(void);
+void record_suspend_r13_info(u32 r13, u32 debug_flag, u32 timer_out, u32 clock_26m_off);
+void get_mt6885_wakeup_r13_table(struct mt6885_sleep_static_info **address, struct r13_blocker_detail_info **base, int **size);
+#endif
+
 extern const char *wakesrc_str[32];
 
 /* define WAKE_SRC_CONN2AP for conn use */

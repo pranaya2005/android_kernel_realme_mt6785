@@ -43,12 +43,12 @@
 #include <linux/types.h>
 #include "imgsensor_eeprom.h"
 #include "ov64bmipiraw_Sensor.h"
-#include "ov64b_Sensor_setting.h"
+#include "ov64b_Sensor_setting_20645.h"
 
 #define _I2C_BUF_SIZE 4096
-static kal_uint16 _i2c_data [_I2C_BUF_SIZE];
-static unsigned int _size_to_write;
-static bool _is_seamless;
+kal_uint16 _i2c_data_20645 [_I2C_BUF_SIZE];
+unsigned int _size_to_write_20645;
+bool _is_seamless_20645;
 static unsigned int _is_initFlag;
 
 #define LOG_INF(format, args...)    \
@@ -89,14 +89,14 @@ static struct imgsensor_info_struct imgsensor_info = {
 
     .normal_video = { /*4624*2600@30fps*/
         .pclk = 115200000,
-        .linelength = 696,
-        .framelength = 5518,
+        .linelength = 936,
+        .framelength = 4102,
         .startx = 0,
         .starty = 0,
         .grabwindow_width = 4624,
         .grabwindow_height = 2600,
         .mipi_data_lp2hs_settle_dc = 85,
-        .mipi_pixel_rate = 920000000,
+        .mipi_pixel_rate = 679680000,
         .max_framerate = 300,
     },
 
@@ -128,15 +128,15 @@ static struct imgsensor_info_struct imgsensor_info = {
 
     .custom1 = {
         .pclk = 115200000,
-        .linelength = 1224,
-        .framelength = 3920,
+        .linelength = 1080,
+        .framelength = 4444,
         .startx =0,
         .starty = 0,
         .grabwindow_width = 4624,
         .grabwindow_height = 3468,
         .mipi_data_lp2hs_settle_dc = 85,
         .max_framerate = 240,
-        .mipi_pixel_rate = 518400000,
+        .mipi_pixel_rate = 679680000,
     },
 
     .custom2 = { /* reg_N 4K @ 60fps (binning)*/
@@ -194,7 +194,7 @@ static struct imgsensor_info_struct imgsensor_info = {
     .margin = 31,                    /* sensor framelength & shutter margin */
     .min_shutter = 16,                /* min shutter */
     .min_gain = 64, /*1x gain*/
-    .max_gain = 992, /*64x gain*/
+    .max_gain = 4096, /*64x gain*/
     .min_gain_iso = 100,
     .gain_step = 1,
     .gain_type = 1,/*to be modify,no gain table for sony*/
@@ -337,11 +337,8 @@ static kal_uint16 ov64b2q_table_write_cmos_sensor(
 }
 
 /*OVPD-1:720Bytes & Crosstalk 288Bytes*/
-static kal_uint16 ov64b_QSC_OVPD_setting[720*2];
-static kal_uint16 ov64b_QSC_CT_setting[288*2];
-static kal_uint8 ovpd_qsc_flag = 0;
-static kal_uint8 ct_qsc_flag = 0;
-
+static kal_uint16 ov64b_QSC_setting[1008*2];
+static kal_uint8 qsc_flag = 0;
 static void read_EepromQSC(void)
 {
     kal_uint16 addr_ovpd = 0x190C, senaddr_ovpd = 0x5F80;
@@ -350,13 +347,13 @@ static void read_EepromQSC(void)
     kal_uint32 Dac_master = 0, Dac_mac = 0, Dac_inf = 0;
     /*Read OVPD*/
     for (i = 0; i < 720; i ++) {
-        ov64b_QSC_OVPD_setting[2*i] = senaddr_ovpd+i;
-        ov64b_QSC_OVPD_setting[2*i+1] = Eeprom_1ByteDataRead((addr_ovpd+i), 0xA0);
+        ov64b_QSC_setting[2*i] = senaddr_ovpd+i;
+        ov64b_QSC_setting[2*i+1] = Eeprom_1ByteDataRead((addr_ovpd+i), 0xA0);
     }
     /*Read crosstalk*/
     for (i = 0; i < 288; i ++) {
-        ov64b_QSC_CT_setting[2*i] = senaddr_crotalk+i;
-        ov64b_QSC_CT_setting[2*i+1] = Eeprom_1ByteDataRead((addr_crotalk+i), 0xA0);
+        ov64b_QSC_setting[2*i + 1440] = senaddr_crotalk+i;
+        ov64b_QSC_setting[2*i+1 + 1440] = Eeprom_1ByteDataRead((addr_crotalk+i), 0xA0);
     }
     /*Read normal eeprom data*/
     gImgEepromInfo.camNormdata[0][0] = Eeprom_1ByteDataRead(0x00, 0xA0);
@@ -383,34 +380,27 @@ static void read_EepromQSC(void)
     gImgEepromInfo.i4CurSensorIdx = 0;
     gImgEepromInfo.i4CurSensorId = imgsensor_info.sensor_id;
 }
+
+static void write_sensor_QSC(void)
+{
+    /*Write OVPD-1*/
+    pr_info("%s start\n", __func__);
+    if (Eeprom_1ByteDataRead(0x1BDC, 0xA0) == 1   //OVPD-1 Flag valid
+        && Eeprom_1ByteDataRead(0x1D20, 0xA0) == 1 //crosstalk Flag valid
+        && !qsc_flag) {
+        ov64b2q_table_write_cmos_sensor(ov64b_QSC_setting,
+            sizeof(ov64b_QSC_setting) / sizeof(kal_uint16));
+        qsc_flag = 1;
+    }
+    pr_info("%s end\n", __func__);
+}
+
 static kal_uint16 read_cmos_sensor(kal_uint32 addr)
 {
     kal_uint16 get_byte = 0;
     char pusendcmd[2] = {(char)(addr >> 8), (char)(addr & 0xFF) };
     iReadRegI2C(pusendcmd, 2, (u8 *)&get_byte, 1, imgsensor.i2c_write_id);
     return get_byte;
-}
-static void write_sensor_OVPD_QSC(void)
-{
-    pr_info("%s start\n", __func__);
-    if(Eeprom_1ByteDataRead(0x1BDC, 0xA0) == 1 && !ovpd_qsc_flag) //OVPD-1 Flag valid
-    {
-        ov64b2q_table_write_cmos_sensor(ov64b_QSC_OVPD_setting,
-            sizeof(ov64b_QSC_OVPD_setting) / sizeof(kal_uint16));
-        ovpd_qsc_flag = 1;
-    }
-    pr_info("%s end\n", __func__);
-}
-static void write_sensor_CT_QSC(void)
-{
-    pr_info("%s start\n", __func__);
-    if(Eeprom_1ByteDataRead(0x1D20, 0xA0) == 1 && !ct_qsc_flag) //crosstalk Flag valid
-    {
-        ov64b2q_table_write_cmos_sensor(ov64b_QSC_CT_setting,
-            sizeof(ov64b_QSC_CT_setting) / sizeof(kal_uint16));
-        ct_qsc_flag = 1;
-    }
-    pr_info("%s end\n", __func__);
 }
 
 static void write_cmos_sensor(kal_uint32 addr, kal_uint32 para)
@@ -422,7 +412,7 @@ static void write_cmos_sensor(kal_uint32 addr, kal_uint32 para)
 
 static void set_dummy(void)
 {
-    if(!_is_seamless) {
+    if(!_is_seamless_20645) {
         //imgsensor.frame_length = (imgsensor.frame_length  >> 1) << 1;
         //write_cmos_sensor(0x3208, 0x00);
         write_cmos_sensor(0x380c, imgsensor.line_length >> 8);
@@ -432,12 +422,12 @@ static void set_dummy(void)
         //write_cmos_sensor(0x3208, 0x10);
         //write_cmos_sensor(0x3208, 0xa0);
     } else {
-        _i2c_data[_size_to_write++] = 0x3840;
-        _i2c_data[_size_to_write++] = imgsensor.frame_length >> 16;
-        _i2c_data[_size_to_write++] = 0x380e;
-        _i2c_data[_size_to_write++] = imgsensor.frame_length >> 8;
-        _i2c_data[_size_to_write++] = 0x380f;
-        _i2c_data[_size_to_write++] = imgsensor.frame_length & 0xFF;
+        _i2c_data_20645[_size_to_write_20645++] = 0x3840;
+        _i2c_data_20645[_size_to_write_20645++] = imgsensor.frame_length >> 16;
+        _i2c_data_20645[_size_to_write_20645++] = 0x380e;
+        _i2c_data_20645[_size_to_write_20645++] = imgsensor.frame_length >> 8;
+        _i2c_data_20645[_size_to_write_20645++] = 0x380f;
+        _i2c_data_20645[_size_to_write_20645++] = imgsensor.frame_length & 0xFF;
     }
 
 }
@@ -512,7 +502,7 @@ static void write_shutter(kal_uint32 shutter)
     }
 
     /*Warning : shutter must be even. Odd might happen Unexpected Results */
-    if(!_is_seamless) {
+    if(!_is_seamless_20645) {
         if (_is_initFlag) {
             write_cmos_sensor(0x3840, imgsensor.frame_length >> 16);
             write_cmos_sensor(0x380e, imgsensor.frame_length >> 8);
@@ -533,21 +523,21 @@ static void write_shutter(kal_uint32 shutter)
             write_cmos_sensor(0x3208, 0xa1);
        }
     } else {
-        _i2c_data[_size_to_write++] = 0x3840;
-        _i2c_data[_size_to_write++] = imgsensor.frame_length >> 16;
-        _i2c_data[_size_to_write++] = 0x380e;
-        _i2c_data[_size_to_write++] = imgsensor.frame_length >> 8;
-        _i2c_data[_size_to_write++] = 0x380f;
-        _i2c_data[_size_to_write++] = imgsensor.frame_length & 0xFF;
-        _i2c_data[_size_to_write++] = 0x3500;
-        _i2c_data[_size_to_write++] = (shutter >> 16) & 0xFF;
-        _i2c_data[_size_to_write++] = 0x3501;
-        _i2c_data[_size_to_write++] = (shutter >> 8) & 0xFF;
-        _i2c_data[_size_to_write++] = 0x3502;
-        _i2c_data[_size_to_write++] = (shutter)  & 0xFF;
+        _i2c_data_20645[_size_to_write_20645++] = 0x3840;
+        _i2c_data_20645[_size_to_write_20645++] = imgsensor.frame_length >> 16;
+        _i2c_data_20645[_size_to_write_20645++] = 0x380e;
+        _i2c_data_20645[_size_to_write_20645++] = imgsensor.frame_length >> 8;
+        _i2c_data_20645[_size_to_write_20645++] = 0x380f;
+        _i2c_data_20645[_size_to_write_20645++] = imgsensor.frame_length & 0xFF;
+        _i2c_data_20645[_size_to_write_20645++] = 0x3500;
+        _i2c_data_20645[_size_to_write_20645++] = (shutter >> 16) & 0xFF;
+        _i2c_data_20645[_size_to_write_20645++] = 0x3501;
+        _i2c_data_20645[_size_to_write_20645++] = (shutter >> 8) & 0xFF;
+        _i2c_data_20645[_size_to_write_20645++] = 0x3502;
+        _i2c_data_20645[_size_to_write_20645++] = (shutter)  & 0xFF;
     }
-    pr_debug("shutter =%d, framelength =%d, realtime_fps =%d _is_seamless %d\n",
-            shutter, imgsensor.frame_length, realtime_fps, _is_seamless);
+    pr_debug("shutter =%d, framelength =%d, realtime_fps =%d _is_seamless_20645 %d\n",
+            shutter, imgsensor.frame_length, realtime_fps, _is_seamless_20645);
 }
 static kal_uint16 ov64b2q_burst_write_cmos_sensor(
                     kal_uint16 *para, kal_uint32 len)
@@ -637,7 +627,7 @@ static kal_uint16 set_gain(kal_uint16 gain)
 
     pr_debug("gain = %d , reg_gain = 0x%x\n ", gain, reg_gain);
 
-    if (!_is_seamless) {
+    if (!_is_seamless_20645) {
         if (reg_gain > 0xf00) {
             //15.5xA gain with digital gain
             write_cmos_sensor(0x03508, 0xf);
@@ -656,10 +646,10 @@ static kal_uint16 set_gain(kal_uint16 gain)
             write_cmos_sensor(0x0350C, 0x00);
          }
     } else {
-        _i2c_data[_size_to_write++] = 0x03508;
-        _i2c_data[_size_to_write++] =  reg_gain >> 8;
-        _i2c_data[_size_to_write++] = 0x03509;
-        _i2c_data[_size_to_write++] =  reg_gain & 0xff;
+        _i2c_data_20645[_size_to_write_20645++] = 0x03508;
+        _i2c_data_20645[_size_to_write_20645++] =  reg_gain >> 8;
+        _i2c_data_20645[_size_to_write_20645++] = 0x03509;
+        _i2c_data_20645[_size_to_write_20645++] =  reg_gain & 0xff;
     }
 
     return gain;
@@ -683,8 +673,8 @@ static void sensor_init(void)
     mdelay(5);
     LOG_INF("sensor_init start\n");
     ov64b2q_table_write_cmos_sensor(
-        addr_data_pair_init_ov64b2q,
-        sizeof(addr_data_pair_init_ov64b2q) / sizeof(kal_uint16));
+        addr_data_pair_init_ov64b2q_20645,
+        sizeof(addr_data_pair_init_ov64b2q_20645) / sizeof(kal_uint16));
     _is_initFlag = 1;
     LOG_INF("sensor_init end\n");
 }
@@ -694,24 +684,24 @@ static void preview_setting(void)
     int _length = 0;
 
     pr_debug("preview_setting RES_4624x3468_30.00fps\n");
-    _length = sizeof(addr_data_pair_preview_ov64b2q) / sizeof(kal_uint16);
-    if(!_is_seamless) {
+    _length = sizeof(addr_data_pair_preview_ov64b2q_20645) / sizeof(kal_uint16);
+    if(!_is_seamless_20645) {
     ov64b2q_table_write_cmos_sensor(
-        addr_data_pair_preview_ov64b2q,
+        addr_data_pair_preview_ov64b2q_20645,
         _length);
     } else {
-        pr_debug("%s _is_seamless %d, _size_to_write %d\n",
-            __func__, _is_seamless, _size_to_write);
+        pr_debug("%s _is_seamless_20645 %d, _size_to_write_20645 %d\n",
+            __func__, _is_seamless_20645, _size_to_write_20645);
 
-        if (_size_to_write + _length > _I2C_BUF_SIZE) {
+        if (_size_to_write_20645 + _length > _I2C_BUF_SIZE) {
             pr_err("_too much i2c data for fast siwtch %d\n",
-                _size_to_write + _length);
+                _size_to_write_20645 + _length);
             return;
         }
-        memcpy((void *) (_i2c_data + _size_to_write),
-            addr_data_pair_preview_ov64b2q,
-            sizeof(addr_data_pair_preview_ov64b2q));
-        _size_to_write += _length;
+        memcpy((void *) (_i2c_data_20645 + _size_to_write_20645),
+            addr_data_pair_preview_ov64b2q_20645,
+            sizeof(addr_data_pair_preview_ov64b2q_20645));
+        _size_to_write_20645 += _length;
     }
 
     pr_debug("preview_setting_end\n");
@@ -723,24 +713,24 @@ static void capture_setting(kal_uint16 currefps)
     int _length = 0;
 
     pr_debug("capture_setting currefps = %d\n", currefps);
-    _length = sizeof(addr_data_pair_preview_ov64b2q) / sizeof(kal_uint16);
-    if(!_is_seamless) {
+    _length = sizeof(addr_data_pair_preview_ov64b2q_20645) / sizeof(kal_uint16);
+    if(!_is_seamless_20645) {
     ov64b2q_table_write_cmos_sensor(
-        addr_data_pair_capture_ov64b2q,
+        addr_data_pair_capture_ov64b2q_20645,
         _length);
     } else {
-        pr_debug("%s _is_seamless %d, _size_to_write %d\n",
-            __func__, _is_seamless, _size_to_write);
+        pr_debug("%s _is_seamless_20645 %d, _size_to_write_20645 %d\n",
+            __func__, _is_seamless_20645, _size_to_write_20645);
 
-        if (_size_to_write + _length > _I2C_BUF_SIZE) {
+        if (_size_to_write_20645 + _length > _I2C_BUF_SIZE) {
             pr_err("_too much i2c data for fast siwtch %d\n",
-                _size_to_write + _length);
+                _size_to_write_20645 + _length);
             return;
         }
-        memcpy((void *) (_i2c_data + _size_to_write),
-            addr_data_pair_capture_ov64b2q,
-            sizeof(addr_data_pair_capture_ov64b2q));
-        _size_to_write += _length;
+        memcpy((void *) (_i2c_data_20645 + _size_to_write_20645),
+            addr_data_pair_capture_ov64b2q_20645,
+            sizeof(addr_data_pair_capture_ov64b2q_20645));
+        _size_to_write_20645 += _length;
     }
 }
 
@@ -749,24 +739,24 @@ static void normal_video_setting(kal_uint16 currefps)
     int _length = 0;
 
     pr_debug("normal_video_setting RES_4624x3468_zsl_30fps\n");
-    _length = sizeof(addr_data_pair_video_ov64b2q) / sizeof(kal_uint16);
-    if(!_is_seamless) {
+    _length = sizeof(addr_data_pair_video_ov64b2q_20645) / sizeof(kal_uint16);
+    if(!_is_seamless_20645) {
     ov64b2q_table_write_cmos_sensor(
-        addr_data_pair_video_ov64b2q,
+        addr_data_pair_video_ov64b2q_20645,
         _length);
     } else {
-        pr_debug("%s _is_seamless %d, _size_to_write %d\n",
-            __func__, _is_seamless, _size_to_write);
+        pr_debug("%s _is_seamless_20645 %d, _size_to_write_20645 %d\n",
+            __func__, _is_seamless_20645, _size_to_write_20645);
 
-        if (_size_to_write + _length > _I2C_BUF_SIZE) {
+        if (_size_to_write_20645 + _length > _I2C_BUF_SIZE) {
             pr_err("_too much i2c data for fast siwtch %d\n",
-                _size_to_write + _length);
+                _size_to_write_20645 + _length);
             return;
         }
-        memcpy((void *) (_i2c_data + _size_to_write),
-            addr_data_pair_video_ov64b2q,
-            sizeof(addr_data_pair_video_ov64b2q));
-        _size_to_write += _length;
+        memcpy((void *) (_i2c_data_20645 + _size_to_write_20645),
+            addr_data_pair_video_ov64b2q_20645,
+            sizeof(addr_data_pair_video_ov64b2q_20645));
+        _size_to_write_20645 += _length;
     }
 }
 
@@ -775,24 +765,24 @@ static void hs_video_setting(void)
     int _length = 0;
 
     pr_debug("hs_video_setting RES_1280x720_160fps\n");
-    _length = sizeof(addr_data_pair_hs_video_ov64b2q) / sizeof(kal_uint16);
-    if(!_is_seamless) {
+    _length = sizeof(addr_data_pair_hs_video_ov64b2q_20645) / sizeof(kal_uint16);
+    if(!_is_seamless_20645) {
         ov64b2q_table_write_cmos_sensor(
-        addr_data_pair_hs_video_ov64b2q,
+        addr_data_pair_hs_video_ov64b2q_20645,
         _length);
     } else {
-        pr_debug("%s _is_seamless %d, _size_to_write %d\n",
-            __func__, _is_seamless, _size_to_write);
+        pr_debug("%s _is_seamless_20645 %d, _size_to_write_20645 %d\n",
+            __func__, _is_seamless_20645, _size_to_write_20645);
 
-        if (_size_to_write + _length > _I2C_BUF_SIZE) {
+        if (_size_to_write_20645 + _length > _I2C_BUF_SIZE) {
             pr_err("_too much i2c data for fast siwtch %d\n",
-                _size_to_write + _length);
+                _size_to_write_20645 + _length);
             return;
         }
-        memcpy((void *) (_i2c_data + _size_to_write),
-            addr_data_pair_hs_video_ov64b2q,
-            sizeof(addr_data_pair_hs_video_ov64b2q));
-        _size_to_write += _length;
+        memcpy((void *) (_i2c_data_20645 + _size_to_write_20645),
+            addr_data_pair_hs_video_ov64b2q_20645,
+            sizeof(addr_data_pair_hs_video_ov64b2q_20645));
+        _size_to_write_20645 += _length;
     }
 }
 
@@ -801,24 +791,24 @@ static void slim_video_setting(void)
     int _length = 0;
 
     pr_debug("slim_video_setting RES_3840x2160_30fps\n");
-    _length = sizeof(addr_data_pair_slim_video_ov64b2q) / sizeof(kal_uint16);
-    if(!_is_seamless) {
+    _length = sizeof(addr_data_pair_slim_video_ov64b2q_20645) / sizeof(kal_uint16);
+    if(!_is_seamless_20645) {
         ov64b2q_table_write_cmos_sensor(
-        addr_data_pair_slim_video_ov64b2q,
+        addr_data_pair_slim_video_ov64b2q_20645,
         _length);
     } else {
-        pr_debug("%s _is_seamless %d, _size_to_write %d\n",
-            __func__, _is_seamless, _size_to_write);
+        pr_debug("%s _is_seamless_20645 %d, _size_to_write_20645 %d\n",
+            __func__, _is_seamless_20645, _size_to_write_20645);
 
-        if (_size_to_write + _length > _I2C_BUF_SIZE) {
+        if (_size_to_write_20645 + _length > _I2C_BUF_SIZE) {
             pr_err("_too much i2c data for fast siwtch %d\n",
-                _size_to_write + _length);
+                _size_to_write_20645 + _length);
             return;
         }
-        memcpy((void *) (_i2c_data + _size_to_write),
-            addr_data_pair_slim_video_ov64b2q,
-            sizeof(addr_data_pair_slim_video_ov64b2q));
-        _size_to_write += _length;
+        memcpy((void *) (_i2c_data_20645 + _size_to_write_20645),
+            addr_data_pair_slim_video_ov64b2q_20645,
+            sizeof(addr_data_pair_slim_video_ov64b2q_20645));
+        _size_to_write_20645 += _length;
     }
 }
 
@@ -828,24 +818,24 @@ static void custom1_setting(void)
     int _length = 0;
 
     pr_debug("custom1_setting_start\n");
-    _length = sizeof(addr_data_pair_custom1) / sizeof(kal_uint16);
-    if(!_is_seamless) {
+    _length = sizeof(addr_data_pair_custom1_20645) / sizeof(kal_uint16);
+    if(!_is_seamless_20645) {
         ov64b2q_table_write_cmos_sensor(
-        addr_data_pair_custom1,
+        addr_data_pair_custom1_20645,
         _length);
     } else {
-        pr_debug("%s _is_seamless %d, _size_to_write %d\n",
-            __func__, _is_seamless, _size_to_write);
+        pr_debug("%s _is_seamless_20645 %d, _size_to_write_20645 %d\n",
+            __func__, _is_seamless_20645, _size_to_write_20645);
 
-        if (_size_to_write + _length > _I2C_BUF_SIZE) {
+        if (_size_to_write_20645 + _length > _I2C_BUF_SIZE) {
             pr_err("_too much i2c data for fast siwtch %d\n",
-                _size_to_write + _length);
+                _size_to_write_20645 + _length);
             return;
         }
-        memcpy((void *) (_i2c_data + _size_to_write),
-            addr_data_pair_custom1,
-            sizeof(addr_data_pair_custom1));
-        _size_to_write += _length;
+        memcpy((void *) (_i2c_data_20645 + _size_to_write_20645),
+            addr_data_pair_custom1_20645,
+            sizeof(addr_data_pair_custom1_20645));
+        _size_to_write_20645 += _length;
     }
     pr_debug("custom1_setting_end\n");
 }    /*    custom1_setting  */
@@ -855,24 +845,24 @@ static void custom2_setting(void)
     int _length = 0;
 
     pr_debug("custom2_setting_start\n");
-    _length = sizeof(addr_data_pair_custom2) / sizeof(kal_uint16);
-    if(!_is_seamless) {
+    _length = sizeof(addr_data_pair_custom2_20645) / sizeof(kal_uint16);
+    if(!_is_seamless_20645) {
         ov64b2q_table_write_cmos_sensor(
-        addr_data_pair_custom2,
+        addr_data_pair_custom2_20645,
         _length);
     } else {
-        pr_debug("%s _is_seamless %d, _size_to_write %d\n",
-            __func__, _is_seamless, _size_to_write);
+        pr_debug("%s _is_seamless_20645 %d, _size_to_write_20645 %d\n",
+            __func__, _is_seamless_20645, _size_to_write_20645);
 
-        if (_size_to_write + _length > _I2C_BUF_SIZE) {
+        if (_size_to_write_20645 + _length > _I2C_BUF_SIZE) {
             pr_err("_too much i2c data for fast siwtch %d\n",
-                _size_to_write + _length);
+                _size_to_write_20645 + _length);
             return;
         }
-        memcpy((void *) (_i2c_data + _size_to_write),
-            addr_data_pair_custom2,
-            sizeof(addr_data_pair_custom2));
-        _size_to_write += _length;
+        memcpy((void *) (_i2c_data_20645 + _size_to_write_20645),
+            addr_data_pair_custom2_20645,
+            sizeof(addr_data_pair_custom2_20645));
+        _size_to_write_20645 += _length;
     }
     pr_debug("custom2_setting_end\n");
 }    /*    custom2_setting  */
@@ -882,27 +872,27 @@ static void custom3_setting(void)
     int _length = 0;
 
     pr_debug("E\n");
-    ov64b2q_burst_write_cmos_sensor(addr_data_pair_custom3,
-        sizeof(addr_data_pair_custom3)/sizeof(kal_uint16));
+    ov64b2q_burst_write_cmos_sensor(addr_data_pair_custom3_20645,
+        sizeof(addr_data_pair_custom3_20645)/sizeof(kal_uint16));
 
-    _length = sizeof(addr_data_pair_custom3) / sizeof(kal_uint16);
-    if(!_is_seamless) {
+    _length = sizeof(addr_data_pair_custom3_20645) / sizeof(kal_uint16);
+    if(!_is_seamless_20645) {
         ov64b2q_table_write_cmos_sensor(
-        addr_data_pair_custom3,
+        addr_data_pair_custom3_20645,
         _length);
     } else {
-        pr_debug("%s _is_seamless %d, _size_to_write %d\n",
-            __func__, _is_seamless, _size_to_write);
+        pr_debug("%s _is_seamless_20645 %d, _size_to_write_20645 %d\n",
+            __func__, _is_seamless_20645, _size_to_write_20645);
 
-        if (_size_to_write + _length > _I2C_BUF_SIZE) {
+        if (_size_to_write_20645 + _length > _I2C_BUF_SIZE) {
             pr_err("_too much i2c data for fast siwtch %d\n",
-                _size_to_write + _length);
+                _size_to_write_20645 + _length);
             return;
         }
-        memcpy((void *) (_i2c_data + _size_to_write),
-            addr_data_pair_custom3,
-            sizeof(addr_data_pair_custom3));
-        _size_to_write += _length;
+        memcpy((void *) (_i2c_data_20645 + _size_to_write_20645),
+            addr_data_pair_custom3_20645,
+            sizeof(addr_data_pair_custom3_20645));
+        _size_to_write_20645 += _length;
     }
 }    /*    custom3_setting  */
 
@@ -911,24 +901,24 @@ static void custom4_setting(void)
     int _length = 0;
 
     pr_debug("custom4_setting_start\n");
-    _length = sizeof(addr_data_pair_custom4) / sizeof(kal_uint16);
-    if(!_is_seamless) {
+    _length = sizeof(addr_data_pair_custom4_20645) / sizeof(kal_uint16);
+    if(!_is_seamless_20645) {
         ov64b2q_table_write_cmos_sensor(
-        addr_data_pair_custom4,
+        addr_data_pair_custom4_20645,
         _length);
     } else {
-        pr_debug("%s _is_seamless %d, _size_to_write %d\n",
-            __func__, _is_seamless, _size_to_write);
+        pr_debug("%s _is_seamless_20645 %d, _size_to_write_20645 %d\n",
+            __func__, _is_seamless_20645, _size_to_write_20645);
 
-        if (_size_to_write + _length > _I2C_BUF_SIZE) {
+        if (_size_to_write_20645 + _length > _I2C_BUF_SIZE) {
             pr_err("_too much i2c data for fast siwtch %d\n",
-                _size_to_write + _length);
+                _size_to_write_20645 + _length);
             return;
 }
-        memcpy((void *) (_i2c_data + _size_to_write),
-            addr_data_pair_custom4,
-            sizeof(addr_data_pair_custom4));
-        _size_to_write += _length;
+        memcpy((void *) (_i2c_data_20645 + _size_to_write_20645),
+            addr_data_pair_custom4_20645,
+            sizeof(addr_data_pair_custom4_20645));
+        _size_to_write_20645 += _length;
     }
 
     pr_debug("custom4_setting_end\n");
@@ -940,24 +930,24 @@ static void custom5_setting(void)
     int _length = 0;
 
     pr_debug("E\n");
-    _length = sizeof(addr_data_pair_custom5) / sizeof(kal_uint16);
-    if(!_is_seamless) {
+    _length = sizeof(addr_data_pair_custom5_20645) / sizeof(kal_uint16);
+    if(!_is_seamless_20645) {
         ov64b2q_table_write_cmos_sensor(
-        addr_data_pair_custom5,
+        addr_data_pair_custom5_20645,
         _length);
     } else {
-        pr_debug("%s _is_seamless %d, _size_to_write %d\n",
-            __func__, _is_seamless, _size_to_write);
+        pr_debug("%s _is_seamless_20645 %d, _size_to_write_20645 %d\n",
+            __func__, _is_seamless_20645, _size_to_write_20645);
 
-        if (_size_to_write + _length > _I2C_BUF_SIZE) {
+        if (_size_to_write_20645 + _length > _I2C_BUF_SIZE) {
             pr_err("_too much i2c data for fast siwtch %d\n",
-                _size_to_write + _length);
+                _size_to_write_20645 + _length);
             return;
     }
-        memcpy((void *) (_i2c_data + _size_to_write),
-            addr_data_pair_custom5,
-            sizeof(addr_data_pair_custom5));
-        _size_to_write += _length;
+        memcpy((void *) (_i2c_data_20645 + _size_to_write_20645),
+            addr_data_pair_custom5_20645,
+            sizeof(addr_data_pair_custom5_20645));
+        _size_to_write_20645 += _length;
     }
 
 
@@ -979,8 +969,9 @@ static kal_uint32 get_imgsensor_id(UINT32 *sensor_id)
     spin_unlock(&imgsensor_drv_lock);
     do {
         *sensor_id = return_sensor_id();
-        if (*sensor_id == OV64B_SENSOR_ID) {
-            *sensor_id = imgsensor_info.sensor_id;
+        LOG_INF("weisaholun ov64b [get_imgsensor_id] sensor_id = 0x%x",*sensor_id);
+				if (*sensor_id == OV64B_SENSOR_ID) {
+					*sensor_id = imgsensor_info.sensor_id;
             LOG_INF("i2c write id: 0x%x, sensor id: 0x%x\n",
             imgsensor.i2c_write_id, *sensor_id);
             read_EepromQSC();
@@ -1014,7 +1005,7 @@ static kal_uint32 open(void)
     do {
         sensor_id = return_sensor_id();
     if (sensor_id == OV64B_SENSOR_ID) {
-        sensor_id = imgsensor_info.sensor_id;
+			sensor_id = imgsensor_info.sensor_id;
         LOG_INF("i2c write id: 0x%x, sensor id: 0x%x\n",
             imgsensor.i2c_write_id, sensor_id);
         break;
@@ -1031,7 +1022,6 @@ static kal_uint32 open(void)
         return ERROR_SENSOR_CONNECT_FAIL;
     }
     sensor_init();
-    write_sensor_OVPD_QSC();
     spin_lock(&imgsensor_drv_lock);
     imgsensor.autoflicker_en = KAL_FALSE;
     imgsensor.sensor_mode = IMGSENSOR_MODE_INIT;
@@ -1201,7 +1191,7 @@ static kal_uint32 Custom3(MSDK_SENSOR_EXPOSURE_WINDOW_STRUCT *image_window,
     imgsensor.min_frame_length = imgsensor_info.custom3.framelength;
     imgsensor.autoflicker_en = KAL_FALSE;
     spin_unlock(&imgsensor_drv_lock);
-    write_sensor_CT_QSC();
+    write_sensor_QSC();
     custom3_setting();
     return ERROR_NONE;
 }   /*  Custom3*/
@@ -1855,24 +1845,24 @@ static kal_uint32 seamless_switch(enum MSDK_SCENARIO_ID_ENUM scenario_id,
 {
     int _length = 0;
 //    int k = 0;
-    _is_seamless = true;
-    memset(_i2c_data, 0x0, sizeof(_i2c_data));
-    _size_to_write = 0;
+    _is_seamless_20645 = true;
+    memset(_i2c_data_20645, 0x0, sizeof(_i2c_data_20645));
+    _size_to_write_20645 = 0;
 
-    pr_err("seamless_switch %d, %d, %d, %d, %d sizeof(_i2c_data) %d\n",
-        scenario_id, shutter, gain, shutter_2ndframe, gain_2ndframe, sizeof(_i2c_data));
+    pr_err("seamless_switch %d, %d, %d, %d, %d sizeof(_i2c_data_20645) %d\n",
+        scenario_id, shutter, gain, shutter_2ndframe, gain_2ndframe, sizeof(_i2c_data_20645));
 
-    _length = sizeof(addr_data_pair_seamless_switch_step1_ov64b2q) / sizeof(kal_uint16);
+    _length = sizeof(addr_data_pair_seamless_switch_step1_ov64b2q_20645) / sizeof(kal_uint16);
 
     if (_length> _I2C_BUF_SIZE) {
         pr_err("_too much i2c data for fast siwtch\n");
         return ERROR_NONE;
 }
 
-    memcpy((void *)(_i2c_data + _size_to_write),
-        addr_data_pair_seamless_switch_step1_ov64b2q,
-        sizeof(addr_data_pair_seamless_switch_step1_ov64b2q));
-    _size_to_write += _length;
+    memcpy((void *)(_i2c_data_20645 + _size_to_write_20645),
+        addr_data_pair_seamless_switch_step1_ov64b2q_20645,
+        sizeof(addr_data_pair_seamless_switch_step1_ov64b2q_20645));
+    _size_to_write_20645 += _length;
 
 
 
@@ -1882,53 +1872,53 @@ static kal_uint32 seamless_switch(enum MSDK_SCENARIO_ID_ENUM scenario_id,
     if(gain != 0)
         set_gain(gain);
 
-    _length = sizeof(addr_data_pair_seamless_switch_step2_ov64b2q) / sizeof(kal_uint16);
+    _length = sizeof(addr_data_pair_seamless_switch_step2_ov64b2q_20645) / sizeof(kal_uint16);
 
-    if (_size_to_write + _length > _I2C_BUF_SIZE) {
+    if (_size_to_write_20645 + _length > _I2C_BUF_SIZE) {
         pr_err("_too much i2c data for fast siwtch\n");
         return ERROR_NONE;
     }
 
-    memcpy((void *)(_i2c_data + _size_to_write),
-        addr_data_pair_seamless_switch_step2_ov64b2q,
-        sizeof(addr_data_pair_seamless_switch_step2_ov64b2q));
-    _size_to_write += _length;
+    memcpy((void *)(_i2c_data_20645 + _size_to_write_20645),
+        addr_data_pair_seamless_switch_step2_ov64b2q_20645,
+        sizeof(addr_data_pair_seamless_switch_step2_ov64b2q_20645));
+    _size_to_write_20645 += _length;
 
     if(shutter_2ndframe != 0)
         set_shutter(shutter_2ndframe);
     if(gain_2ndframe != 0)
         set_gain(gain_2ndframe);
 
-    _length = sizeof(addr_data_pair_seamless_switch_step3_ov64b2q) / sizeof(kal_uint16);
-    if (_size_to_write + _length > _I2C_BUF_SIZE) {
+    _length = sizeof(addr_data_pair_seamless_switch_step3_ov64b2q_20645) / sizeof(kal_uint16);
+    if (_size_to_write_20645 + _length > _I2C_BUF_SIZE) {
         pr_err("_too much i2c data for fast siwtch\n");
         return ERROR_NONE;
 }
-    memcpy((void *)(_i2c_data + _size_to_write),
-        addr_data_pair_seamless_switch_step3_ov64b2q,
-        sizeof(addr_data_pair_seamless_switch_step3_ov64b2q));
-    _size_to_write += _length;
+    memcpy((void *)(_i2c_data_20645 + _size_to_write_20645),
+        addr_data_pair_seamless_switch_step3_ov64b2q_20645,
+        sizeof(addr_data_pair_seamless_switch_step3_ov64b2q_20645));
+    _size_to_write_20645 += _length;
 
-    pr_debug("%s _is_seamless %d, _size_to_write %d\n",
-            __func__, _is_seamless, _size_to_write);
+    pr_debug("%s _is_seamless_20645 %d, _size_to_write_20645 %d\n",
+            __func__, _is_seamless_20645, _size_to_write_20645);
 #if 0
-    for (k = 0; k <_size_to_write; k+=2) {
-        pr_debug( "k = %d, 0x%x , 0x%x \n", k,  _i2c_data[k], _i2c_data[k+1]);
+    for (k = 0; k <_size_to_write_20645; k+=2) {
+        pr_debug( "k = %d, 0x%x , 0x%x \n", k,  _i2c_data_20645[k], _i2c_data_20645[k+1]);
     }
 #endif
 
     ov64b2q_table_write_cmos_sensor(
-        _i2c_data,
-        _size_to_write);
+        _i2c_data_20645,
+        _size_to_write_20645);
 
 #if 0
     pr_debug("===========================================\n");
 
-    for (k = 0; k <_size_to_write; k+=2) {
-        pr_debug( "k = %d, 0x%x , 0x%x \n", k,  _i2c_data[k], read_cmos_sensor(_i2c_data[k]));
+    for (k = 0; k <_size_to_write_20645; k+=2) {
+        pr_debug( "k = %d, 0x%x , 0x%x \n", k,  _i2c_data_20645[k], read_cmos_sensor(_i2c_data_20645[k]));
     }
 #endif
-    _is_seamless = false;
+    _is_seamless_20645 = false;
     pr_err("exit\n");
     return ERROR_NONE;
 }
@@ -2330,12 +2320,8 @@ static kal_uint32 feature_control(MSDK_SENSOR_FEATURE_ENUM feature_id,
             case MSDK_SCENARIO_ID_CUSTOM3:
                 *feature_return_para_32 = 1;
                 break;
-            case MSDK_SCENARIO_ID_HIGH_SPEED_VIDEO:
-            case MSDK_SCENARIO_ID_CUSTOM4:
-                *feature_return_para_32 = 2940;
-                break;
             default:
-                *feature_return_para_32 = 1470; /*BINNING_AVERAGED*/
+                *feature_return_para_32 = 1337; /*BINNING_AVERAGED*/
                 break;
             }
         pr_debug("SENSOR_FEATURE_GET_BINNING_TYPE AE_binning_type:%d,\n",

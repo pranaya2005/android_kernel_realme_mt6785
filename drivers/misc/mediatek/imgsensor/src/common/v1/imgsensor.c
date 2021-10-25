@@ -21,6 +21,7 @@
 #include <linux/workqueue.h>
 #include <linux/init.h>
 #include <linux/types.h>
+#include <soc/oplus/system/oppo_project.h>
 
 #undef CONFIG_MTK_SMI_EXT
 #ifdef CONFIG_MTK_SMI_EXT
@@ -92,6 +93,7 @@ struct mutex imgsensor_mutex;
 
 
 DEFINE_MUTEX(pinctrl_mutex);
+DEFINE_MUTEX(oc_mutex);
 
 /************************************************************************
  * Profiling
@@ -421,6 +423,10 @@ imgsensor_sensor_close(struct IMGSENSOR_SENSOR *psensor)
 
 		psensor_func->psensor_inst = psensor_inst;
 
+		if (pgimgsensor->imgsensor_oc_irq_enable != NULL)
+			pgimgsensor->imgsensor_oc_irq_enable(
+					psensor->inst.sensor_idx, false);
+
 		ret = psensor_func->SensorClose();
 		if (ret != ERROR_NONE) {
 			pr_err("[%s]", __func__);
@@ -512,16 +518,25 @@ int imgsensor_set_driver(struct IMGSENSOR_SENSOR *psensor)
 	if (pascal_project() == 4) {
 		imgsensor_i2c_init(&psensor_inst->i2c_cfg,
 			imgsensor_custom_config[(unsigned int)psensor->inst.sensor_idx].i2c_dev);
-	} else if ((pascal_project() == 5) || (pascal_project() == 6) || (pascal_project() == 7)) {
+	} else if(pascal_project() == 5) {
 		imgsensor_i2c_init(&psensor_inst->i2c_cfg,
 			imgsensor_custom_config_monetx[(unsigned int)psensor->inst.sensor_idx].i2c_dev);
-	} else if (pascal_project() == 8) {
-			imgsensor_i2c_init(&psensor_inst->i2c_cfg,
-			imgsensor_custom_config_pascalC[psensor->inst.sensor_idx].i2c_dev);
 	} else {
 		imgsensor_i2c_init(&psensor_inst->i2c_cfg,
 			imgsensor_custom_config[(unsigned int)psensor->inst.sensor_idx].i2c_dev);
 	}
+	if (is_project(20761) || is_project(20762) || is_project(20764) || is_project(20766) || is_project(20767)) {
+		imgsensor_i2c_init(&psensor_inst->i2c_cfg,
+			imgsensor_custom_config_even[(unsigned int)psensor->inst.sensor_idx].i2c_dev);
+	}
+        if (is_project(0x2167A) || is_project(0x2167B) || is_project(0x2167C) || is_project(0x2167D)) {
+                imgsensor_i2c_init(&psensor_inst->i2c_cfg,
+                        imgsensor_custom_config_even[(unsigned int)psensor->inst.sensor_idx].i2c_dev);
+        }
+	if (is_project(0x216AF) || is_project(0x216B0) || is_project(0x216B1)) {
+		imgsensor_i2c_init(&psensor_inst->i2c_cfg,
+			imgsensor_custom_config_even[(unsigned int)psensor->inst.sensor_idx].i2c_dev);
+	    }
 #else
 	imgsensor_i2c_init(&psensor_inst->i2c_cfg,
 	imgsensor_custom_config[

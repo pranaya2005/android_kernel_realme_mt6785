@@ -32,6 +32,7 @@
 #include "kd_imgsensor_define.h"
 #include "kd_imgsensor_errcode.h"
 #include "kd_camera_typedef.h"
+#include "imgsensor_eeprom.h"
 #include "hi846mipiraw_Sensor.h"
 #include "imgsensor_common.h"
 
@@ -261,22 +262,6 @@ static struct SENSOR_WINSIZE_INFO_STRUCT imgsensor_winsize_info[7] =
   { 3264, 2448,   0, 684, 3264, 1080, 3264, 1080, 672, 0, 1920, 1080, 0, 0, 1920, 1080}  // custom2
 };
 
-#ifdef OPLUS_FEATURE_CAMERA_COMMON
-/*Shounan.Yang@Camera.Driver add for 18011/18311  board 20190620*/
-static kal_uint16 read_module_id(void)
-{
-	kal_uint16 get_byte=0;
-	char pusendcmd[2] = {(char)(MODULE_ID_OFFSET >> 8) , (char)(MODULE_ID_OFFSET & 0xFF) };
-
-	iReadRegI2C(pusendcmd , 2, (u8*)&get_byte,1,0xA2/*EEPROM_READ_ID*/);
-	if (get_byte == 0)
-		iReadRegI2C(pusendcmd, 2, (u8 *)&get_byte, 1, 0xA2/*EEPROM_READ_ID*/);
-
-	return get_byte;
-}
-#endif
-
-
 static kal_uint16 read_cmos_sensor(kal_uint32 addr)
 {
 	kal_uint16 get_byte=0;
@@ -303,140 +288,31 @@ static void write_cmos_sensor_8(kal_uint32 addr, kal_uint32 para)
 	iWriteRegI2C(pu_send_cmd, 3, imgsensor.i2c_write_id);
 }
 #ifdef OPLUS_FEATURE_CAMERA_COMMON
-/*Henry.Chang@Camera.Driver add for 18531 ModuleSN*/
-static kal_uint8 gHi846_SN[CAMERA_MODULE_SN_LENGTH];
-static void read_eeprom_SN(void)
+static void read_module_data(void)
 {
-	kal_uint16 idx = 0;
-	kal_uint8 *get_byte= &gHi846_SN[0];
-	for (idx = 0; idx <CAMERA_MODULE_SN_LENGTH; idx++) {
-		char pusendcmd[2] = {0x00 , (char)((0xB0 + idx) & 0xFF) };
-		iReadRegI2C(pusendcmd , 2, (u8*)&get_byte[idx],1, 0xA2);
-		printk("gHi846_SN[%d]: 0x%x  0x%x\n", idx, get_byte[idx], gHi846_SN[idx]);
-	}
-}
+    int i = 0;
+    /*Read normal eeprom data*/
+    gImgEepromInfo.camNormdata[2][0] = Eeprom_1ByteDataRead(0x00, 0xA2);
+    gImgEepromInfo.camNormdata[2][1] = Eeprom_1ByteDataRead(0x01, 0xA2);
+    imgsensor_info.module_id = Eeprom_1ByteDataRead(0x00, 0xA2);
+    Oplusimgsensor_Registdeviceinfo(gImgEepromInfo.pCamModuleInfo[2].name,
+                                    gImgEepromInfo.pCamModuleInfo[2].version,
+                                    imgsensor_info.module_id);
+    for(i = 2; i < 8; i++) {
+       gImgEepromInfo.camNormdata[2][i] = Eeprom_1ByteDataRead(0x04+i, 0xA2);
+    }
 
-/*Henry.Chang@camera.driver 20181129, add for sensor Module SET*/
-#define   WRITE_DATA_MAX_LENGTH                (16)
-#define   HI846_STEREP_DATA_ADDR_START         (0x1A20)
-#define   HI846_STEREP_DATA_LENGTH             (1561)
-static kal_int32 table_write_eeprom_30Bytes(kal_uint16 addr, kal_uint8 *para, kal_uint32 len)
-{
-	kal_int32 ret = IMGSENSOR_RETURN_SUCCESS;
-	char pusendcmd[WRITE_DATA_MAX_LENGTH+2];
-	pusendcmd[0] = (char)(addr >> 8);
-	pusendcmd[1] = (char)(addr & 0xFF);
-
-	memcpy(&pusendcmd[2], para, len);
-
-	ret = iBurstWriteReg((kal_uint8 *)pusendcmd , (len + 2), 0xA2);
-
-	return ret;
-}
-
-static kal_uint16 read_cmos_eeprom_8(kal_uint16 addr)
-{
-	kal_uint16 get_byte=0;
-	char pusendcmd[2] = {(char)(addr >> 8) , (char)(addr & 0xFF) };
-	iReadRegI2C(pusendcmd , 2, (u8*)&get_byte, 1, 0xA2);
-	return get_byte;
-}
-
-static kal_int32 write_eeprom_protect(kal_uint16 enable)
-{
-	kal_int32 ret = IMGSENSOR_RETURN_SUCCESS;
-	char pusendcmd[3];
-	pusendcmd[0] = 0x80;
-	pusendcmd[1] = 0x00;
-	if (enable)
-		pusendcmd[2] = 0x0E;
-	else
-		pusendcmd[2] = 0x00;
-
-	ret = iBurstWriteReg((kal_uint8 *)pusendcmd , 3, 0xA2);
-
-	return ret;
-}
-
-/*Henry.Chang@camera.driver 20181129, add for sensor Module SET*/
-static kal_int32 write_Module_data(ACDK_SENSOR_ENGMODE_STEREO_STRUCT * pStereodata)
-{
-	kal_int32  ret = IMGSENSOR_RETURN_SUCCESS;
-	kal_uint16 data_base, data_length;
-	kal_uint32 idx, idy;
-	kal_uint8 *pData;
-	UINT32 i = 0;
-	if(pStereodata != NULL) {
-		pr_debug("HI846 SET_SENSOR_OTP: 0x%x %d 0x%x %d\n",
-                       pStereodata->uSensorId,
-                       pStereodata->uDeviceId,
-                       pStereodata->baseAddr,
-                       pStereodata->dataLength);
-
-		data_base = pStereodata->baseAddr;
-		data_length = pStereodata->dataLength;
-		pData = pStereodata->uData;
-		if ((pStereodata->uSensorId == HI846_SENSOR_ID)
-				&& (data_base == HI846_STEREP_DATA_ADDR_START)
-				&& (data_length == HI846_STEREP_DATA_LENGTH)) {
-			pr_debug("HI846 Write: %x %x %x %x %x %x %x %x\n", pData[0], pData[39], pData[40], pData[1556],
-					pData[1557], pData[1558], pData[1559], pData[1560]);
-			idx = data_length/WRITE_DATA_MAX_LENGTH;
-			idy = data_length%WRITE_DATA_MAX_LENGTH;
-			/* close write protect */
-			write_eeprom_protect(0);
-			msleep(6);
-			for (i = 0; i < idx; i++ ) {
-				ret = table_write_eeprom_30Bytes((data_base+WRITE_DATA_MAX_LENGTH*i),
-					    &pData[WRITE_DATA_MAX_LENGTH*i], WRITE_DATA_MAX_LENGTH);
-				if (ret != IMGSENSOR_RETURN_SUCCESS) {
-				    pr_err("write_eeprom error: i= %d\n", i);
-					/* open write protect */
-					write_eeprom_protect(1);
-					msleep(6);
-					return IMGSENSOR_RETURN_ERROR;
-				}
-				msleep(6);
-			}
-			ret = table_write_eeprom_30Bytes((data_base+WRITE_DATA_MAX_LENGTH*idx),
-				      &pData[WRITE_DATA_MAX_LENGTH*idx], idy);
-			if (ret != IMGSENSOR_RETURN_SUCCESS) {
-				pr_err("write_eeprom error: idx= %d idy= %d\n", idx, idy);
-				/* open write protect */
-				write_eeprom_protect(1);
-				msleep(6);
-				return IMGSENSOR_RETURN_ERROR;
-			}
-			msleep(6);
-			/* open write protect */
-			write_eeprom_protect(1);
-			msleep(6);
-			pr_debug("com 0x1600:0x%x\n", read_cmos_eeprom_8(HI846_STEREP_DATA_ADDR_START));
-			msleep(6);
-			pr_debug("com 0x1627:0x%x\n", read_cmos_eeprom_8(HI846_STEREP_DATA_ADDR_START+39));
-			msleep(6);
-			pr_debug("innal 0x1628:0x%x\n", read_cmos_eeprom_8(HI846_STEREP_DATA_ADDR_START+40));
-			msleep(6);
-			pr_debug("innal 0x1C14:0x%x\n", read_cmos_eeprom_8(HI846_STEREP_DATA_ADDR_START+1556));
-			msleep(6);
-			pr_debug("tail1 0x1C15:0x%x\n", read_cmos_eeprom_8(HI846_STEREP_DATA_ADDR_START+1557));
-			msleep(6);
-			pr_debug("tail2 0x1C16:0x%x\n", read_cmos_eeprom_8(HI846_STEREP_DATA_ADDR_START+1558));
-			msleep(6);
-			pr_debug("tail3 0x1C17:0x%x\n", read_cmos_eeprom_8(HI846_STEREP_DATA_ADDR_START+1559));
-			msleep(6);
-			pr_debug("tail4 0x1C18:0x%x\n", read_cmos_eeprom_8(HI846_STEREP_DATA_ADDR_START+1560));
-			msleep(6);
-			pr_debug("HI846 write_Module_data Write end\n");
-		}else {
-			pr_err("Invalid Sensor id:0x%x write_gm1 eeprom\n", pStereodata->uSensorId);
-			return IMGSENSOR_RETURN_ERROR;
-		}
-	} else {
-		pr_err("HI846 write_Module_data pStereodata is null\n");
-		return IMGSENSOR_RETURN_ERROR;
-	}
-	return ret;
+    for (i = 0; i < OPPO_CAMERASN_LENS; i ++) {
+       gImgEepromInfo.camNormdata[2][8+i] = Eeprom_1ByteDataRead(0xB0+i, 0xA2);
+    }
+    gImgEepromInfo.camNormdata[2][39] = 2;
+    /*Read stereo eeprom data*/
+    for (i = 0; i < CALI_DATA_SLAVE_LENGTH; i ++) {
+        gImgEepromInfo.stereoMWdata[CALI_DATA_MASTER_LENGTH+i] =
+                    Eeprom_1ByteDataRead(HI846_STEREO_START_ADDR+i, 0xA2);
+    }
+    gImgEepromInfo.i4CurSensorIdx = 2;
+    gImgEepromInfo.i4CurSensorId = imgsensor_info.sensor_id;
 }
 #endif
 
@@ -2757,42 +2633,31 @@ static void custom2_setting(void)
 
 static kal_uint32 get_imgsensor_id(UINT32 *sensor_id)
 {
-	kal_uint8 i = 0;
-	kal_uint8 retry = 2;
-	printk("[get_imgsensor_id] ");
-	while (imgsensor_info.i2c_addr_table[i] != 0xff) {
-			spin_lock(&imgsensor_drv_lock);
-			imgsensor.i2c_write_id = imgsensor_info.i2c_addr_table[i];
-			spin_unlock(&imgsensor_drv_lock);
-			do {
-				*sensor_id =return_sensor_id();
-				if (*sensor_id == imgsensor_info.sensor_id) {
-                    #ifdef OPLUS_FEATURE_CAMERA_COMMON
-                    read_eeprom_SN();
-                    /*zhengjiang.zhu@Camera.Drv, 2017/10/18 add for register device info*/
-                    imgsensor_info.module_id = read_module_id();
-                    /*
-                    if (deviceInfo_register_value == 0x00) {
-                        register_imgsensor_deviceinfo("Cam_r1", DEVICE_VERSION_HI846,
-							imgsensor_info.module_id);
-                        deviceInfo_register_value=0x01;
-                    }
-                    */
-                    #endif
-					printk("i2c write id  : 0x%x, sensor id: 0x%x\n", imgsensor.i2c_write_id,*sensor_id);
-					return ERROR_NONE;
-				}
-				printk("get_imgsensor_id Read sensor id fail, i2c write id: 0x%x,sensor id: 0x%x\n", imgsensor.i2c_write_id,*sensor_id);
-				retry--;
-			} while(retry > 0);
-			i++;
-			retry = 2;
-}
-	if (*sensor_id != imgsensor_info.sensor_id) {
-		*sensor_id = 0xFFFFFFFF;
-		return ERROR_SENSOR_CONNECT_FAIL;
-	}
-	return ERROR_NONE;
+    kal_uint8 i = 0;
+    kal_uint8 retry = 2;
+    printk("[get_imgsensor_id] ");
+    while (imgsensor_info.i2c_addr_table[i] != 0xff) {
+        spin_lock(&imgsensor_drv_lock);
+        imgsensor.i2c_write_id = imgsensor_info.i2c_addr_table[i];
+        spin_unlock(&imgsensor_drv_lock);
+        do {
+            *sensor_id =return_sensor_id();
+            if (*sensor_id == imgsensor_info.sensor_id) {
+                read_module_data();
+                printk("i2c write id  : 0x%x, sensor id: 0x%x\n", imgsensor.i2c_write_id,*sensor_id);
+                return ERROR_NONE;
+            }
+            printk("get_imgsensor_id Read sensor id fail, i2c write id: 0x%x,sensor id: 0x%x\n", imgsensor.i2c_write_id,*sensor_id);
+            retry--;
+        } while(retry > 0);
+        i++;
+        retry = 2;
+    }
+    if (*sensor_id != imgsensor_info.sensor_id) {
+        *sensor_id = 0xFFFFFFFF;
+        return ERROR_SENSOR_CONNECT_FAIL;
+    }
+    return ERROR_NONE;
 }
 
 /*************************************************************************
@@ -2864,7 +2729,7 @@ static kal_uint32 open(void)
 	imgsensor.test_pattern = KAL_FALSE;
 	imgsensor.current_fps = imgsensor_info.pre.max_framerate;
         #ifdef OPLUS_FEATURE_CAMERA_COMMON
-	if(is_project(OPPO_20075)||is_project(OPPO_20076)){
+	if(is_project(20075)||is_project(20076)){
 	printk("wenjun 20075");
 	imgsensor.mirror = IMAGE_V_MIRROR;
 	project_20075 = true ;
@@ -3130,7 +2995,7 @@ static kal_uint32 get_info(enum MSDK_SCENARIO_ID_ENUM scenario_id,
 	sensor_info->MIPIsensorType = imgsensor_info.mipi_sensor_type;
 	sensor_info->SettleDelayMode = imgsensor_info.mipi_settle_delay_mode;
         #ifdef OPLUS_FEATURE_CAMERA_COMMON
-	if(is_project(OPPO_20075)||is_project(OPPO_20076))
+	if(is_project(20075)||is_project(20076))
 	imgsensor_info.sensor_output_dataformat = SENSOR_OUTPUT_FORMAT_RAW_Gr ;
         #endif
 	sensor_info->SensorOutputDataFormat = imgsensor_info.sensor_output_dataformat;
@@ -3517,28 +3382,19 @@ static kal_uint32 feature_control(MSDK_SENSOR_FEATURE_ENUM feature_id,
 		case SENSOR_FEATURE_GET_MIN_SHUTTER_BY_SCENARIO:
 			*(feature_data + 1) = imgsensor_info.min_shutter;
 			break;
-        /*Henry.Chang@Camera.Driver add for 18531 ModuleSN*/
-        case SENSOR_FEATURE_GET_MODULE_SN:
-        printk("gc5035 GET_MODULE_SN:%d %d\n", *feature_para_len, *feature_data_32);
-        if (*feature_data_32 < CAMERA_MODULE_SN_LENGTH/4)
-            *(feature_data_32 + 1) = (gHi846_SN[4*(*feature_data_32) + 3] << 24)
-                        | (gHi846_SN[4*(*feature_data_32) + 2] << 16)
-                        | (gHi846_SN[4*(*feature_data_32) + 1] << 8)
-                        | (gHi846_SN[4*(*feature_data_32)] & 0xFF);
-        break;
         /*Henry.Chang@camera.driver 20181129, add for sensor Module SET*/
         case SENSOR_FEATURE_SET_SENSOR_OTP:
         {
             kal_int32 ret = IMGSENSOR_RETURN_SUCCESS;
             printk("SENSOR_FEATURE_SET_SENSOR_OTP length :%d\n", (UINT32)*feature_para_len);
-            ret = write_Module_data((ACDK_SENSOR_ENGMODE_STEREO_STRUCT *)(feature_para));
+            ret = Eeprom_CallWriteService((ACDK_SENSOR_ENGMODE_STEREO_STRUCT *)(feature_para));
 
             #ifdef OPLUS_FEATURE_CAMERA_COMMON
             /* Feiping.Li@Camera.Drv, 20190610, add for product line skip write eeprom operation */
             if (ret == ERROR_NONE)
-            return ERROR_NONE;
+                return ERROR_NONE;
             else
-            return ERROR_MSDK_IS_ACTIVATED;
+                return ERROR_MSDK_IS_ACTIVATED;
             #endif
         }
 		case SENSOR_FEATURE_GET_PERIOD:

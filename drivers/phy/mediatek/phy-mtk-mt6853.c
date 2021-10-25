@@ -414,13 +414,13 @@ static void usb_phy_tuning(struct mtk_phy_instance *instance)
 	struct device_node *of_node;
 
 	if (!instance->phy_tuning.inited) {
-		instance->phy_tuning.u2_vrt_ref = 6;
+		instance->phy_tuning.u2_vrt_ref = 7;
 		instance->phy_tuning.u2_term_ref = 6;
-		instance->phy_tuning.u2_enhance = 1;
+		instance->phy_tuning.u2_enhance = 2;
 
-		instance->phy_tuning.host_u2_vrt_ref = 6;
+		instance->phy_tuning.host_u2_vrt_ref = 7;
 		instance->phy_tuning.host_u2_term_ref = 6;
-		instance->phy_tuning.host_u2_enhance = 1;
+		instance->phy_tuning.host_u2_enhance = 2;
 
 		of_node = of_find_compatible_node(NULL, NULL,
 			instance->phycfg->tuning_node_name);
@@ -444,19 +444,30 @@ static void usb_phy_tuning(struct mtk_phy_instance *instance)
 		instance->phy_tuning.inited = true;
 	}
 
-	if (usb_mode == 0){          //host
-	u3phywrite32(U3D_USBPHYACR6, RG_USB20_DISCTH_OFST,RG_USB20_DISCTH, 0xD);
-	u3phywrite32(U3D_USBPHYACR1, RG_USB20_INTR_CAL_OFST,RG_USB20_INTR_CAL, 0X1E);
-	u2_vrt_ref = instance->phy_tuning.host_u2_vrt_ref;
-	u2_term_ref = instance->phy_tuning.host_u2_term_ref;
-	u2_enhance = instance->phy_tuning.host_u2_enhance;
-	}
-	else{                        //device
-	u2_vrt_ref = instance->phy_tuning.u2_vrt_ref;
-	u2_term_ref = instance->phy_tuning.u2_term_ref;
-	u2_enhance = instance->phy_tuning.u2_enhance;
+	if (usb_mode == 0) {           //host
+		u3phywrite32(U3D_USBPHYACR6, RG_USB20_DISCTH_OFST,RG_USB20_DISCTH, 0xD);
+		u3phywrite32(U3D_USBPHYACR1, RG_USB20_INTR_CAL_OFST,RG_USB20_INTR_CAL, 0X1E);
+		u2_vrt_ref = instance->phy_tuning.host_u2_vrt_ref;
+		u2_term_ref = instance->phy_tuning.host_u2_term_ref;
+		u2_enhance = instance->phy_tuning.host_u2_enhance;
+	} else {                        //device
+		u2_vrt_ref = instance->phy_tuning.u2_vrt_ref;
+		u2_term_ref = instance->phy_tuning.u2_term_ref;
+		u2_enhance = instance->phy_tuning.u2_enhance;
 	}
 
+	if (usb_mode == 0){          //host
+		u3phywrite32(U3D_USBPHYACR6, RG_USB20_DISCTH_OFST,RG_USB20_DISCTH, 0xD);
+		u3phywrite32(U3D_USBPHYACR1, RG_USB20_INTR_CAL_OFST,RG_USB20_INTR_CAL, 0X1E);
+		u2_vrt_ref = instance->phy_tuning.host_u2_vrt_ref;
+		u2_term_ref = instance->phy_tuning.host_u2_term_ref;
+		u2_enhance = instance->phy_tuning.host_u2_enhance;
+	}
+	else{                        //device
+		u2_vrt_ref = instance->phy_tuning.u2_vrt_ref;
+		u2_term_ref = instance->phy_tuning.u2_term_ref;
+		u2_enhance = instance->phy_tuning.u2_enhance;
+	}
 	if (u2_vrt_ref != -1) {
 		if (u2_vrt_ref <= VAL_MAX_WIDTH_3) {
 			u3phywrite32(U3D_USBPHYACR1,

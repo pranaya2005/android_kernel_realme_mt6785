@@ -243,6 +243,26 @@ VOID p2pFsmUninit(IN P_ADAPTER_T prAdapter)
 
 }				/* end of p2pFsmUninit() */
 
+#if DBG
+PUINT_8
+	p2pFsmGetFsmState(
+	IN ENUM_P2P_STATE_T eCurrentState) {
+	if (eCurrentState >= 0 && eCurrentState < P2P_STATE_NUM)
+		return apucDebugP2pState[eCurrentState];
+
+	return (PUINT_8) DISP_STRING("UNKNOWN");
+}
+#else
+UINT_8
+	p2pFsmGetFsmState(
+	IN ENUM_P2P_STATE_T eCurrentState) {
+	if (eCurrentState >= 0 && eCurrentState < P2P_STATE_NUM)
+		return apucDebugP2pState[eCurrentState];
+
+	return P2P_STATE_NUM;
+}
+#endif
+
 VOID p2pFsmStateTransition(IN P_ADAPTER_T prAdapter, IN P_P2P_FSM_INFO_T prP2pFsmInfo, IN ENUM_P2P_STATE_T eNextState)
 {
 	BOOLEAN fgIsTransOut = (BOOLEAN) FALSE;
@@ -273,12 +293,13 @@ VOID p2pFsmStateTransition(IN P_ADAPTER_T prAdapter, IN P_P2P_FSM_INFO_T prP2pFs
 		if (!fgIsTransOut) {
 #if DBG
 			DBGLOG(P2P, STATE, "TRANSITION: [%s] -> [%s]\n",
-					    apucDebugP2pState[prP2pFsmInfo->eCurrentState],
-					    apucDebugP2pState[eNextState]);
+					    p2pFsmGetFsmState(prP2pFsmInfo->eCurrentState),
+					    p2pFsmGetFsmState(eNextState));
 #else
 			DBGLOG(P2P, STATE, "[%d] TRANSITION: [%d] -> [%d]\n",
-					    DBG_P2P_IDX, apucDebugP2pState[prP2pFsmInfo->eCurrentState],
-					    apucDebugP2pState[eNextState]);
+					    DBG_P2P_IDX,
+					    p2pFsmGetFsmState(prP2pFsmInfo->eCurrentState),
+					    p2pFsmGetFsmState(eNextState));
 #endif
 
 			/* Transition into current state. */

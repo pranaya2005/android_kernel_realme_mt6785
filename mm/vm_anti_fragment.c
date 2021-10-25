@@ -3,7 +3,6 @@
  * Copyright (C) 2018-2020 Oplus. All rights reserved.
  */
 
-#include <soc/oplus/oppo_healthinfo.h>
 #include <linux/uaccess.h>
 #include <linux/kernel.h>
 #include <linux/kobject.h>
@@ -21,8 +20,10 @@
 #endif
 #include <linux/vm_anti_fragment.h>
 #include <linux/security.h>
+#define ohm_err(fmt, ...) \
+        printk(KERN_ERR "[OHM_ERR][%s]"fmt, __func__, ##__VA_ARGS__)
 int vm_fra_op_enabled = 1;
-
+extern void ohm_action_trig_with_msg(int type, char *msg);
 static ssize_t vm_fra_op_read(struct file *filp, char __user *buff, size_t count, loff_t *off)
 {
         char page[256] = {0};

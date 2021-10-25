@@ -202,7 +202,9 @@ static struct device_attribute power_supply_attrs[] = {
 	POWER_SUPPLY_ATTR(batt_cc),
 	POWER_SUPPLY_ATTR(batt_rm),
 	POWER_SUPPLY_ATTR(notify_code),
+#ifdef CONFIG_OPLUS_SMART_CHARGER_SUPPORT
 	POWER_SUPPLY_ATTR(cool_down),              //zhangchao@ODM.HQ.Charger 2019/12/04 modified for limit charging current in vooc when calling
+#endif
 	POWER_SUPPLY_ATTR(charger_ic),
 	POWER_SUPPLY_ATTR(fast_chg_type),
 	POWER_SUPPLY_ATTR(cool_down),
@@ -327,7 +329,9 @@ static struct device_attribute power_supply_attrs[] = {
         POWER_SUPPLY_ATTR(usbtemp_volt_l),
         POWER_SUPPLY_ATTR(usbtemp_volt_r),
         POWER_SUPPLY_ATTR(chip_soc),
+#ifdef CONFIG_OPLUS_SMOOTH_SOC
         POWER_SUPPLY_ATTR(smooth_soc),
+#endif
         POWER_SUPPLY_ATTR(battery_id_vol),
         POWER_SUPPLY_ATTR(battery_type),
 /*VENDOR_EDIT*/

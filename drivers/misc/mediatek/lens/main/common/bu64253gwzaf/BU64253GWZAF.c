@@ -123,7 +123,7 @@ static int initAF(void)
 		}
 
 		puSendCmd[0] = (char)(0xD0);
-		puSendCmd[1] = (char)(0x42);
+		puSendCmd[1] = (char)(0x5B);
 		ret = i2c_master_send(g_pstAF_I2Cclient, puSendCmd, 2);
 
 		if (ret < 0) {
@@ -209,15 +209,27 @@ long BU64253GWZAF_Ioctl(struct file *a_pstFile, unsigned int a_u4Command,
 /* Q1 : Try release multiple times. */
 int BU64253GWZAF_Release(struct inode *a_pstInode, struct file *a_pstFile)
 {
+	unsigned long af_step = 25;
+
 	LOG_INF("Start\n");
 
-	if (*g_pAF_Opened == 2) {
-		char puSendCmd[2];
+        // Feiping.Li@Cam.Drv, 20191127, add for avoid vcm noise
+	if (g_u4CurrPosition > g_u4AF_INF && g_u4CurrPosition <= g_u4AF_MACRO) {
+		while (g_u4CurrPosition > 512) {
+			if (g_u4CurrPosition > 800)
+				af_step = 50;
+			else if (g_u4CurrPosition > 650)
+				af_step = 25;
+			else
+				af_step = 10;
 
-		puSendCmd[0] = (char)(0x00);
-		puSendCmd[1] = (char)(0x00);
-		i2c_master_send(g_pstAF_I2Cclient, puSendCmd, 2);
-		LOG_INF("Wait\n");
+			if (s4AF_WriteReg(g_u4CurrPosition - af_step) != 0) {
+				break;
+			}
+			g_u4CurrPosition = g_u4CurrPosition - af_step;
+			mdelay(10);
+			//LOG_INF("release position: %d", g_u4CurrPosition);
+		}
 	}
 
 	if (*g_pAF_Opened) {

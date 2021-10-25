@@ -1,9 +1,10 @@
 #
-# Makefile for the fingerprint device.
+# Makefile for kernel Egis Fingerprint drivers.
 #
-
-# Each configuration option enables a list of files.
-#include $(srctree)/drivers/misc/mediatek/Makefile.custom
-
-obj-y	+= egis.o
+ifeq ($(CONFIG_OPPO_FINGERPRINT_QCOM),y)
+obj-y += egis_qcom.o
+obj-y +=ets_navi_input_qcom.o
+else ifeq ($(CONFIG_OPPO_FINGERPRINT_MTK),y)
+obj-y += egis.o
 obj-y +=ets_navi_input.o
+endif

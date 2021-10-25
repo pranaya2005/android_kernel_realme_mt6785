@@ -18,6 +18,8 @@ typedef enum tp_dev{
     TP_SAMSUNG,
     TP_DSJM,
     TP_BOE_B8,
+	TP_BOE_B3,
+	TP_CDOT,
     TP_INNOLUX,
     TP_HIMAX_DPT,
     TP_AUO,
@@ -25,7 +27,15 @@ typedef enum tp_dev{
     TP_HUAXING,
     TP_HLT,
     TP_DJN,
+    TP_INX,
+    TP_LS,
     TP_TXD,
+    TP_ILI7807S_HLT,/*23*/
+    TP_ILI9882N_INX,
+    TP_HX83102D_TXD,
+    TP_ILI9882Q_INX,
+    TP_HLT_TWO,
+    TP_SKY,
     TP_UNKNOWN,
 }tp_dev;
 

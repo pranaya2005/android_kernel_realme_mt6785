@@ -1048,9 +1048,10 @@ void saaFsmRunEventRxAuth(IN struct ADAPTER *prAdapter,
 				AUTH_ALGORITHM_NUM_FAST_BSS_TRANSITION &&
 				rStatus != WLAN_STATUS_SUCCESS) {
 					DBGLOG(SAA, INFO,
-						"Check Rx Auth4 Frame failed, may be MIC error, %pM, status %d\n",
-					       (prStaRec->aucMacAddr),
-					       u2StatusCode);
+					      "Rx Auth4 fail [" MACSTR
+					      "], status %d, maybe MIC error\n",
+					      MAC2STR(prStaRec->aucMacAddr),
+					      u2StatusCode);
 					/* Reset Send Auth/(Re)Assoc Frame Count
 					 */
 					prStaRec->ucTxAuthAssocRetryCount = 0;
@@ -1379,6 +1380,12 @@ saaSendDisconnectMsgHandler(IN struct ADAPTER *prAdapter,
 {
 	if (prStaRec->ucStaState == STA_STATE_3) {
 		struct MSG_AIS_ABORT *prAisAbortMsg;
+		u_int8_t fgIsTxAllowed;
+
+		/* Backup txallowed status here because
+		 * cnmStaRecChangeState will change it
+		 */
+		fgIsTxAllowed = prStaRec->fgIsTxAllowed;
 
 		/* NOTE(Kevin): Change state immediately to
 		 * avoid starvation of MSG buffer because of too
@@ -1402,7 +1409,7 @@ saaSendDisconnectMsgHandler(IN struct ADAPTER *prAdapter,
 			eFrmType == FRM_DEAUTH ?
 				DISCONNECT_REASON_CODE_DEAUTHENTICATED :
 				DISCONNECT_REASON_CODE_DISASSOCIATED;
-		prAisAbortMsg->fgDelayIndication = true;
+		prAisAbortMsg->fgDelayIndication = fgIsTxAllowed;
 		prAisAbortMsg->ucBssIndex =
 			prStaRec->ucBssIndex;
 		mboxSendMsg(prAdapter, MBOX_ID_0,

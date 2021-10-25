@@ -1525,6 +1525,9 @@ void nicTxDirectTimerCheckSkbQ(unsigned long data);
 void nicTxDirectTimerCheckHifQ(unsigned long data);
 #endif
 WLAN_STATUS nicTxDirectStartXmit(struct sk_buff *prSkb, P_GLUE_INFO_T prGlueInfo);
+void nicTxDirectCheckPendingQ(P_QUE_T prTxQue,
+				P_STA_RECORD_T prStaRec,
+				P_QUE_T prQue);
 /* TX Direct functions : END */
 
 /*******************************************************************************

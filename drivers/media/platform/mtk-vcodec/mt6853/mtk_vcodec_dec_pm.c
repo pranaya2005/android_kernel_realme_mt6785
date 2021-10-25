@@ -196,15 +196,19 @@ void mtk_vdec_hw_break(struct mtk_vcodec_dev *dev, int hw_id)
 	void __iomem *vdec_misc_addr = dev->dec_reg_base[VDEC_MISC];
 	void __iomem *vdec_vld_addr = dev->dec_reg_base[VDEC_VLD];
 	void __iomem *vdec_gcon_addr = dev->dec_reg_base[VDEC_SYS];
-	struct mtk_vcodec_ctx *ctx = dev->curr_dec_ctx[hw_id];
+	struct mtk_vcodec_ctx *ctx = NULL;
+	int misc_offset[4] = {64, 66, 67, 65};
 
 	struct timeval tv_start;
 	struct timeval tv_end;
 	s32 usec, timeout = 20000;
-	int offset;
+	int offset, idx;
 	unsigned long value;
+	u32 fourcc;
 
 	if (hw_id == MTK_VDEC_CORE) {
+		ctx = dev->curr_dec_ctx[hw_id];
+		fourcc = ctx->q_data[MTK_Q_DATA_SRC].fmt->fourcc;
 		/* hw break */
 		writel((readl(vdec_misc_addr + 0x0100) | 0x1),
 			vdec_misc_addr + 0x0100);
@@ -216,20 +220,40 @@ void mtk_vdec_hw_break(struct mtk_vcodec_dev *dev, int hw_id)
 			usec = (tv_end.tv_sec - tv_start.tv_sec) * 1000000 +
 			       tv_end.tv_usec - tv_start.tv_usec;
 			if (usec > timeout) {
-				mtk_v4l2_err("VDEC HW break timeout. codec:0x%08x",
-				  ctx->q_data[MTK_Q_DATA_SRC].fmt->fourcc);
-				for (offset = 68; offset <= 79; offset++) {
+				mtk_v4l2_err("VDEC HW break timeout. codec:0x%08x(%c%c%c%c)",
+				    fourcc, fourcc & 0xFF, (fourcc >> 8) & 0xFF,
+				    (fourcc >> 16) & 0xFF, (fourcc >> 24) & 0xFF);
+				value = readl(vdec_gcon_addr + (0 << 2));
+				mtk_v4l2_err("[DEBUG][GCON] 0x%x(%d) = 0x%lx",
+					0 << 2, 0, value);
+				value = readl(vdec_gcon_addr + (6 << 2));
+				mtk_v4l2_err("[DEBUG][GCON] 0x%x(%d) = 0x%lx",
+					6 << 2, 6, value);
+				for (offset = 64; offset <= 79; offset++) {
 					value = readl(
 					    vdec_misc_addr + (offset << 2));
 					mtk_v4l2_err("[DEBUG][MISC] 0x%x(%d) = 0x%lx",
 						offset << 2, offset, value);
 				}
-				value = readl(vdec_gcon_addr + (6 << 2));
-				mtk_v4l2_err("[DEBUG][GCON] 0x%x(%d) = 0x%lx",
-					6 << 2, 6, value);
+				for (idx = 0; idx < 4; idx++) {
+					offset = misc_offset[idx];
+					value = readl(
+					    vdec_misc_addr + (offset << 2));
+					mtk_v4l2_err("[DEBUG][MISC] 0x%x(%d) = 0x%lx",
+						offset << 2, offset, value);
+				}
 
 				if (timeout == 20000)
 					timeout = 1000000;
+				else if (timeout == 1000000) {
+					/* v4l2_aee_print(
+					 *    "%s %p codec:0x%08x(%c%c%c%c) hw break timeout\n",
+					 *    __func__, ctx, fourcc,
+					 *    fourcc & 0xFF, (fourcc >> 8) & 0xFF,
+					 *    (fourcc >> 16) & 0xFF, (fourcc >> 24) & 0xFF);
+					 */
+					break;
+				}
 				do_gettimeofday(&tv_start);
 				//smi_debug_bus_hang_detect(0, "VCODEC");
 			}
@@ -337,7 +361,7 @@ void mtk_vdec_dvfs_begin(struct mtk_vcodec_ctx *ctx)
 		target_freq_64 = match_freq(target_freq, &vdec_freq_steps[0],
 					vdec_freq_step_size);
 		if (target_freq > 0) {
-			vdec_freq = target_freq;
+			vdec_freq = target_freq_64;
 			if (vdec_freq > target_freq_64)
 				vdec_freq = target_freq_64;
 			vdec_cur_job->mhz = (int)target_freq_64;
@@ -390,8 +414,8 @@ void mtk_vdec_emi_bw_begin(struct mtk_vcodec_ctx *ctx)
 		b_freq_idx = vdec_freq_step_size - 1;
 
 	emi_bw = 8L * 1920 * 1080 * 2 * 10 * vdec_freq;
-	emi_bw_input = 8 * vdec_freq / STD_VDEC_FREQ;
-	emi_bw_output = 1920 * 1088 * 3 * 20 * 10 * vdec_freq /
+	emi_bw_input = 25L * vdec_freq / STD_VDEC_FREQ;
+	emi_bw_output = 1920L * 1088 * 3 * 20 * 10 * vdec_freq /
 			2 / 3 / STD_VDEC_FREQ / 1024 / 1024;
 
 	switch (ctx->q_data[MTK_Q_DATA_SRC].fmt->fourcc) {
@@ -428,33 +452,31 @@ void mtk_vdec_emi_bw_begin(struct mtk_vcodec_ctx *ctx)
 			(1920 * 1080)) ? 1 : 0;
 
 	/* bits/s to MBytes/s */
-	emi_bw = emi_bw / (1024 * 1024) / 8;
-
+	emi_bw = emi_bw * 4 / 3 / (1024 * 1024) / 8;
+	emi_bw_output = emi_bw_output * 4 / 3;
+	emi_bw_input = emi_bw_input * 4 / 3;
 	if (is_ufo_on == 1) {    /* UFO */
-		emi_bw = emi_bw * 6 / 10;
-		emi_bw_output = emi_bw_output * 6 / 10;
+		emi_bw = emi_bw * 7 / 10;
+		emi_bw_output = emi_bw_output * 7 / 10;
 	}
 
-	emi_bw = emi_bw - emi_bw_output - (emi_bw_input * 2);
-	if (emi_bw < 0)
-		emi_bw = 0;
-
 	if (is_ufo_on == 1) {    /* UFO */
-		mm_qos_set_request(&vdec_ufo, emi_bw, 0, BW_COMP_DEFAULT);
+		mm_qos_set_request(&vdec_ufo, 10, 0, BW_COMP_DEFAULT);
 		mm_qos_set_request(&vdec_ufo_enc, emi_bw_output, 0,
 					BW_COMP_DEFAULT);
 	} else {
-		mm_qos_set_request(&vdec_mc, emi_bw, 0, BW_COMP_NONE);
+		/* non-UFO */
 		mm_qos_set_request(&vdec_pp, emi_bw_output, 0, BW_COMP_NONE);
 	}
+	mm_qos_set_request(&vdec_mc, emi_bw, 0, BW_COMP_NONE);
 	mm_qos_set_request(&vdec_pred_rd, 1, 0, BW_COMP_NONE);
 	mm_qos_set_request(&vdec_pred_wr, 1, 0, BW_COMP_NONE);
-	mm_qos_set_request(&vdec_ppwrap, 0, 0, BW_COMP_NONE);
-	mm_qos_set_request(&vdec_tile, 0, 0, BW_COMP_NONE);
+	mm_qos_set_request(&vdec_ppwrap, 1, 0, BW_COMP_NONE);
+	mm_qos_set_request(&vdec_tile, 1, 0, BW_COMP_NONE);
 	mm_qos_set_request(&vdec_vld, emi_bw_input, 0, BW_COMP_NONE);
-	mm_qos_set_request(&vdec_vld2, 0, 0, BW_COMP_NONE);
+	mm_qos_set_request(&vdec_vld2, emi_bw_input, 0, BW_COMP_NONE);
 	mm_qos_set_request(&vdec_avc_mv, emi_bw_input * 2, 0, BW_COMP_NONE);
-	mm_qos_set_request(&vdec_rg_ctrl_dma, 0, 0, BW_COMP_NONE);
+	mm_qos_set_request(&vdec_rg_ctrl_dma, 1, 0, BW_COMP_NONE);
 	mm_qos_update_all_request(&vdec_rlist);
 #endif
 }

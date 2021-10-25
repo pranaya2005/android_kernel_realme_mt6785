@@ -1,7 +1,17 @@
-/* SPDX-License-Identifier: GPL-2.0-only */
-/*
- * Copyright (C) 2018-2020 Oplus. All rights reserved.
- */
+/***************************************************
+ * File:nvt_limit.h
+ * VENDOR_EDIT
+ * Copyright (c)  2017 - 2030  Oppo Mobile communication Corp.ltd.
+ * Description:
+ *             nova nt36525b test limit data
+ * Version:1.0:
+ * Date created:2017-09-15
+ * Author: Cong.Dai@Bsp.Driver
+ * TAG: BSP.TP.Init
+ * *
+ * -------------- Revision History: -----------------
+ *  <author >  <data>  <version>  <desc>
+ ***************************************************/
 
 #ifndef NVT_H_LIMIT_NOFLASH
 #define NVT_H_LIMIT_NOFLASH

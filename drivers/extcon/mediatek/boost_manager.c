@@ -120,6 +120,12 @@ extern bool oplus_otgctl_by_buckboost(void);
 extern int oplus_otg_enable_by_buckboost(void);
 extern int oplus_otg_disable_by_buckboost(void);
 #endif
+#ifdef CONFIG_OPLUS_CHARGER_MTK6853
+/* Baoquan.Lai@BSP.CHG.Basic, 2020/11/19, Add for single_bat_svooc OTG */
+extern int is_vooc_support_single_batt_svooc(void);
+extern void vooc_enable_cp_for_otg(int en);
+#endif
+
 
 int usb_otg_set_vbus(int is_on)
 {
@@ -160,6 +166,17 @@ int usb_otg_set_vbus(int is_on)
 		} else if (charger_ic_flag == 2) {
 			bq25601d_otg_enable();
 		}
+#elif defined(CONFIG_OPLUS_CHARGER_MTK6853)
+		printk("typec vbus_on\n");
+		if (is_vooc_support_single_batt_svooc() == true){
+			vooc_enable_cp_for_otg(1);
+		}
+		charger_dev_enable_otg(g_info->primary_charger, true);
+		charger_dev_set_boost_current_limit(g_info->primary_charger,
+			1100000);
+		charger_dev_kick_wdt(g_info->primary_charger);
+		enable_boost_polling(true);
+
 #else
 		printk("typec vbus_on\n");
 		charger_dev_enable_otg(g_info->primary_charger, true);
@@ -185,6 +202,12 @@ int usb_otg_set_vbus(int is_on)
 			bq25890h_otg_disable();
 		} else if (charger_ic_flag == 2) {
 			bq25601d_otg_disable();
+		}
+#elif defined(CONFIG_OPLUS_CHARGER_MTK6853)
+		charger_dev_enable_otg(g_info->primary_charger, false);
+		enable_boost_polling(false);
+		if (is_vooc_support_single_batt_svooc() == true){
+			vooc_enable_cp_for_otg(0);
 		}
 #else
 		charger_dev_enable_otg(g_info->primary_charger, false);

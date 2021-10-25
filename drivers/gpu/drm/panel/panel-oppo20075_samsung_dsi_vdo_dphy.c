@@ -1024,6 +1024,10 @@ static int lcm_panel_poweron(struct drm_panel *panel)
 		"bias", 0, GPIOD_OUT_HIGH);
 	gpiod_set_value(ctx->bias_vci, 1);
 	devm_gpiod_put(ctx->dev, ctx->bias_vci);
+/* #ifdef OPLUS_BUG_STABILITY */
+        /* Zepu.zhang@PSW.MM.DisplayDriver.Power, 2020/11/18, add for power sequence pwr_stable>=10ms*/
+	usleep_range(10 * 1000, 10 * 1000);
+/* #endif */ /* OPLUS_BUG_STABILITY */
 	ctx->reset_gpio = devm_gpiod_get(ctx->dev, "reset", GPIOD_OUT_HIGH);
 	gpiod_set_value(ctx->reset_gpio, 1);
 	usleep_range(10 * 1000, 10 * 1000);
@@ -1253,15 +1257,11 @@ static struct mtk_panel_funcs ext_funcs = {
 	/* .doze_post_disp_on = panel_doze_post_disp_on, */
 	/* .doze_post_disp_off = panel_doze_post_disp_off, */
 	.set_hbm = lcm_set_hbm,
-	#if FALSE
 	.set_safe_mode = lcm_set_safe_mode,
-	#endif
 	.panel_poweron = lcm_panel_poweron,
 	.panel_poweroff = lcm_panel_poweroff,
 	.esd_backlight_recovery = oplus_esd_backlight_check,
-	#if FALSE
 	.panel_disp_off = lcm_panel_disp_off,
-	#endif
 	.hbm_set_cmdq = panel_hbm_set_cmdq,
 	.hbm_get_state = panel_hbm_get_state,
 	.hbm_set_state = panel_hbm_set_state,
@@ -1270,9 +1270,6 @@ static struct mtk_panel_funcs ext_funcs = {
 	.doze_area_set = panel_doze_area_set,
 	.set_aod_light_mode = panel_set_aod_light_mode,
 	.set_dc_backlight = lcm_set_dc_backlight,
-	#if FALSE
-	.set_aod_light_mode = panel_set_aod_light_mode,
-	#endif
 };
 #endif
 

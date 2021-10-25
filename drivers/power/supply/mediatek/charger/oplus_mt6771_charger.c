@@ -200,12 +200,12 @@ int oplus_battery_meter_get_battery_voltage(void)
 /* Qiao.Hu@BSP.BaseDrv.CHG.Basic, 2018/01/11, mtk patch for distinguish fast charging and normal charging*/
 bool is_vooc_project(void)
 {
-	//if (is_project(OPLUS_17197) || is_project(OPLUS_18531) || is_project(OPLUS_18561) || (is_project(OPLUS_18311) && get_Operator_Version() != OPERATOR_18328_ASIA_SIMPLE_NORMALCHG)
-		//|| is_project(OPLUS_19391) || is_project(OPLUS_19531) || is_project(OPLUS_19151) || is_project(OPLUS_19350)) {
+	if (is_project(OPPO_17197) || is_project(OPPO_18531) || is_project(OPPO_18561) || (is_project(OPPO_18311) && get_Operator_Version() != OPERATOR_18328_ASIA_SIMPLE_NORMALCHG)
+		|| is_project(OPPO_19391) || is_project(OPPO_19531) || is_project(OPPO_19151) || is_project(OPPO_19350)) {
 		return true;
-	//} else {
-		//return false;
-    //}
+	} else {
+		return false;
+	}
 }
 #endif /* VENDOR_EDIT */
 
@@ -1089,7 +1089,7 @@ static int mt_ac_get_property(struct power_supply *psy,
     int rc = 0;
     rc = oplus_ac_get_property(psy, psp, val);
 
-	return 0;
+	return rc;
 }
 
 static int mt_usb_prop_is_writeable(struct power_supply *psy,

@@ -343,6 +343,8 @@ int vpu_put_request_to_pool(struct vpu_user *user, struct vpu_request *req)
 		if (IS_ERR(handle)) {
 			LOG_WRN("[vpu_drv] %s=0x%p sett_ion_fd failed\n",
 				"import ion handle", handle);
+			ret = -EINVAL;
+			goto out;
 
 			} else {
 				/* import fd to handle for buffer ref count+1*/
@@ -405,6 +407,7 @@ int vpu_put_request_to_pool(struct vpu_user *user, struct vpu_request *req)
 	wake_up(&vpu_device->req_wait);
 	/*LOG_DBG("[vpu] vpu_push_request_to_queue ---\n");*/
 
+out:
 	return ret;
 }
 
@@ -1051,7 +1054,8 @@ static long vpu_ioctl(struct file *flip, unsigned int cmd, unsigned long arg)
 		struct vpu_request *req;
 		struct vpu_request *u_req;
 		unsigned int req_core;
-		int i, plane_count;
+		int i;
+		uint8_t plane_count;
 
 		u_req = (struct vpu_request *) arg;
 
@@ -1151,17 +1155,24 @@ static long vpu_ioctl(struct file *flip, unsigned int cmd, unsigned long arg)
 			goto out;
 		}
 
-		if (ret)
+		if (ret) {
 			LOG_ERR("[ENQUE] get params failed, ret=%d\n", ret);
-		else if (req->buffer_count > VPU_MAX_NUM_PORTS) {
+			vpu_free_request(req);
+			ret = -EINVAL;
+			goto out;
+		} else if (req->buffer_count > VPU_MAX_NUM_PORTS) {
 			LOG_ERR("[ENQUE] %s, count=%d\n",
 				"wrong buffer count", req->buffer_count);
+			vpu_free_request(req);
 			ret = -EINVAL;
 			goto out;
 		} else if (copy_from_user(req->buffers, u_req->buffers,
 			    req->buffer_count * sizeof(struct vpu_buffer))) {
 			LOG_ERR("[ENQUE] %s, ret=%d\n",
 				"copy 'struct buffer' failed", ret);
+			vpu_free_request(req);
+			ret = -EINVAL;
+			goto out;
 		}
 
 		/* Check if user plane_count is valid */
@@ -1169,6 +1180,7 @@ static long vpu_ioctl(struct file *flip, unsigned int cmd, unsigned long arg)
 			plane_count = req->buffers[i].plane_count;
 			if ((plane_count > VPU_MAX_NUM_PLANE) ||
 				(plane_count == 0)) {
+				vpu_free_request(req);
 				ret = -EINVAL;
 		LOG_ERR("[ENQUE] Buffer#%d plane_count:%d is invalid!\n",
 					i, plane_count);

@@ -40,7 +40,7 @@ bool is_support_chip(chip_type chip)
 
 	switch(chip) {
 		case NQ310:
-			target_chipset = "NQ310|NQ330";
+			target_chipset = "NQ310|NQ330|PN557";
 			break;
 		case NQ330:
 			target_chipset = "NQ330";

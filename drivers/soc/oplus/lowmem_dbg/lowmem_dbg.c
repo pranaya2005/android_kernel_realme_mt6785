@@ -31,7 +31,6 @@
 #include <linux/proc_fs.h>
 #include <linux/vmstat.h>
 #include <linux/vmalloc.h>
-
 #ifdef CONFIG_OF_RESERVED_MEM
 #include <linux/of_reserved_mem.h>
 #endif /* CONFIG_OF_RESERVED_MEM */
@@ -46,12 +45,8 @@
 #include "kgsl.h"
 #endif /* CONFIG_QCOM_KGSL */
 
-#ifdef OPLUS_FEATURE_HEALTHINFO
-#include <linux/oppo_healthinfo/oppo_ion.h>
-#endif /* OPLUS_FEATURE_HEALTHINFO */
-
 #define K(x) ((x) << (PAGE_SHIFT-10))
-
+extern unsigned long ion_total(void);
 static int lowmem_dbg_ram[] = {
 	0,
 	768 * 1024,	/* 3GB */

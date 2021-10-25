@@ -162,7 +162,7 @@ static struct timespec current_kernel_time(void)
 {
 	struct timespec64 ts64;
 
-	ktime_get_coarse_real_ts64(&ts64);
+	ktime_get_real_ts64(&ts64);
 
 	return timespec64_to_timespec(ts64);
 }
@@ -470,6 +470,10 @@ static void task_comm_to_struct(const char * pcomm, struct task_struct ** t_resu
     rcu_read_unlock();
 }
 
+#if IS_MODULE(CONFIG_OPLUS_FEATURE_SHUTDOWN_DETECT)
+#define __si_special(priv) \
+        ((priv) ? SEND_SIG_PRIV : SEND_SIG_NOINFO)
+#endif
 void shutdown_dump_android_log(void)
 {
     struct task_struct *sd_init;
@@ -478,7 +482,11 @@ void shutdown_dump_android_log(void)
     if(NULL != sd_init)
     {
         pr_err("send shutdown_dump_android_log signal %d", SIG_SHUTDOWN);
+#if IS_MODULE(CONFIG_OPLUS_FEATURE_SHUTDOWN_DETECT)
+        send_sig_info(SIG_SHUTDOWN, __si_special(0), sd_init);
+#else
         send_sig(SIG_SHUTDOWN, sd_init, 0);
+#endif
         pr_err("after send shutdown_dump_android_log signal %d", SIG_SHUTDOWN);
         // wait to collect shutdown log finished
         schedule_timeout_interruptible(20 * HZ);

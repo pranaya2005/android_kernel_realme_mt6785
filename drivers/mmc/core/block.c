@@ -38,6 +38,7 @@
 #include <linux/pm_runtime.h>
 #include <linux/idr.h>
 #include <linux/debugfs.h>
+#include <linux/math64.h>
 
 #include <linux/mmc/ioctl.h>
 #include <linux/mmc/card.h>
@@ -1018,7 +1019,7 @@ static int mmc_blk_check_disk_range_wp(struct gendisk *disk,
 
 	start = part_start;
 	quot = start;
-	remain = do_div(quot, card->wp_grp_size);
+	quot = div_u64_rem(quot, card->wp_grp_size, &remain);
 	if (remain) {
 		pr_notice("Start 0x%llx of disk %s not write group aligned\n",
 			(unsigned long long)part_start, disk->disk_name);
@@ -1027,15 +1028,14 @@ static int mmc_blk_check_disk_range_wp(struct gendisk *disk,
 
 	end = part_start + part_nr_sects;
 	quot = end;
-	remain = do_div(quot, card->wp_grp_size);
+	quot = div_u64_rem(quot, card->wp_grp_size, &remain);
 	if (remain) {
 		pr_notice("End 0x%llx of disk %s not write group aligned\n",
 			(unsigned long long)part_start, disk->disk_name);
 		end += card->wp_grp_size - remain;
 	}
 	wp_grp_total = end - start;
-	do_div(wp_grp_total, card->wp_grp_size);
-	wp_grp_rem = wp_grp_total;
+	wp_grp_rem = div_u64(wp_grp_total, card->wp_grp_size);
 	wp_grp_found = 0;
 
 	cmd.opcode = MMC_SEND_WRITE_PROT_TYPE;
@@ -4806,8 +4806,11 @@ static int mmc_blk_probe(struct mmc_card *card)
 	/*
 	 * Check that the card supports the command class(es) we need.
 	 */
+#ifndef VENDOR_EDIT
+//yh@bsp, 2015/08/03, remove for can not initialize specific sdcard(CSD info mismatch card real capability)
 	if (!(card->csd.cmdclass & CCC_BLOCK_READ))
 		return -ENODEV;
+#endif
 
 #ifdef VENDOR_EDIT
 //chenhui.lai@RM.emmc,2018/10/15, Add for eMMC and DDR device information
@@ -4890,6 +4893,19 @@ static int mmc_blk_probe(struct mmc_card *card)
 	mmc_blk_remove_req(md);
 	return 0;
 }
+
+#ifdef VENDOR_EDIT
+//Chunyi.Mei@PSW.BSP.Storage.Sdcard, 2018-12-10, Add for SD Card device information
+char *capacity_string(struct mmc_card *card){
+	static char cap_str[10] = "unknown";
+	struct mmc_blk_data *md = (struct mmc_blk_data *)card->dev.driver_data;
+	if(md==NULL){
+		return 0;
+	}
+	string_get_size((u64)get_capacity(md->disk), 512, STRING_UNITS_2, cap_str, sizeof(cap_str));
+	return cap_str;
+}
+#endif
 
 static void mmc_blk_remove(struct mmc_card *card)
 {
@@ -4979,10 +4995,12 @@ static int mmc_blk_suspend(struct device *dev)
 	 * suspend.
 	 */
 	if (md) {
+		mmc_get_card(card);
 		ret = mmc_blk_part_switch(card, md->part_type);
 		if (ret)
 			pr_info("%s: error %d during suspend\n",
 				md->disk->disk_name, ret);
+		mmc_put_card(card);
 	}
 out:
 		return ret;

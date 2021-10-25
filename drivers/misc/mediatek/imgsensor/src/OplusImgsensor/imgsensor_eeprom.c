@@ -103,11 +103,24 @@ static enum IMGSENSOR_RETURN Eeprom_WriteInfomatch(
         #if defined(OV64B_MIPI_RAW)
         case OV64B_SENSOR_ID:
         {
-            if (data_length == CALI_DATA_MASTER_LENGTH
-                && data_base == OV64B_STEREO_START_ADDR) {
+            if (data_length == CALI_DATA_MASTER_LENGTH_20730
+                && data_base == OV64B_STEREO_START_ADDR_20730) {
                 pr_debug("ov64b DA:0x%x DL:%d", data_base, data_length);
             } else {
                 pr_debug("ov64b Invalid DA:0x%x DL:%d", data_base, data_length);
+                return IMGSENSOR_RETURN_ERROR;
+            }
+            break;
+        }
+        #endif
+        #if defined(OV8856_MIPI_RAW2)
+        case OV8856_SENSOR_ID2:
+        {
+            if (data_length == CALI_DATA_SLAVE_LENGTH_20730
+                && data_base == OV8856_STEREO_START_ADDR_20730) {
+                pr_debug("ov8856 DA:0x%x DL:%d", data_base, data_length);
+            } else {
+                pr_debug("ov8856 Invalid DA:0x%x DL:%d", data_base, data_length);
                 return IMGSENSOR_RETURN_ERROR;
             }
             break;
@@ -126,6 +139,7 @@ static enum IMGSENSOR_RETURN Eeprom_WriteInfomatch(
             break;
         }
         #endif
+
         #if defined(OV48B_MIPI_RAW)
         case OV48B_SENSOR_ID:
         {
@@ -139,11 +153,13 @@ static enum IMGSENSOR_RETURN Eeprom_WriteInfomatch(
             break;
         }
         #endif
+
         #if defined(HI846_MIPI_RAW)
         case HI846_SENSOR_ID:
         {
             if (data_length == CALI_DATA_SLAVE_LENGTH
-                && data_base == HI846_STEREO_START_ADDR) {
+                && (data_base == HI846_STEREO_START_ADDR_19131
+                || data_base == HI846_STEREO_START_ADDR)) {
                 pr_debug("hi846 DA:0x%x DL:%d", data_base, data_length);
             } else {
                 pr_debug("hi846 Invalid DA:0x%x DL:%d", data_base, data_length);

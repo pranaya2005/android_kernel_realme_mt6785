@@ -1412,7 +1412,10 @@ kalP2PGOStationUpdate(IN P_GLUE_INFO_T prGlueInfo,
 					 prCliStaRec->aucMacAddr, &rStationInfo, GFP_KERNEL);
 		} else {
 			++prP2pGlueInfo->i4Generation;
-
+			if (prP2pGlueInfo->aprRoleHandler
+				&& prP2pGlueInfo->aprRoleHandler->ieee80211_ptr
+				&& prP2pGlueInfo->aprRoleHandler
+				->ieee80211_ptr->wiphy)
 			cfg80211_del_sta(prP2pGlueInfo->aprRoleHandler,
 					 /* struct net_device * dev, */
 					 prCliStaRec->aucMacAddr, GFP_KERNEL);

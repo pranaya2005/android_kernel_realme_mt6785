@@ -74,7 +74,9 @@ typedef struct {//new struct
     int gsensor_reserve[7];
     int gyro_data[3];
     int gyro_reserve[7];
-    int nReserve[24];
+    int rear_als_gain;
+    int rear_als_reserve[9];
+    int nReserve[14];
 } sensor_cali_file_v2_t;
 
 
@@ -101,6 +103,8 @@ struct cali_data {
     };
     int als_value;
     int als_factor;
+    int rear_als_value;
+    int rear_als_factor;
 };
 
 struct oppo_als_cali_data {

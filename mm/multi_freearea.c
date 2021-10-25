@@ -9,7 +9,6 @@
 #include <linux/interrupt.h>
 #include <linux/pagemap.h>
 #include <linux/jiffies.h>
-#include <linux/bootmem.h>
 #include <linux/memblock.h>
 #include <linux/compiler.h>
 #include <linux/kernel.h>
@@ -71,9 +70,7 @@
 #include <linux/writeback.h>
 #include "internal.h"
 
-#ifdef VENDOR_EDIT
 #include "multi_freearea.h"
-#endif
 
 
 #include "internal.h"

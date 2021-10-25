@@ -40,6 +40,7 @@ extern int oplus_display_panel_get_cabc(void *buf);
 extern int oplus_display_panel_set_finger_print(void *buf);
 extern int oplus_display_panel_set_esd(void *buf);
 extern int oplus_display_panel_get_esd(void *buf);
+extern int oplus_display_set_mtk_loglevel(void *buf);
 
 static const struct panel_ioctl_desc panel_ioctls[] = {
 	PANEL_IOCTL_DEF(PANEL_IOCTL_SET_POWER, oplus_display_panel_set_pwr),
@@ -89,6 +90,7 @@ static const struct panel_ioctl_desc panel_ioctls[] = {
 	PANEL_IOCTL_DEF(PANEL_IOCTL_SET_FINGER_PRINT, oplus_display_panel_set_finger_print),
 	PANEL_IOCTL_DEF(PANEL_IOCTL_SET_ESD, oplus_display_panel_set_esd),
 	PANEL_IOCTL_DEF(PANEL_IOCTL_GET_ESD, oplus_display_panel_get_esd),
+	PANEL_IOCTL_DEF(PANEL_IOCTL_SET_MTK_LOG_LEVEL, oplus_display_set_mtk_loglevel),
 };
 
 static int panel_open(struct inode *inode, struct file *filp)

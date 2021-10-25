@@ -239,6 +239,40 @@ long DW9718TAF_Ioctl(struct file *a_pstFile, unsigned int a_u4Command,
 	return i4RetValue;
 }
 
+#ifdef OPLUS_FEATURE_CAMERA_COMMON
+/* ////////////////////////////////////////////////////////////// */
+static int DW9718TAF_ParkLens(void)
+{
+	LOG_INF("Start CurrPosition:%d\n", g_u4CurrPosition);
+
+	if (g_u4CurrPosition > g_u4AF_INF && g_u4CurrPosition <= g_u4AF_MACRO) {
+		unsigned long af_step = 25;
+		while (g_u4CurrPosition > 150) {
+			if (g_u4CurrPosition > 400)
+				af_step = 70;
+			else if (g_u4CurrPosition > 180)
+				af_step = 40;
+			else
+				af_step = 25;
+
+			if (s4AF_WriteReg(g_u4CurrPosition - af_step) != 0) {
+				break;
+			}
+			g_u4CurrPosition = g_u4CurrPosition - af_step;
+			mdelay(10);
+			LOG_INF("CurrPosition:%d\n", g_u4CurrPosition);
+			if (g_u4CurrPosition <= 0 || g_u4CurrPosition > 1023)
+				break;
+		}
+	}
+
+	g_u4CurrPosition = 0;
+	LOG_INF("End CurrPosition:%d\n", g_u4CurrPosition);
+
+	return 0;
+}
+#endif
+
 /* Main jobs: */
 /* 1.Deallocate anything that "open" allocated in private_data. */
 /* 2.Shut down the device on last close. */
@@ -246,31 +280,17 @@ long DW9718TAF_Ioctl(struct file *a_pstFile, unsigned int a_u4Command,
 /* Q1 : Try release multiple times. */
 int DW9718TAF_Release(struct inode *a_pstInode, struct file *a_pstFile)
 {
-    unsigned long af_step = 25;
-    LOG_INF("Start\n");
-
-    if (g_u4CurrPosition > g_u4AF_INF && g_u4CurrPosition <= g_u4AF_MACRO) {
-        while (g_u4CurrPosition > 100) {
-            if (g_u4CurrPosition > 200)
-                af_step = 50;
-            else if (g_u4CurrPosition > 150)
-                af_step = 25;
-            else
-                af_step = 10;
-
-            if (s4AF_WriteReg(g_u4CurrPosition - af_step) != 0) {
-                break;
-            }
-            g_u4CurrPosition = g_u4CurrPosition - af_step;
-            mdelay(10);
-            LOG_INF("release position: %d", g_u4CurrPosition);
-        }
-    }
+	LOG_INF("Start\n");
 
 	if (*g_pAF_Opened == 2) {
 		int i4RetValue = 0;
 		u8 data = 0x0;
 		char puSendCmd[2] = {0x00, 0x01};
+
+#ifdef OPLUS_FEATURE_CAMERA_COMMON
+/*Danfeng.Zhang@CMAERA.DRV.[211053], 2021/03/02, add for reduce motor noise*/
+		DW9718TAF_ParkLens();
+#endif
 
 		LOG_INF("apply\n");
 

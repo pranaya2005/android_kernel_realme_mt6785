@@ -17,7 +17,6 @@
 #include "oppo_display_private_api.h"
 #include "mtk_disp_aal.h"
 #include "oplus_display_panel_power.h"
-#include <soc/oppo/oppo_project.h>
 /*
  * we will create a sysfs which called /sys/kernel/oppo_display,
  * In that directory, oppo display private api can be called
@@ -698,12 +697,8 @@ static ssize_t oplus_display_set_CABC(struct device *dev,
 			disp_aal_set_dre_en(1);
 			printk("%s sun enable dre\n", __func__);
 		} else {
-			if ((is_project(20601)) || (is_project(20660))) {
-				printk("%s realme need global dre");
-			} else {
-				disp_aal_set_dre_en(1);
-				printk("%s sun disable dre\n", __func__);
-			}
+			disp_aal_set_dre_en(0);
+			printk("%s sun disable dre\n", __func__);
 		}
 		return num;
 	}
@@ -721,12 +716,8 @@ static ssize_t oplus_display_set_CABC(struct device *dev,
 		disp_aal_set_dre_en(1);
 		printk("%s enable dre\n", __func__);
 	} else {
-		if ((is_project(20601)) || (is_project(20660))) {
-			printk("%s realme need global dre");
-		} else {
-			disp_aal_set_dre_en(1);
-			printk("%s disable dre\n", __func__);
-		}
+		disp_aal_set_dre_en(0);
+		printk("%s disable dre\n", __func__);
 	}
 	oplus_mtk_drm_setcabc(crtc, cabc_true_mode);
 	if (cabc_true_mode != cabc_back_flag) cabc_true_mode = cabc_back_flag;

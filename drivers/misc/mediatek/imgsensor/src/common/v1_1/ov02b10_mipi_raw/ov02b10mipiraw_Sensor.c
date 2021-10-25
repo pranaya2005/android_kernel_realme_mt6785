@@ -21,9 +21,6 @@
 #include <linux/atomic.h>
 #include <linux/types.h>
 #include "ov02b10mipiraw_Sensor.h"
-#include <soc/oplus/system/oppo_project.h>
-#include <soc/oplus/system/oplus_project_oldcdt.h>
-
 #ifndef OPLUS_FEATURE_CAMERA_COMMON
 #define OPLUS_FEATURE_CAMERA_COMMON
 #endif
@@ -163,7 +160,7 @@ static struct imgsensor_info_struct imgsensor_info = {
     .slim_video_delay_frame = 2,
     .custom1_delay_frame = 2,
     .frame_time_delay_frame = 1,
-    .isp_driving_current = ISP_DRIVING_6MA, //mclk driving current
+    .isp_driving_current = ISP_DRIVING_2MA, //mclk driving current
     .sensor_interface_type = SENSOR_INTERFACE_TYPE_MIPI,//sensor_interface_type
     .mipi_sensor_type = MIPI_OPHY_NCSI2, //0,MIPI_OPHY_NCSI2;  1,MIPI_OPHY_CSI2
     .mipi_settle_delay_mode = MIPI_SETTLEDELAY_AUTO,//0,MIPI_SETTLEDELAY_AUTO; 1,MIPI_SETTLEDELAY_MANNUAL
@@ -216,14 +213,6 @@ static kal_uint16 read_module_id(void)
     return get_byte;
 }
 #endif
-
-static kal_uint32 salathr_project(void)
-{
-    if (get_Operator_Version() == 90||get_Operator_Version() == 92) {
-        return 1;
-    }
-        return 0;
-}
 
 static kal_uint16 read_cmos_sensor(kal_uint32 addr)
 {
@@ -1336,9 +1325,6 @@ static kal_uint32 open(void)
     kal_uint8 i = 0;
     kal_uint8 retry = 2;
     kal_uint16 sensor_id = 0;
-    if (salathr_project() == 1) {
-        imgsensor.mirror = IMAGE_NORMAL;
-     }
 
     while (imgsensor_info.i2c_addr_table[i] != 0xff) {
         spin_lock(&imgsensor_drv_lock);
@@ -1562,9 +1548,6 @@ static kal_uint32 get_info(enum MSDK_SCENARIO_ID_ENUM scenario_id,
 	sensor_info->SensroInterfaceType = imgsensor_info.sensor_interface_type;
 	sensor_info->MIPIsensorType = imgsensor_info.mipi_sensor_type;
 	sensor_info->SettleDelayMode = imgsensor_info.mipi_settle_delay_mode;
-	if (salathr_project() == 1) {
-            imgsensor_info.sensor_output_dataformat = SENSOR_OUTPUT_FORMAT_RAW_B;
-	}
 	sensor_info->SensorOutputDataFormat = imgsensor_info.sensor_output_dataformat;
 
 	sensor_info->CaptureDelayFrame = imgsensor_info.cap_delay_frame;

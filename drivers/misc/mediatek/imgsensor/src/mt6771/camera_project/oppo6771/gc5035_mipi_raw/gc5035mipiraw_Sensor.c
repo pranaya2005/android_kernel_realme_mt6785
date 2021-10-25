@@ -281,6 +281,31 @@ static kal_uint16 read_cmos_eeprom_8(kal_uint16 addr)
 	return get_byte;
 }
 
+#ifdef OPLUS_FEATURE_CAMERA_COMMON
+/*shuzhang.liu@Camera.Driver 2020/11/16 adding for 18531 dualcam aftersale cali*/
+static kal_uint8 gGc5035_EepData[DUALCAM_CALI_EEPROM_DATA_LENGTH];
+static void read_eepromData(void)
+{
+	kal_uint16 idx = 0;
+	kal_uint16 id = 0;
+	for (idx = 0; idx <DUALCAM_CALI_DATA_LENGTH; idx++) {
+		gGc5035_EepData[idx] = read_cmos_eeprom_8(GC5035_STEREO_START_ADDR + idx);
+	}
+	for (idx = DUALCAM_CALI_DATA_LENGTH; idx < (CAMERA_MODULE_SN_LENGTH+DUALCAM_CALI_DATA_LENGTH); idx++) {
+		gGc5035_EepData[idx] = read_cmos_eeprom_8((0xE0 + id) & 0xFF);
+		LOG_INF("gc5035_SN[%d]: 0x%x\n", id, gGc5035_EepData[idx]);
+	    id++;
+	}
+	gGc5035_EepData[idx++] = read_cmos_eeprom_8(0x0);
+	gGc5035_EepData[idx++] = read_cmos_eeprom_8(0x1);
+	gGc5035_EepData[idx++] = read_cmos_eeprom_8(0x6);
+	gGc5035_EepData[idx++] = read_cmos_eeprom_8(0x7);
+	gGc5035_EepData[idx++] = read_cmos_eeprom_8(0x8);
+	gGc5035_EepData[idx++] = read_cmos_eeprom_8(0x9);
+	gGc5035_EepData[idx++] = read_cmos_eeprom_8(0xA);
+	gGc5035_EepData[idx] = read_cmos_eeprom_8(0xB);
+}
+#endif /*OPLUS_FEATURE_CAMERA_COMMON*/
 /*Henry.Chang@camera.driver 20181129, add for sensor Module SET*/
 static kal_int32 write_Module_data(PACDK_SENSOR_ENGMODE_STEREO_STRUCT  pStereodata)
 {
@@ -1839,6 +1864,10 @@ static kal_uint32 get_imgsensor_id(UINT32 *sensor_id)
 					imgsensor_info.sensor_output_dataformat = SENSOR_OUTPUT_FORMAT_RAW_B;
 				}
 				#endif
+                                #ifdef OPLUS_FEATURE_CAMERA_COMMON
+                                /*shuzhang.liu@Camera.Driver 2020/11/16 adding for 18531 dualcam aftersale cali*/
+                                read_eepromData();
+                                #endif
 				return ERROR_NONE;
 			}
 			LOG_INF("Read sensor id fail, write id: 0x%x, id: 0x%x\n", imgsensor.i2c_write_id, *sensor_id);
@@ -2443,6 +2472,14 @@ static kal_uint32 feature_control(MSDK_SENSOR_FEATURE_ENUM feature_id,
 
 	LOG_INF("feature_id = %d\n", feature_id);
 	switch (feature_id) {
+	#ifdef OPLUS_FEATURE_CAMERA_COMMON
+	/*shuzhang.liu@Camera.Driver 2020/11/16 adding for 18531 dualcam aftersale cali*/
+	case SENSOR_FEATURE_GET_EEPROM_DATA:
+	     LOG_INF("[gc5035] SENSOR_FEATURE_GET_EEPROM_DATA:%d data_lens:%d\n",
+					*feature_para_len, DUALCAM_CALI_EEPROM_DATA_LENGTH);
+	     memcpy(&feature_para[0], gGc5035_EepData, DUALCAM_CALI_EEPROM_DATA_LENGTH);
+	     break;
+	#endif /*OPLUS_FEATURE_CAMERA_COMMON*/
 	#ifdef OPLUS_FEATURE_CAMERA_COMMON
 	/*Henry.Chang@Camera.Driver add for 18531 ModuleSN*/
 	case SENSOR_FEATURE_GET_MODULE_SN:

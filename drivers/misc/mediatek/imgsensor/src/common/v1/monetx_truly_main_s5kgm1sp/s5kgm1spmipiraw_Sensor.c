@@ -36,7 +36,7 @@
 
 #include "s5kgm1spmipiraw_Sensor.h"
 /* Zhen.Quan@Camera.Driver, 2019/10/17, add for [otp bringup] */
-#include "imgsensor_read_eeprom.h"
+//#include "imgsensor_read_eeprom.h"
 #define ENABLE_S5KGM_OTP 1
 //#ifndef S5KGM1SP_VENDOR_EDIT
 //#define S5KGM1SP_VENDOR_EDIT
@@ -5974,12 +5974,12 @@ static kal_uint32 get_imgsensor_id(UINT32 *sensor_id)
 			pr_err("read_0x0000=0x%x, 0x0001=0x%x,0x0000_0001=0x%x\n",read_cmos_sensor_8(0x0000),read_cmos_sensor_8(0x0001),read_cmos_sensor(0x0000));
 			if (*sensor_id == imgsensor_info.sensor_id) {
 				/* Zhen.Quan@Camera.Driver, 2019/10/17, add for [otp bringup] */
-#if 1
+#if 0
 				if(!check_otp_data(&monetx_truly_main_s5kgm1sp_eeprom_data, monetx_truly_main_s5kgm1sp_hecksum, sensor_id)){
 					break;
 				} else {
 					/*xiaojun.Pu@Camera.Driver, 2019/10/15, add for [add hardware_info for factory]*/
-					//hardwareinfo_set_prop(HARDWARE_BACK_CAM_MOUDULE_ID, "Truly");
+					hardwareinfo_set_prop(HARDWARE_BACK_CAM_MOUDULE_ID, "Truly");
 				}
 #endif
 				#if 0 //ifdef S5KGM1SP_VENDOR_EDIT

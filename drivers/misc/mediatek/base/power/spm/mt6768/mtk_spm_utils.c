@@ -21,6 +21,15 @@
 
 #include <mtk_spm_internal.h>
 #include <mtk_spm_suspend_internal.h>
+#include <mt-plat/mtk_ccci_common.h>
+
+void __attribute__ ((weak))
+__iomem *get_smem_start_addr(int md_id, enum SMEM_USER_ID user_id,
+        int *size_o)
+{
+        printk_deferred("[name:spm&][SPM] %s not ready\n", __func__);
+        return 0;
+}
 
 static int local_spm_load_firmware_status = 1;
 int spm_load_firmware_status(void)
@@ -121,6 +130,60 @@ void spm_ap_mdsrc_req(u8 set)
 	}
 }
 EXPORT_SYMBOL(spm_ap_mdsrc_req);
+
+#ifdef VENDOR_EDIT
+/*liulonglong@Basic.power add for read AP/MODEM Subsystem sleep time  2021.03.03*/
+ssize_t get_oplus_rpm_stats(char *ToUserBuf,
+			  size_t sz, void *priv)
+{
+	char *p = ToUserBuf;
+#undef log
+#define log(fmt, args...) ({\
+			p += scnprintf(p, sz - strlen(ToUserBuf), fmt, ##args); p; })
+	log("vmin:%llx:%llx\n", spm_26M_off_count, PCM_TICK_TO_MILLI_SEC(spm_26M_off_duration));
+	return p - ToUserBuf;
+
+}
+EXPORT_SYMBOL(get_oplus_rpm_stats);
+
+#define MD_SLEEP_INFO_SMEM_OFFEST (14)
+
+ssize_t get_oplus_rpm_master_stats(char *ToUserBuf,
+			  size_t sz, void *priv)
+{
+		/* dump subsystem sleep info */
+#if defined(CONFIG_MTK_ECCCI_DRIVER)
+	u32 *share_mem = NULL;
+	struct md_sleep_status data;
+	u64 slp_cnt, slp_time;
+	u32 read_cnt = 0;
+	u32 len = 0;
+	share_mem = (u32 *)get_smem_start_addr(MD_SYS1,
+		SMEM_USER_RAW_DBM, NULL);
+	share_mem = share_mem - MD_SLEEP_INFO_SMEM_OFFEST;
+
+	do {
+		read_cnt++;
+		memset(&data, 0, sizeof(struct md_sleep_status));
+		memcpy(&data, share_mem, sizeof(struct md_sleep_status));
+	} while ((data.slp_sleep_info1 != data.slp_sleep_info2)
+		&& read_cnt <= 10);
+
+	slp_cnt = (u64)data.slp_cnt_high << 32 | data.slp_cnt_low;
+	slp_time = (u64)data.slp_sleep_time_high << 32
+				| data.slp_sleep_time_low;
+	len = snprintf(ToUserBuf, sz
+			,  "APSS:%x:%llx\nMPSS:%x:%llx\n",
+			ap_pd_count, PCM_TICK_TO_MILLI_SEC(ap_slp_duration), slp_cnt, PCM_TICK_TO_MILLI_SEC(slp_time));
+	return (len > sz) ? sz : len;
+#else
+	return 0;
+#endif
+}
+
+EXPORT_SYMBOL(get_oplus_rpm_master_stats);
+#endif
+
 
 ssize_t get_spm_sleep_count(char *ToUserBuf
 		, size_t sz, void *priv)

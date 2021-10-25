@@ -6,7 +6,7 @@ subdir-ccflags-y += -I$(srctree)/drivers/spi/trustzone/spi/Tlspi/inc
 endif
 
 ifeq ($(CONFIG_TRUSTONIC_TEE_SUPPORT),y)
-	include $(srctree)/drivers/misc/mediatek/gud/Makefile.include
+#	include $(srctree)/drivers/misc/mediatek/gud/Makefile.include
 endif
 subdir-ccflags-y += -I$(srctree)/drivers/spi/mediatek/mt6763/
 

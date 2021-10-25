@@ -309,9 +309,11 @@ void halShowPseInfo(IN struct ADAPTER *prAdapter)
 	/* Queue Empty Status */
 	DBGLOG(HAL, INFO, "PSE Queue Empty Status:\n");
 	DBGLOG(HAL, INFO,
-		"\tQUEUE_EMPTY(0x820680b0): 0x%08x\n", pse_stat);
+		"\tQUEUE_EMPTY(0x820680b0): 0x%08x\n",
+		pse_stat);
 	DBGLOG(HAL, INFO,
-		"\tQUEUE_EMPTY(0x820680b4): 0x%08x\n", pse_queue_empty_mask);
+		"\tQUEUE_EMPTY_MASK(0x820680b4): 0x%08x\n",
+		pse_queue_empty_mask);
 	DBGLOG(HAL, INFO,
 		"\t\tCPU Q0/1/2/3 empty=%d/%d/%d/%d\n",
 		 pse_stat & 0x1, ((pse_stat & 0x2) >> 1),

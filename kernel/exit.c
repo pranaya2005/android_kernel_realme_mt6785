@@ -890,7 +890,6 @@ void __noreturn do_exit(long code)
 			preempt_count());
 		preempt_count_set(PREEMPT_ENABLED);
 	}
-
 	profile_task_exit(tsk);
 	kcov_task_exit(tsk);
 

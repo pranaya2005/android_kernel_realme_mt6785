@@ -19,7 +19,6 @@
 #include <soc/oppo/oppo_project.h>
 #include <linux/gpio/consumer.h>
 #include <linux/of_graph.h>
-#include <linux/fb.h>
 #include <video/mipi_display.h>
 #include <video/of_videomode.h>
 #include <video/videomode.h>
@@ -27,7 +26,6 @@
 #include <linux/module.h>
 #include <linux/of_platform.h>
 #include <linux/platform_device.h>
-#include <soc/oppo/device_info.h>
 #include <soc/oppo/device_info.h>
 
 #define CONFIG_MTK_PANEL_EXT
@@ -46,8 +44,6 @@
 #ifdef CONFIG_MTK_ROUND_CORNER_SUPPORT
 #include "../mediatek/mtk_corner_pattern/mtk_data_hw_roundedpattern.h"
 #endif
-
-#include <mt-plat/mtk_boot_common.h>
 
 #define AVDD_REG 0x00
 #define AVDD_REG 0x01
@@ -72,8 +68,6 @@ static bool cabc_dimming_on = false;
 static int frame_count = 0;
 extern unsigned long esd_flag;
 static int esd_brightness;
-extern unsigned long oplus_max_normal_brightness;
-extern void disp_aal_set_dre_en(int enable);
 #ifdef VENDOR_EDIT
 /* shiyaqiang@RM.MM.LCD.Driver 20200621 add for keep cabc mode after resume*/
 static int cabc_lastlevel = 0;
@@ -684,17 +678,8 @@ static int jdi_disable(struct drm_panel *panel)
 {
 	struct jdi *ctx = panel_to_jdi(panel);
 
-	int blank_mode = FB_BLANK_POWERDOWN;
-	struct fb_event event;
-
 	if (!ctx->enabled)
 		return 0;
-
-	event.info  = NULL;
-	event.data = &blank_mode;
-	pr_info("%s for gesture\n", __func__);
-	fb_notifier_call_chain(FB_EARLY_EVENT_BLANK, &event);
-
 	pr_info("%s\n", __func__);
 	if (ctx->backlight) {
 		ctx->backlight->props.power = FB_BLANK_POWERDOWN;
@@ -1037,9 +1022,6 @@ static int jdi_setbacklight_cmdq(void *dsi, dcs_write_gce cb,
 
 	if (level > 4095)
 		level = 4095;
-	if (get_boot_mode() == KERNEL_POWER_OFF_CHARGING_BOOT && level > 0) {
-		level = 2047;
-	}
 	bl_tb0[1] = level >>8;
 	bl_tb0[2] = level & 0xFF;
 	esd_brightness = level;
@@ -1182,7 +1164,7 @@ static struct mtk_panel_funcs ext_funcs = {
 	.panel_poweron = lcm_panel_poweron,
 	.panel_poweroff = lcm_panel_poweroff,
 	//.mode_switch = mode_switch,
-	.cabc_switch = cabc_switch,
+	//.cabc_switch = cabc_switch,
 };
 #endif
 
@@ -1366,9 +1348,6 @@ static int jdi_probe(struct mipi_dsi_device *dsi)
         ctx->is_normal_mode = false;
     pr_info("%s: is_normal_mode = %d \n", __func__, ctx->is_normal_mode);
 #endif /*VENDOR_EDIT*/
-	oplus_max_normal_brightness = 3067;
-	disp_aal_set_dre_en(1);
-	register_device_proc("lcd", "NT36672C_JDI_ZOLA", "nt_jdi_4096");
 	pr_info("%s-\n", __func__);
 
 	return ret;

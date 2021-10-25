@@ -11,8 +11,8 @@
 
 #if IS_ENABLED(CONFIG_OPLUS_FEATURE_UIFRIST_HEAVYLOAD)
 #include <trace/hooks/sched.h>
-int sysctl_cpu_multi_thread = 0;
-int ux_prefer_cpu[NR_CPUS] = { 0 };
+static int sysctl_cpu_multi_thread = 0;
+static int ux_prefer_cpu[NR_CPUS] = { 0 };
 module_param_named(enable, sysctl_cpu_multi_thread, uint, 0644);
 #endif  /* IS_ENABLED(CONFIG_OPLUS_FEATURE_UIFRIST_HEAVYLOAD) */
 
@@ -115,6 +115,10 @@ static void cpupri_find_fitness_handler(void *data, struct task_struct *p, struc
 	unsigned int cpu;
 	if (sysctl_cpu_multi_thread == 0)
 		return;
+
+	if (!lowest_mask || cpumask_empty(lowest_mask)) {
+		return;
+	}
 
 	cpu = cpumask_first(lowest_mask);
 	while (cpu < nr_cpu_ids) {

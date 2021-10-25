@@ -879,14 +879,14 @@ void init_opp_capacity_tbl(void)
 	struct sched_group *sg;
 	const struct sched_group_energy *sge;
 	struct cpufreq_policy *policy;
+	unsigned int *tbl;
 
 	count = system_opp_count();
 	if (count < 0)
 		return;
 
-	opp_capacity_tbl =
-		kmalloc_array(count, sizeof(unsigned int), GFP_KERNEL);
-	if (!opp_capacity_tbl)
+	tbl = kmalloc_array(count, sizeof(unsigned int), GFP_KERNEL);
+	if (!tbl)
 		return;
 
 	rcu_read_lock();
@@ -912,7 +912,7 @@ void init_opp_capacity_tbl(void)
 
 		for (i = 0; i < sge->nr_cap_states; i++) {
 			cap = get_opp_capacity(policy, i);
-			opp_capacity_tbl[idx] = cap;
+			tbl[idx] = cap;
 			idx++;
 		}
 		cpufreq_cpu_put(policy);
@@ -920,16 +920,17 @@ void init_opp_capacity_tbl(void)
 	}
 	rcu_read_unlock();
 
-	sort(opp_capacity_tbl, count, sizeof(unsigned int),
+	sort(tbl, count, sizeof(unsigned int),
 			&cap_compare, NULL);
-	opp_capacity_tbl[count - 1] = SCHED_CAPACITY_SCALE;
+	tbl[count - 1] = SCHED_CAPACITY_SCALE;
 	total_opp_count = count;
+	opp_capacity_tbl = tbl;
 	opp_capacity_tbl_ready = 1;
 
 	return;
 free_unlock:
 	rcu_read_unlock();
-	kfree(opp_capacity_tbl);
+	kfree(tbl);
 }
 
 unsigned int find_fit_capacity(unsigned int cap)
@@ -2251,13 +2252,14 @@ void do_set_cpus_allowed(struct task_struct *p, const struct cpumask *new_mask)
 
 	lockdep_assert_held(&p->pi_lock);
 
+	queued = task_on_rq_queued(p);
+
 #ifdef OPLUS_FEATURE_PERFORMANCE
 	if ((p->flags & PF_KSWAPD) &&
 		(cpumask_test_cpu(6, new_mask) || cpumask_test_cpu(7, new_mask)))
 		return;
 #endif
 
-	queued = task_on_rq_queued(p);
 	running = task_current(rq, p);
 
 	if (queued) {
@@ -4410,7 +4412,7 @@ void scheduler_tick(void)
 			walt_ktime_clock(), 0);
 	update_rq_clock(rq);
 #if defined (CONFIG_SCHED_WALT) && defined (OPLUS_FEATURE_UIFIRST)
-	if (sysctl_uifirst_enabled && sysctl_slide_boost_enabled) {
+	if (sysctl_uifirst_enabled && (sysctl_slide_boost_enabled || sysctl_animation_type == LAUNCHER_SI_START)) {
 		u64 wallclock = walt_ktime_clock();
 		unsigned int flag = 0;
 		if(rq->curr && rq->curr->static_ux == 2 && !ux_task_misfit(rq->curr, cpu)) {
@@ -5819,17 +5821,6 @@ do_sched_setscheduler(pid_t pid, int policy, struct sched_param __user *param)
 	rcu_read_unlock();
 
 	return retval;
-}
-
-/* add for setting critical thread with light load to rt */
-int oplus_sched_set_rt_nocheck(struct task_struct *p)
-{
-	struct sched_param param = { .sched_priority = 1 };
-
-	if (!p)
-		return -1;
-
-	return sched_setscheduler_nocheck(p, SCHED_FIFO, &param);
 }
 
 /*
@@ -7582,6 +7573,11 @@ int sched_cpu_deactivate(unsigned int cpu)
 static void sched_rq_cpu_starting(unsigned int cpu)
 {
 	struct rq *rq = cpu_rq(cpu);
+	struct rq_flags rf;
+
+	rq_lock_irqsave(rq, &rf);
+	walt_set_window_start(rq, &rf);
+	rq_unlock_irqrestore(rq, &rf);
 
 	rq->calc_load_update = calc_load_update;
 	update_max_interval();

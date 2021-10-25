@@ -35,7 +35,10 @@
 
 #include "flashlight-core.h"
 #include "flashlight-dt.h"
-
+#ifdef OPLUS_FEATURE_CAMERA_COMMON
+// Niepengfei@Cam.drv, 20201107, modify for torch current
+#include<soc/oppo/oppo_project.h>
+#endif
 /* device tree should be defined in flashlight-dt.h */
 #ifndef MT6360_DTNAME
 #define MT6360_DTNAME "mediatek,flashlights_mt6360"
@@ -57,6 +60,7 @@
 
 #define MT6360_LEVEL_NUM 32
 #define MT6360_LEVEL_TORCH 16
+
 #define MT6360_LEVEL_FLASH MT6360_LEVEL_NUM
 #define MT6360_WDT_TIMEOUT 1248 /* ms */
 #define MT6360_HW_TIMEOUT 400 /* ms */
@@ -96,6 +100,7 @@ struct mt6360_platform_data {
 /******************************************************************************
  * mt6360 operations
  *****************************************************************************/
+// Niepengfei@Cam.drv, 20201107, modify for torch current
 static const int mt6360_current[MT6360_LEVEL_NUM] = {
 	  25,   50,  75, 100, 125, 150, 175,  200,  225,  250,
 	 275,  300, 325, 350, 375, 400, 450,  500,  550,  600,
@@ -120,6 +125,11 @@ static const unsigned char mt6360_torch_level_rm_6885[MT6360_LEVEL_TORCH] = {
 	0x00, 0x01, 0x02, 0x06, 0x06, 0x0A, 0x06, 0x0E, 0x10, 0x12,
 	0x14, 0x16, 0x18, 0x1A, 0x1C, 0x1E
 };
+
+static const unsigned char mt6360_torch_level_rm_20730[MT6360_LEVEL_TORCH] = {
+	0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x08, 0x10, 0x12,
+	0x14, 0x16, 0x18, 0x1A, 0x1C, 0x1E
+};
 #endif
 
 
@@ -130,6 +140,11 @@ static const unsigned char mt6360_strobe_level[MT6360_LEVEL_FLASH] = {
 	0x64, 0x6C, 0x74, 0x78, 0x7C, 0x80, 0x84, 0x88, 0x8C, 0x90,
 	0x94, 0x98
 };
+
+
+
+
+/* 0x00~0x74 6.25mA/step 0x75~0xB1 12.5mA/step */
 
 static int mt6360_decouple_mode;
 static int mt6360_en_ch1;
@@ -221,6 +236,7 @@ static int mt6360_enable(void)
 			ret |= flashlight_set_mode(
 				flashlight_dev_ch2, FLASHLIGHT_MODE_OFF);
 	}
+
 	if (ret < 0)
 		pr_info("Failed to enable.\n");
 
@@ -317,7 +333,7 @@ static int mt6360_set_level_ch1(int level)
 
 	/* set brightness level */
 	#ifdef OPLUS_FEATURE_CAMERA_COMMON
-	/*zengzhancheng@Camera.Driver add for rm 5gb & 5gh torch duty */
+	// Niepengfei@Cam.drv, 20201107, modify for torch current
 	if (!mt6360_is_torch(level)) {
 		if (is_project(OPPO_20630) || is_project(OPPO_20631) || is_project(OPPO_20632) || is_project(OPPO_206B4)
 			|| is_project(OPPO_20633) || is_project(OPPO_20634) || is_project(OPPO_20635) || is_project(OPPO_20610)
@@ -326,9 +342,13 @@ static int mt6360_set_level_ch1(int level)
 			|| is_project(OPPO_20625) || is_project(OPPO_20626)) {
 			flashlight_set_torch_brightness(
 				flashlight_dev_ch1, mt6360_torch_level_rm_6853[level]);
-		} else if (is_project(OPPO_20601) || is_project(OPPO_20602) || is_project(OPPO_20660)){
+		}else if (is_project(OPPO_20601) || is_project(OPPO_20602) || is_project(OPPO_20660)){
 			flashlight_set_torch_brightness(
 				flashlight_dev_ch1, mt6360_torch_level_rm_6885[level]);
+		} else if (is_project(20732) || is_project(20731) || is_project(20730)){
+			printk("enter 20730 20731 20732 set_torch_brightness");
+			flashlight_set_torch_brightness(
+				flashlight_dev_ch1, mt6360_torch_level_rm_20730[level]);
 		} else {
 			printk("enter set_torch_brightness");
 			flashlight_set_torch_brightness(

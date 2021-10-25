@@ -1115,6 +1115,15 @@ p2pFuncTxMgmtFrame(IN struct ADAPTER *prAdapter,
 			nicTxConfigPktControlFlag(prMgmtTxMsdu,
 				MSDU_CONTROL_FLAG_FORCE_TX, TRUE);
 
+		/* Optimization for timing critical p2p frames */
+		if (p2pFuncIsTimingCriticalFrames(prAdapter,
+			eConnState, prMgmtTxMsdu)) {
+			nicTxSetPktLifeTime(prMgmtTxMsdu, 100);
+			nicTxSetPktRetryLimit(prMgmtTxMsdu,
+				TX_DESC_TX_COUNT_NO_LIMIT);
+			nicTxSetForceRts(prMgmtTxMsdu, TRUE);
+		}
+
 		nicTxEnqueueMsdu(prAdapter, prMgmtTxMsdu);
 
 
@@ -5102,18 +5111,10 @@ p2pFuncProcessP2pProbeRspAction(IN struct ADAPTER *prAdapter,
 				DBGLOG(P2P, INFO,
 				       "WFD IE is found in probe resp (supp). Len %u\n",
 				       IE_SIZE(pucIEBuf));
-				if ((sizeof(
-				prAdapter->prGlueInfo
-				->prP2PInfo
-				[((struct BSS_INFO *)*prP2pBssInfo)
-				->u4PrivateData]
-				->aucWFDIE)
-				>=
-				(prAdapter->prGlueInfo
-				->prP2PInfo
-				[((struct BSS_INFO *)*prP2pBssInfo)
-				->u4PrivateData]->u2WFDIELen +
-				IE_SIZE(pucIEBuf)))) {
+				if ((sizeof(prAdapter->prGlueInfo->prP2PInfo
+					[((struct BSS_INFO *)*prP2pBssInfo)
+					->u4PrivateData]->aucWFDIE)
+					>= IE_SIZE(pucIEBuf))) {
 					*fgIsWFDIE = TRUE;
 					kalMemCopy(prAdapter->prGlueInfo
 						->prP2PInfo
@@ -5125,7 +5126,7 @@ p2pFuncProcessP2pProbeRspAction(IN struct ADAPTER *prAdapter,
 						->prP2PInfo
 						[((struct BSS_INFO *)
 						*prP2pBssInfo)
-						->u4PrivateData]->u2WFDIELen +=
+						->u4PrivateData]->u2WFDIELen =
 						IE_SIZE(pucIEBuf);
 				}
 			}	/*  VENDOR_OUI_TYPE_WFD */
@@ -5971,13 +5972,16 @@ uint32_t wfdFuncCalculateWfdIELenForAssocRsp(IN struct ADAPTER *prAdapter,
 #if CFG_SUPPORT_WFD_COMPOSE_IE
 	uint16_t u2EstimatedExtraIELen = 0;
 	struct BSS_INFO *prBssInfo = (struct BSS_INFO *) NULL;
+	struct WFD_CFG_SETTINGS *prWfdCfgSettings =
+		(struct WFD_CFG_SETTINGS *) NULL;
 
 	prBssInfo = GET_BSS_INFO_BY_INDEX(prAdapter, ucBssIndex);
+	prWfdCfgSettings = &(prAdapter->rWifiVar.rWfdConfigureSettings);
 
 	if (prBssInfo->eNetworkType != NETWORK_TYPE_P2P)
 		return 0;
 
-	if (!IS_STA_P2P_TYPE(prStaRec))
+	if (!IS_STA_P2P_TYPE(prStaRec) || !prWfdCfgSettings->ucWfdEnable)
 		return 0;
 
 	u2EstimatedExtraIELen = prAdapter->prGlueInfo->
@@ -6002,6 +6006,8 @@ void wfdFuncGenerateWfdIEForAssocRsp(IN struct ADAPTER *prAdapter,
 	struct BSS_INFO *prP2pBssInfo = (struct BSS_INFO *) NULL;
 	struct GLUE_INFO *prGlueInfo;
 	struct GL_P2P_INFO *prP2PInfo;
+	struct WFD_CFG_SETTINGS *prWfdCfgSettings =
+		(struct WFD_CFG_SETTINGS *) NULL;
 
 	if (!prAdapter || !prMsduInfo)
 		return;
@@ -6023,6 +6029,10 @@ void wfdFuncGenerateWfdIEForAssocRsp(IN struct ADAPTER *prAdapter,
 
 	prP2PInfo = prGlueInfo->prP2PInfo[prP2pBssInfo->u4PrivateData];
 	if (!prP2PInfo)
+		return;
+
+	prWfdCfgSettings = &(prAdapter->rWifiVar.rWfdConfigureSettings);
+	if (!prWfdCfgSettings->ucWfdEnable)
 		return;
 
 	u2EstimatedExtraIELen = prP2PInfo->u2WFDIELen;
@@ -6276,7 +6286,8 @@ void p2pFuncSwitchSapChannel(
 	} else {
 		/* Get current channel info */
 		ucStaChannelNum = prAisBssInfo->ucPrimaryChannel;
-		eStaBand = prAisBssInfo->eBand;
+		eStaBand = (prAisBssInfo->ucPrimaryChannel <= 14)
+			? BAND_2G4 : BAND_5G;
 #if CFG_SUPPORT_SAP_DFS_CHANNEL
 		/* restore DFS channels table */
 		wlanUpdateDfsChannelTable(prAdapter->prGlueInfo,
@@ -7194,5 +7205,45 @@ uint8_t p2pFuncIsBufferableMMPDU(IN struct ADAPTER *prAdapter,
 	}
 	DBGLOG(P2P, TRACE, "fgIsBufferableMMPDU = %u\n", fgIsBufferableMMPDU);
 	return fgIsBufferableMMPDU;
+}
+
+uint8_t p2pFuncIsTimingCriticalFrames(
+		IN struct ADAPTER *prAdapter,
+		IN enum ENUM_P2P_CONNECT_STATE eConnState,
+		IN struct MSDU_INFO *prMgmtTxMsdu)
+{
+	struct WLAN_MAC_HEADER *prWlanHdr = (struct WLAN_MAC_HEADER *) NULL;
+	uint16_t u2TxFrameCtrl;
+	uint8_t fgIsTimingCritical = FALSE;
+
+	prWlanHdr = (struct WLAN_MAC_HEADER *)
+		((unsigned long) prMgmtTxMsdu->prPacket +
+		MAC_TX_RESERVED_FIELD);
+
+	if (!prWlanHdr) {
+		DBGLOG(P2P, ERROR, "prWlanHdr is NULL\n");
+		return FALSE;
+	}
+	u2TxFrameCtrl = prWlanHdr->u2FrameCtrl & MASK_FRAME_TYPE;
+
+	switch (u2TxFrameCtrl) {
+	case MAC_FRAME_ACTION:
+		switch (eConnState) {
+		case P2P_CNN_GO_NEG_REQ:
+		case P2P_CNN_INVITATION_REQ:
+			fgIsTimingCritical = TRUE;
+			break;
+		default:
+			break;
+		}
+		break;
+	case MAC_FRAME_PROBE_REQ:
+		fgIsTimingCritical = TRUE;
+		break;
+	default:
+		break;
+	}
+
+	return fgIsTimingCritical;
 }
 

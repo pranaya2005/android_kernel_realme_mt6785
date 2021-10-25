@@ -70,6 +70,8 @@ static int sec_set_no_handle_area(struct kernel_grip_info *grip_info);
 static int sec_set_condition_frame_limit(int frame_limit);
 static int sec_set_large_frame_limit(int frame_limit);
 static void sec_set_grip_touch_direction(uint8_t dir);
+static void sec_calibrate(struct seq_file *s, void *chip_data);
+static bool sec_get_cal_status(struct seq_file *s, void *chip_data);
 
 /**************************** end of function delcare*****************************************/
 
@@ -1797,6 +1799,9 @@ static struct oppo_touchpanel_operations sec_ops = {
 #endif
     .smooth_lv_set              = sec_smooth_lv_set,
     .sensitive_lv_set           = sec_sensitive_lv_set,
+    .calibrate			= sec_calibrate,
+    .get_cal_status	   = sec_get_cal_status,
+
 };
 /********* End of implementation of oppo_touchpanel_operations callbacks**********************/
 
@@ -2980,8 +2985,10 @@ static void sec_calibrate(struct seq_file *s, void *chip_data)
 
     ret = sec_get_verify_result(chip_info);
     if (ret) {
+        TPD_INFO("1 error, get calibration result failed\n");
         seq_printf(s, "1 error, calibration verify failed(%d)\n", ret);
     } else {
+        TPD_INFO("0 error, calibration and verify success\n");
         seq_printf(s, "0 error, calibration and verify success\n");
         sec_write_calibration_status(chip_info);
     }
@@ -3458,9 +3465,7 @@ static struct fw_grip_operations sec_fw_touch_dir_op = {
 
 static struct sec_proc_operations sec_proc_ops = {
     .auto_test          = sec_auto_test,
-    .calibrate          = sec_calibrate,
     .verify_calibration = sec_verify_calibration,
-    .get_cal_status     = sec_get_cal_status,
     .set_kernel_grip_para = sec_set_kernel_grip_para,
 };
 

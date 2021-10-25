@@ -35,6 +35,8 @@
 #include <linux/power_supply.h>
 /*Yong.Liu@BSP.CHG.Basic, 2020/09/29, Modify for USB otg*/
 #include <soc/oppo/oppo_project.h>
+extern unsigned int is_project(int project );
+extern void oplus_chg_set_otg_online(bool online);
 #endif /* OPLUS_FEATURE_CHG_BASIC */
 static struct notifier_block otg_nb;
 static struct tcpc_device *otg_tcpc_dev;
@@ -76,12 +78,6 @@ static void do_register_otg_work(struct work_struct *data)
 #endif /* OPLUS_FEATURE_CHG_BASIC */
 }
 #endif
-#endif
-
-#ifdef OPLUS_FEATURE_CHG_BASIC
-/*Liu.Yong@ODM_WT.BSP.Storage.otg, 2020/12/15, Modify for Monet otg_switch*/
-extern unsigned int is_project(int project );
-extern void oplus_chg_set_otg_online(bool online);
 #endif
 
 static void mt_usb_host_connect(int delay);
@@ -493,9 +489,21 @@ void switch_int_to_host(struct musb *musb)
 static irqreturn_t mt_usb_ext_iddig_int(int irq, void *dev_id);
 void musb_ctrl_host(bool on_off)
 {
-	if(is_project(19747) || is_project(0x206AC))
+	if(is_project(19747) ||
+		is_project(0x206AC) ||
+		is_project(20761) ||
+		is_project(20762) ||
+		is_project(20764) ||
+		is_project(20766) ||
+		is_project(20767) ||
+		is_project(0x2167A) ||
+		is_project(0x2167B) ||
+		is_project(0x2167C) ||
+		is_project(0x2167D) ||
+		is_project(0x216AF) ||
+		is_project(0x216B0) ||
+		is_project(0x216B1))
 	{
-#ifdef CONFIG_TCPC_CLASS
 		if (!otg_tcpc_dev) {
 			DBG(0, "host not inited, directly return\n");
 			return;
@@ -507,7 +515,6 @@ void musb_ctrl_host(bool on_off)
 			tcpm_typec_change_role(otg_tcpc_dev, TYPEC_ROLE_SNK);
 		else
 			tcpm_typec_change_role(otg_tcpc_dev, TYPEC_ROLE_DRP);
-#endif
 	} else {
 		if(on_off == false) {
 			if (iddig_req_host) {
@@ -859,7 +866,20 @@ void mt_usb_otg_init(struct musb *musb)
 #ifdef CONFIG_MTK_USB_TYPEC
 #ifdef OPLUS_FEATURE_CHG_BASIC
 /*Liu.Yong@ODM_WT.BSP.Storage.otg, 2020/12/15,  Modify for USB*/
-	if (is_project(19747) || is_project(0x206AC)) {
+	if (is_project(19747) ||
+		is_project(0x206AC) ||
+		is_project(20761) ||
+		is_project(20762) ||
+		is_project(20764) ||
+		is_project(20766) ||
+		is_project(20767) ||
+		is_project(0x2167A) ||
+		is_project(0x2167B) ||
+		is_project(0x2167C) ||
+		is_project(0x2167D) ||
+		is_project(0x216AF) ||
+		is_project(0x216B0) ||
+		is_project(0x216B1)) {
 		DBG(0, "with TYPEC in special mode %d, keep going\n",
 			get_boot_mode());
 	}
@@ -879,9 +899,23 @@ void mt_usb_otg_init(struct musb *musb)
 	ktime_start = ktime_get();
 
 	/* CONNECTION MANAGEMENT*/
+#ifdef CONFIG_MTK_USB_TYPEC
 #ifdef OPLUS_FEATURE_CHG_BASIC
 /*Liu.Yong@ODM_WT.BSP.Storage.otg, 2020/12/15, Modify for Monet otg_switch*/
-	if (is_project(19747) || is_project(0x206AC)) {
+	if (is_project(19747) ||
+		is_project(0x206AC) ||
+		is_project(20761) ||
+		is_project(20762) ||
+		is_project(20764) ||
+		is_project(20766) ||
+		is_project(20767) ||
+		is_project(0x2167A) ||
+		is_project(0x2167B) ||
+		is_project(0x2167C) ||
+		is_project(0x2167D) ||
+		is_project(0x216AF) ||
+		is_project(0x216B0) ||
+		is_project(0x216B1)) {
 		DBG(0, "host controlled by TYPEC\n");
 		typec_control = 1;
 #ifdef CONFIG_TCPC_CLASS
@@ -895,6 +929,7 @@ void mt_usb_otg_init(struct musb *musb)
 		vbus_control = 1;
 	}
 #endif /*OPLUS_FEATURE_CHG_BASIC*/
+#endif
 
 	/* EP table */
 	musb->fifo_cfg_host = fifo_cfg_host;

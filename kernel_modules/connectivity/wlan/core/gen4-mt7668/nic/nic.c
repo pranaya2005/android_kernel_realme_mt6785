@@ -268,6 +268,9 @@ VOID nicReleaseAdapterMemory(IN P_ADAPTER_T prAdapter)
 	P_TX_CTRL_T prTxCtrl;
 	P_RX_CTRL_T prRxCtrl;
 	UINT_32 u4Idx;
+#if defined(_HIF_USB)
+	P_GLUE_INFO_T prGlueInfo = NULL;
+#endif
 
 	ASSERT(prAdapter);
 	prTxCtrl = &prAdapter->rTxCtrl;
@@ -335,7 +338,15 @@ VOID nicReleaseAdapterMemory(IN P_ADAPTER_T prAdapter)
 
 		if (!wlanIsChipNoAck(prAdapter)) {
 			/* Skip this ASSERT if chip is no ACK */
-			ASSERT(prAdapter->u4MemFreeDynamicCount == prAdapter->u4MemAllocDynamicCount);
+#if defined(_HIF_USB)
+			prGlueInfo = prAdapter->prGlueInfo;
+			if (prGlueInfo->rHifInfo.DriverFWStat ==
+				USB_STATE_SUSPEND)
+				DBGLOG(MEM, ERROR, "UsbResumeDone not ready\n");
+			else
+#endif
+				ASSERT(prAdapter->u4MemFreeDynamicCount ==
+					prAdapter->u4MemAllocDynamicCount);
 		}
 	} while (FALSE);
 #endif

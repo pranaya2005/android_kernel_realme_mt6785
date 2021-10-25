@@ -2682,9 +2682,12 @@ mtk_p2p_wext_discovery_results(IN struct net_device *prDev,
 				 prTargetResult->ucDeviceCapabilityBitmap, prTargetResult->ucGroupCapabilityBitmap,
 				 (UINT_8) prTargetResult->u2ConfigMethod,
 				 (UINT_8) (prTargetResult->u2ConfigMethod >> 8), '\0');
+			if (u4Offset < 0) {
+				DBGLOG(INIT, LOUD, "u4Offset = [%u]\n", u4Offset);
+				return -1;
+			}
 			current_ev =
 			    iwe_stream_add_point(info, current_ev, extra + IW_SCAN_MAX_DATA, &iwe, (char *)data);
-			DBGLOG(INIT, LOUD, "u4Offset = [%u]\n", u4Offset);
 
 			/* printk("%s\n", data); */
 			kalMemZero(data, 40);
@@ -2695,13 +2698,17 @@ mtk_p2p_wext_discovery_results(IN struct net_device *prDev,
 			if (iwe.u.data.length > 40)
 				iwe.u.data.length = 40;
 
-			snprintf(data, iwe.u.data.length, "p2p_dev_type=%02x%02x%02x%02x%02x%02x%c",
+			u4Offset = snprintf(data, iwe.u.data.length, "p2p_dev_type=%02x%02x%02x%02x%02x%02x%c",
 				 (UINT_8) prTargetResult->rPriDevType.u2CategoryID,
 				 (UINT_8) prTargetResult->rPriDevType.u2SubCategoryID,
 				 (UINT_8) prTargetResult->arSecDevType[0].u2CategoryID,
 				 (UINT_8) prTargetResult->arSecDevType[0].u2SubCategoryID,
 				 (UINT_8) prTargetResult->arSecDevType[1].u2CategoryID,
 				 (UINT_8) prTargetResult->arSecDevType[1].u2SubCategoryID, '\0');
+			if (u4Offset < 0) {
+				DBGLOG(INIT, LOUD, "u4Offset = [%u]\n", u4Offset);
+				return -1;
+			}
 			current_ev =
 			    iwe_stream_add_point(info, current_ev, extra + IW_SCAN_MAX_DATA, &iwe, (char *)data);
 			/* printk("%s\n", data); */
@@ -2714,8 +2721,13 @@ mtk_p2p_wext_discovery_results(IN struct net_device *prDev,
 			if (iwe.u.data.length > 40)
 				iwe.u.data.length = 40;
 
-			snprintf(data, iwe.u.data.length, "p2p_grp_bssid= %pM %c",
+			u4Offset =
+			    snprintf(data, iwe.u.data.length, "p2p_grp_bssid= %pM %c",
 				 prTargetResult->aucBSSID, '\0');
+			if (u4Offset < 0) {
+				DBGLOG(INIT, LOUD, "u4Offset = [%u]\n", u4Offset);
+				return -1;
+			}
 			current_ev = iwe_stream_add_point(info, current_ev,
 							  extra + IW_SCAN_MAX_DATA, &iwe, (char *)data);
 			/* printk("%s\n", data); */
@@ -3096,7 +3108,10 @@ BOOLEAN kalP2PIndicateFound(IN P_GLUE_INFO_T prGlueInfo)
 
 	u4Offset =
 		snprintf(aucBuffer, IW_CUSTOM_MAX - 1, "P2P_DVC_FND");
-	DBGLOG(INIT, LOUD, "u4Offset = [%u]\n", u4Offset);
+	if (u4Offset < 0) {
+		DBGLOG(INIT, LOUD, "u4Offset = [%u]\n", u4Offset);
+		return FALSE;
+	}
 	evt.data.length = strlen(aucBuffer);
 
 	/* indicate IWEVP2PDVCFND event */

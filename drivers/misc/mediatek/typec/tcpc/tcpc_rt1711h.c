@@ -173,6 +173,12 @@ static const rt_register_map_t rt1711_chip_regmap[] = {
 #define RT1711_CHIP_REGMAP_SIZE ARRAY_SIZE(rt1711_chip_regmap)
 
 #endif /* CONFIG_RT_REGMAP */
+enum LOGIC_CC_ID
+{
+	RT1711,
+	ET7303,
+};
+static int logic_cc_id;
 
 static int rt1711_read_device(void *client, u32 reg, int len, void *dst)
 {
@@ -471,8 +477,12 @@ static int rt1711_init_rt_mask(struct tcpc_device *tcpc)
 #endif /* CONFIG_TYPEC_CAP_RA_DETACH */
 
 #ifdef CONFIG_TYPEC_CAP_LPM_WAKEUP_WATCHDOG
-	if (tcpc->tcpc_flags & TCPC_FLAGS_LPM_WAKEUP_WATCHDOG)
-		rt_mask |= RT1711H_REG_M_WAKEUP;
+	if (tcpc->tcpc_flags & TCPC_FLAGS_LPM_WAKEUP_WATCHDOG) {
+		if(logic_cc_id == ET7303)
+			rt_mask |= RT1711H_REG_M_WAKEUP | RT1711H_REG_M_VBUS_80;
+		else
+			rt_mask |= RT1711H_REG_M_WAKEUP;
+	}
 #endif	/* CONFIG_TYPEC_CAP_LPM_WAKEUP_WATCHDOG */
 
 	return rt1711_i2c_write8(tcpc, RT1711H_REG_RT_MASK, rt_mask);
@@ -743,6 +753,14 @@ static int rt1711_tcpc_init(struct tcpc_device *tcpc, bool sw_reset)
 			TCPC_V10_REG_FAULT_CTRL_DIS_VCONN_OV);
 	}
 
+	if (logic_cc_id == ET7303) {
+	ret = rt1711_i2c_read8(tcpc, RT1711H_REG_RT_INT);
+	if (ret < 0) {
+			RT1711_INFO("RT1711H_REG_RT_INT read error!\n");
+			return ret;
+	}
+	rt1711_i2c_write8(tcpc, RT1711H_REG_RT_INT, ret);
+	}
 	/*
 	 * CC Detect Debounce : 26.7*val us
 	 * Transition window count : spec 12~20us, based on 2.4MHz
@@ -954,10 +972,15 @@ static int rt1711_enable_vsafe0v_detect(
 	if (ret < 0)
 		return ret;
 
-	if (enable)
+
+	if (logic_cc_id == ET7303) {
 		ret |= RT1711H_REG_M_VBUS_80;
-	else
-		ret &= ~RT1711H_REG_M_VBUS_80;
+	} else {
+		if (enable)
+			ret |= RT1711H_REG_M_VBUS_80;
+		else
+			ret &= ~RT1711H_REG_M_VBUS_80;
+	}
 
 	rt1711_i2c_write8(tcpc, RT1711H_REG_RT_MASK, (uint8_t) ret);
 	return 0;
@@ -1070,7 +1093,7 @@ static int rt1711_set_low_power_mode(
 		struct tcpc_device *tcpc_dev, bool en, int pull)
 {
 	int rv = 0;
-	uint8_t data;
+	uint8_t data,temp;
 
 	if (en) {
 		data = RT1711H_REG_BMCIO_LPEN;
@@ -1079,15 +1102,35 @@ static int rt1711_set_low_power_mode(
 			data |= RT1711H_REG_BMCIO_LPRPRD;
 
 #ifdef CONFIG_TYPEC_CAP_NORP_SRC
-		data |= RT1711H_REG_BMCIO_BG_EN | RT1711H_REG_VBUS_DET_EN;
+		if(logic_cc_id == ET7303)
+			data |= RT1711H_REG_VBUS_DET_EN; //RT1711H_REG_BMCIO_BG_EN | RT1711H_REG_VBUS_DET_EN;
+		else
+			data |= RT1711H_REG_BMCIO_BG_EN | RT1711H_REG_VBUS_DET_EN;
 #endif
+
+		if(logic_cc_id == ET7303){
+			temp = rt1711_i2c_read8(tcpc_dev, 0x10);
+			pr_info("%s 0x10=%d  0x10\n", __func__,temp);
+			rv = rt1711_i2c_write8(tcpc_dev, 0x10, temp);
+
+			temp = rt1711_i2c_read8(tcpc_dev, RT1711H_REG_RT_INT);
+			pr_info("%s 0x10=%d  0x98\n", __func__,temp);
+			rv = rt1711_i2c_write8(tcpc_dev, RT1711H_REG_RT_INT, temp);
+
+			rv = rt1711_i2c_write8(tcpc_dev, RT1711H_REG_BMC_CTRL, 0x0E);
+			temp = rt1711_i2c_read8(tcpc_dev, 0x90);
+			pr_info("%s 0x90=%d  0x90\n", __func__,temp);
+		}
+
 	} else {
 		data = RT1711H_REG_BMCIO_BG_EN |
 			RT1711H_REG_VBUS_DET_EN | RT1711H_REG_BMCIO_OSC_EN;
 		rt1711_enable_vsafe0v_detect(tcpc_dev, true);
 	}
 
-	rv = rt1711_i2c_write8(tcpc_dev, RT1711H_REG_BMC_CTRL, data);
+	if(logic_cc_id != ET7303)
+		rv = rt1711_i2c_write8(tcpc_dev, RT1711H_REG_BMC_CTRL, data);
+
 	return rv;
 }
 #endif	/* CONFIG_TCPC_LOW_POWER_MODE */
@@ -1492,7 +1535,8 @@ static int rt1711_tcpcdev_init(struct rt1711_chip *chip, struct device *dev)
 }
 
 #define RICHTEK_1711_VID	0x29cf
-#define ET7303_VID		0x6dcf
+/*EVEN gudi@BSP.CHG.Basic, 20200227, ADD ET7303 VID*/
+#define RICHTEK_7303_VID	0x6dcf
 #define RICHTEK_1711_PID	0x1711
 
 static inline int rt1711h_check_revision(struct i2c_client *client)
@@ -1507,10 +1551,18 @@ static inline int rt1711h_check_revision(struct i2c_client *client)
 		return -EIO;
 	}
 
-	pr_err("%s VID=0x%04x\n", __func__, vid);
-	if (vid != RICHTEK_1711_VID && vid != ET7303_VID) {
-		pr_info("%s failed, VID=0x%04x\n", __func__, vid);
+/*EVEN gudi@BSP.CHG.Basic, 20200227, ADD ET7303 VID*/
+	if ((vid != RICHTEK_1711_VID) && (vid != RICHTEK_7303_VID)) {
+		pr_err("%s failed, VID=0x%04x\n", __func__, vid);
 		return -ENODEV;
+	}
+
+	if (vid == RICHTEK_7303_VID) {
+		logic_cc_id = ET7303;
+		pr_err("%s found ET7303\n", __func__);
+	}else {
+		logic_cc_id = RT1711;
+		pr_err("%s found RT1711\n", __func__);
 	}
 
 	ret = rt1711_read_device(client, TCPC_V10_REG_PID, 2, &pid);
@@ -1556,7 +1608,6 @@ static int rt1711_i2c_probe(struct i2c_client *client,
 	chip_id = rt1711h_check_revision(client);
 	if (chip_id < 0)
 		return chip_id;
-
 #if TCPC_ENABLE_ANYMSG
 	check_printk_performance();
 #endif /* TCPC_ENABLE_ANYMSG */
@@ -1659,12 +1710,39 @@ static int rt1711_i2c_resume(struct device *dev)
 static void rt1711_shutdown(struct i2c_client *client)
 {
 	struct rt1711_chip *chip = i2c_get_clientdata(client);
+	uint8_t temp, count = 0;
 
 	/* Please reset IC here */
 	if (chip != NULL) {
 		if (chip->irq)
 			disable_irq(chip->irq);
 		tcpm_shutdown(chip->tcpc);
+
+		if(logic_cc_id == ET7303) {
+			for(count = 0;count < 5; count++)
+			{
+				temp = i2c_smbus_read_byte_data(client, 0x10);
+				pr_info("%s read(after write) %d 0x10 = %d\n", __func__, count, temp);
+				i2c_smbus_write_byte_data(client, 0x10, temp);
+
+				temp = i2c_smbus_read_byte_data(client, 0x90);
+				pr_info("%s read(befor write) %d 0x90 = %d\n", __func__, count, temp);
+				i2c_smbus_write_byte_data(client, RT1711H_REG_BMC_CTRL, 0x08);
+				temp = i2c_smbus_read_byte_data(client, 0x90);
+				pr_info("%s read(after write) %d 0x90 = %d\n", __func__, count, temp);
+
+				i2c_smbus_write_byte_data(client, 0x9e, 0x00);
+				temp = i2c_smbus_read_byte_data(client, 0x9e);
+				pr_info("%s read(after write) %d 0x9e = %d\n", __func__, count, temp);
+
+				i2c_smbus_write_byte_data(client, 0x9c, 0x00);
+				temp = i2c_smbus_read_byte_data(client, 0x9c);
+				pr_info("%s read(after write) %d 0x9c = %d\n", __func__, count, temp);
+
+				mdelay(50);
+			}
+		}
+
 	} else {
 		i2c_smbus_write_byte_data(
 			client, RT1711H_REG_SWRESET, 0x01);

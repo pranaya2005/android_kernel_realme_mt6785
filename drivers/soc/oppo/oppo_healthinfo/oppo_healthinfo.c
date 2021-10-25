@@ -26,17 +26,9 @@
 #include <linux/process_mm_reclaim.h>
 #endif
 
-#ifdef CONFIG_VIRTUAL_RESERVE_MEMORY
-#include <linux/resmap_account.h>
-#endif
-
 #define BUFFER_SIZE_S 256
 #define BUFFER_SIZE_M 512
 #define BUFFER_SIZE_L 1024
-#if defined(VENDOR_EDIT) && defined(CONFIG_VIRTUAL_RESERVE_MEMORY)
-//Peifeng.Li@PSW.Kernel.BSP.Memory, 2020/04/22,virtual reserve memory
-#include <linux/vm_anti_fragment.h>
-#endif
 struct sched_stat_para oppo_sched_para[OHM_SCHED_TOTAL];
 static char *sched_list[OHM_TYPE_TOTAL] = {
         /* SCHED_STATS 0 -11 */
@@ -102,12 +94,8 @@ void ohm_action_trig_with_msg(int type, char *msg)
                 ohm_err("kobj NULL\n");
                 return;
         }
-#if defined(VENDOR_EDIT) && defined(CONFIG_VIRTUAL_RESERVE_MEMORY)
-//Peifeng.Li@PSW.Kernel.BSP.Memory, 2020/04/22,virtual reserve memory
-        if (OHM_SVM_MON == type || OHM_RLIMIT_MON == type || OHM_MEM_VMA_ALLOC_ERR == type) {
-#else
-	if (OHM_SVM_MON == type || OHM_RLIMIT_MON == type ) {
-#endif
+	//Peifeng.Li@PSW.Kernel.BSP.Memory, 2020/04/22,virtual reserve memory
+	if (OHM_SVM_MON == type || OHM_RLIMIT_MON == type || OHM_MEM_VMA_ALLOC_ERR == type) {
                 sprintf(ohm_detect_env[1], "OHMTYPE=%s", sched_list[type]);
 		len = snprintf(msg_buf, OH_MSG_LEN-1, "OHMMSG=%s", msg);
 		msg_buf[len] = '\0';
@@ -872,21 +860,18 @@ static struct proc_dir_entry *oppo_healthinfo = NULL;
 static struct proc_dir_entry *sched_thresh = NULL;
 
 #ifdef CONFIG_KMALLOC_DEBUG
-/* Kui.Zhang@tech.kernel.mm, 2020-02-13, operations of vmalloc_debug and
- * kmalloc_debug. */
-
+/* operations of vmalloc_debug and kmalloc_debug */
 extern int __weak create_kmalloc_debug(struct proc_dir_entry *parent);
 #endif
 #ifdef CONFIG_VMALLOC_DEBUG
-/* Kui.Zhang@tech.kernel.mm, 2020-02-13, operations of vmalloc_debug and
- * kmalloc_debug. */
 extern int __weak create_vmalloc_debug(struct proc_dir_entry *parent);
 #endif
 #if defined(OPLUS_FEATURE_MULTI_KSWAPD) && defined(CONFIG_OPPO_MULTI_KSWAPD)
-/* Kui.Zhang@PSW.Kernel.MM, 2020/10/14, multi kswapd support
- * create proc fs file node.
- */
+/* multi kswapd support create proc fs file node */
 extern int create_kswapd_threads_proc(struct proc_dir_entry *parent);
+#endif
+#ifdef CONFIG_VIRTUAL_RESERVE_MEMORY
+extern int create_reserved_area_enable_proc(struct proc_dir_entry *parent);
 #endif
 
 static int __init oppo_healthinfo_init(void)
@@ -980,25 +965,6 @@ static int __init oppo_healthinfo_init(void)
 	}
 #endif
 #endif
-#if defined(VENDOR_EDIT) && defined(CONFIG_VIRTUAL_RESERVE_MEMORY)
-//Peifeng.Li@PSW.Kernel.BSP.Memory, 2020/04/22,virtual reserve memory
-    pentry = proc_create("vm_fra_op_enabled", S_IRWXUGO, oppo_healthinfo, &vm_fra_op_fops);
-	if(!pentry) {
-		ohm_err("create  proc vm_fra_op_enabled failed.\n");
-		goto ERROR_INIT_VERSION;
-	}
-
-	pentry = proc_create("vm_search_two_way_enabled", S_IRWXUGO, oppo_healthinfo, &vm_search_two_way_fops);
-	if(!pentry) {
-		ohm_err("create  proc  vm_search_two_way failed.\n");
-		goto ERROR_INIT_VERSION;
-	}
-#endif
-#ifdef CONFIG_VIRTUAL_RESERVE_MEMORY
-	ret = create_reserved_area_enable_proc(oppo_healthinfo);
-	if (ret)
-		goto ERROR_INIT_VERSION;
-#endif
 
 #ifdef CONFIG_PROCESS_RECLAIM_ENHANCE
 	ret = create_process_reclaim_enable_proc(oppo_healthinfo);
@@ -1031,32 +997,31 @@ static int __init oppo_healthinfo_init(void)
         goto ERROR_INIT_VERSION;
     }
 #ifdef CONFIG_VMALLOC_DEBUG
-	/* Kui.Zhang@tech.kernel.mm, 2020-02-13, create the vmalloc_debug
-	 * file node.
-	 */
+	/* create the vmalloc_debug file node */
 	ret = create_vmalloc_debug(oppo_healthinfo);
 	if (ret)
 		goto ERROR_INIT_VERSION;
 #endif
 
 #ifdef CONFIG_KMALLOC_DEBUG
-	/* Kui.Zhang@tech.kernel.mm, 2020-02-13, create the kmalloc_debug
-	 * file node.
-	 */
+	/* create the kmalloc_debug file node. */
 	ret = create_kmalloc_debug(oppo_healthinfo);
 	if (ret)
 		goto ERROR_INIT_VERSION;
 #endif
 
 #if defined(OPLUS_FEATURE_MULTI_KSWAPD) && defined(CONFIG_OPPO_MULTI_KSWAPD)
-	/* Kui.Zhang@tech.kernel.mm, 2020-10-14, create the kswapd_threads
-	 * file node.
-	 */
+	/* create the kswapd_threads file node */
 	ret = create_kswapd_threads_proc(oppo_healthinfo);
 	if (ret)
 		goto ERROR_INIT_VERSION;
 #endif
-
+#ifdef CONFIG_VIRTUAL_RESERVE_MEMORY
+	/* create vm_featurre file node */
+	ret = create_reserved_area_enable_proc(oppo_healthinfo);
+	if (ret)
+		goto ERROR_INIT_VERSION;
+#endif
         ohm_debug("Success \n");
 	return ret;
 

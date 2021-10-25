@@ -443,6 +443,7 @@ struct mt_i2c {
 #endif /*OPLUS_FEATURE_CHG_BASIC*/
 };
 
+
 #if defined(CONFIG_MTK_FPGA) || defined(CONFIG_FPGA_EARLY_PORTING)
 #define CONFIG_MT_I2C_FPGA_ENABLE
 #endif

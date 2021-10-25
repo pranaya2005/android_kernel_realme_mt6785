@@ -249,7 +249,7 @@ static struct imgsensor_info_struct imgsensor_info = {
 	.sensor_output_dataformat = SENSOR_OUTPUT_FORMAT_RAW_4CELL_HW_BAYER_B,
 	.mclk = 24,//mclk value, suggest 24 or 26 for 24Mhz or 26Mhz
 	.mipi_lane_num = SENSOR_MIPI_4_LANE,//mipi lane num
-	.i2c_addr_table = { 0x20, 0x21, 0xff},
+	.i2c_addr_table = { 0x6C, 0x20, 0xff},
 	.i2c_speed = 400,
 };
 
@@ -1704,8 +1704,8 @@ static void set_mirror_flip(kal_uint8 image_mirror)
 	value_3821 = read_cmos_sensor(0x3821);
 	switch (image_mirror) {
 	case IMAGE_NORMAL:
-		write_cmos_sensor(0x3820, value_3820&(~(1<<2)));//bit2Ã‡Ã¥0
-		write_cmos_sensor(0x3821, value_3821|(1<<2));//bit2Ã–Ãƒ1
+		write_cmos_sensor(0x3820, value_3820&(~(1<<2)));//bit2Çå0
+		write_cmos_sensor(0x3821, value_3821|(1<<2));//bit2ÖÃ1
 		break;
 
 	case IMAGE_V_MIRROR:
@@ -3576,9 +3576,6 @@ static kal_uint32 feature_control(
 		LOG_INF("feature_id = %d\n", feature_id);
 
 	switch (feature_id) {
-	case SENSOR_FEATURE_GET_OFFSET_TO_START_OF_EXPOSURE:
-        *(MINT32 *)(signed long)(*(feature_data + 1)) = -26598000;
-        break;
 	case SENSOR_FEATURE_GET_GAIN_RANGE_BY_SCENARIO:
 		*(feature_data + 1) = imgsensor_info.min_gain;
 		*(feature_data + 2) = imgsensor_info.max_gain;

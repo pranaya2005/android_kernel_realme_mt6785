@@ -247,13 +247,13 @@ enum mtk_ddp_io_cmd {
 	DSI_READ,
 	LCM_HBM,
 	LCM_CABC,
+	/* Jian.Zhou@MM.Display.LCD.Machine 2020/11/18, add safe mode for mipi clk change */
+	DSI_SET_SAFE_MODE,
 	/* Zhijun.Ye@PSW.MM.Display.LCD.Machine 2020/10/23, add for dc cmd timing */
 	DC_BACKLIGHT,
+	/* Zepu.Zhang@PSW.MM.Display.LCD.Machine 2020/11/19, add for olcd ic timming */
+	DISP_OFF,
 	//#endif
-#ifdef VENDOR_EDIT
-/*Jinzhu.Han@RM.MM.LCD.Display.Stability, 2020/08/06, add for flicker when close DC */
-	DC_POST_EXIT,
-#endif
 };
 
 struct golden_setting_context {

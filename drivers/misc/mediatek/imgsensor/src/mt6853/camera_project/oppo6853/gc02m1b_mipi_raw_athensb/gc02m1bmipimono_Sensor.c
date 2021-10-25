@@ -48,6 +48,8 @@
 
 #ifdef VENDOR_EDIT
 #define DEVICE_VERSION_GC02M1B    "gc02m1b"
+extern void register_imgsensor_deviceinfo(char *name, char *version, u8 module_id);
+static uint8_t deviceInfo_register_value;
 #define USE_BURST_MODE
 #endif
 
@@ -992,7 +994,18 @@ static kal_uint32 get_imgsensor_id(UINT32 *sensor_id)
             do {
                 *sensor_id = return_sensor_id();
                 if (*sensor_id == GC02M1B_SENSOR_ID_20630) {
-                    *sensor_id = imgsensor_info.sensor_id;
+                *sensor_id = imgsensor_info.sensor_id;
+            #ifdef VENDOR_EDIT
+            /*shounan.yang@Camera.Drv, 2019.6.18 add for register device info*/
+            //imgsensor_info.module_id = read_module_id();
+            imgsensor_info.module_id = 0;
+            if (deviceInfo_register_value == 0x00) {
+                register_imgsensor_deviceinfo("Cam_r2",
+                        DEVICE_VERSION_GC02M1B,
+                        imgsensor_info.module_id);
+                deviceInfo_register_value=0x01;
+            }
+            #endif
                     LOG_INF("gc02m1b i2c write id: 0x%x, sensor id: 0x%x\n", imgsensor.i2c_write_id,*sensor_id);
                     return ERROR_NONE;
                 }

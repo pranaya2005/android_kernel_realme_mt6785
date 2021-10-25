@@ -11,7 +11,6 @@
  *  Zone aware kswapd started 02/00, Kanoj Sarcar (kanoj@sgi.com).
  *  Multiqueue VM started 5.8.00, Rik van Riel.
  */
-
 #define pr_fmt(fmt) KBUILD_MODNAME ": " fmt
 
 #include <linux/mm.h>
@@ -1447,6 +1446,60 @@ unsigned long reclaim_clean_pages_from_list(struct zone *zone,
 	mod_node_page_state(zone->zone_pgdat, NR_ISOLATED_FILE, -ret);
 	return ret;
 }
+
+#if defined(CONFIG_NANDSWAP)
+unsigned long nswap_reclaim_page_list(struct list_head *page_list,
+					struct vm_area_struct *vma, bool scan)
+{
+	unsigned long nr_isolated[2] = {0, };
+	struct pglist_data *pgdat = NULL;
+	unsigned long nr_reclaimed;
+	unsigned long nr_scan = 0;
+	struct page *page;
+	struct scan_control sc = {
+		.gfp_mask = GFP_KERNEL,
+		.priority = DEF_PRIORITY,
+		.may_writepage = 1,
+		.may_unmap = 1,
+		.may_swap = 1,
+		.target_vma = vma,
+	};
+
+	if (list_empty(page_list))
+		return 0;
+
+	list_for_each_entry(page, page_list, lru) {
+		ClearPageActive(page);
+		if (pgdat == NULL)
+			pgdat = page_pgdat(page);
+		/* XXX: It could be multiple node in other config */
+		WARN_ON_ONCE(pgdat != page_pgdat(page));
+		if (!page_is_file_cache(page))
+			nr_isolated[0]++;
+		else
+			nr_isolated[1]++;
+	}
+
+	mod_node_page_state(pgdat, NR_ISOLATED_ANON, nr_isolated[0]);
+	mod_node_page_state(pgdat, NR_ISOLATED_FILE, nr_isolated[1]);
+
+	nr_reclaimed = shrink_page_list(page_list, NULL, &sc,
+			TTU_IGNORE_ACCESS, NULL, true);
+
+	while (!list_empty(page_list)) {
+		page = lru_to_page(page_list);
+		if (PageSwapCache(page) && !PageDirty(page))
+			nr_scan++;
+		list_del(&page->lru);
+		putback_lru_page(page);
+	}
+
+	mod_node_page_state(pgdat, NR_ISOLATED_ANON, -nr_isolated[0]);
+	mod_node_page_state(pgdat, NR_ISOLATED_FILE, -nr_isolated[1]);
+
+	return scan ? nr_scan : nr_reclaimed;
+}
+#endif
 
 #ifdef CONFIG_PROCESS_RECLAIM
 #if defined(OPLUS_FEATURE_PROCESS_RECLAIM) && defined(CONFIG_PROCESS_RECLAIM_ENHANCE)
